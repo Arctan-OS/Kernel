@@ -3,5 +3,6 @@ all:
 	make -C kernel
 
 clean:
-	rm -rf *.o
-	rm -rf *.elf
+	find . -type f -name "*.o" -delete
+	find . -type f -name "*.elf" -delete
+	
