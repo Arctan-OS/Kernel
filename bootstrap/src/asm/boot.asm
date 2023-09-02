@@ -11,11 +11,12 @@ WIDTH	 		equ 1024						; 1024 pixels in width
 HEIGHT   		equ 768							; 768 pixels in height
 BPP      		equ 16							; 16 bit color
 
-boot_header:		.dword MAGIC
-			.dword FLAGS
-			.dword CHECKSUM
+boot_header:		dd MAGIC
+			dd FLAGS
+			dd CHECKSUM
 
 
 [extern helper]
+[global _entry]
 _entry:			call helper
 			jmp $ 			; Hang
