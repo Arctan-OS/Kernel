@@ -1,32 +1,34 @@
 bits 32
-section .text
 
-MAGIC    		equ 0xE85250D6						; Multiboot2
-										; No header found??? https://tenor.com/view/guh-gif-25116077
-ARCH    		equ 0
-LENGTH			equ (boot_header_end - boot_header)
-CHECKSUM 		equ -(MAGIC + ARCH)			
+MAGIC			equ 0xE85250D6
+ARCH			equ 0
+LENGTH			equ (boot_header_end - boot_header_end)
+CHECKSUM		equ -(MAGIC + ARCH + LENGTH)
 
+section .mb2header
 
 align 8
 boot_header:		dd MAGIC
 			dd ARCH
 			dd LENGTH
 			dd CHECKSUM
-
-			; dw 6							; Align modules to page boundaries (Type)
-			; dw 0							; Required (Flags = 0)
-			; dd 8							; Tag is 8 bytes in size
-
+			
+			; Module Align tag
+			dw 6
+			dw 0
+			dd 8
+			
+			; End Of Tags tag
 			dw 0
 			dw 0
 			dd 8
 boot_header_end:	
-			db "HEADER END"
 
+section .text
 
 [extern helper]
 [global _entry]
-_entry:			push ebx
+_entry:			push eax
+			push ebx
 			call helper
 			jmp $ 							; Hang

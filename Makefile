@@ -1,4 +1,4 @@
-PRODUCT := ArcTan
+PRODUCT := Arctan
 
 all:
 	make -C bootstrap
@@ -19,5 +19,6 @@ run: clean all
 clean:
 	find . -type f -name "*.o" -delete
 	find . -type f -name "*.elf" -delete
+	find . -type f -name "*.iso" -delete
 	rm -rf iso
 	

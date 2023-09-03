@@ -9,7 +9,7 @@ CFLAGS := -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs \
 		       -nostdlib -ffreestanding -c -I src/c/icnlude/ -masm=intel \
 		       -Wall -Wextra -m32
 
-LDFLAGS := -Tlinker.ld -melf_i386 -z page-size=0x1000 -o $(PRODUCT)
+LDFLAGS := -Tlinker.ld -melf_i386 -z max-page-size=0x1000 -o $(PRODUCT)
 
 NASMFLAGS := -f elf32
 
