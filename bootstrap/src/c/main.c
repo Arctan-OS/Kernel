@@ -2,40 +2,45 @@
 #include <stddef.h>
 #include "include/multiboot2.h"
 #include "include/interface.h"
+#include "include/global.h"
 
-uint32_t *tags = NULL;
-uint32_t *tags_end = NULL;
+uint8_t *tags = NULL;
+uint8_t *tags_end = NULL;
 uint32_t cur_tag_sz = 0;
 
-int get_tag() {
+uint32_t get_tag() {
 	// We reached the end, return -1
 	if (tags >= tags_end || *tags == MULTIBOOT_TAG_TYPE_END)
 		return -1;
 
-	
-	cur_tag_sz = *(tags + 4);
+	cur_tag_sz = ALIGN(*(uint32_t *)(tags + 4), 8); 
 
 	// Return tag type
-	return (*tags);
+	return *(uint32_t*)(tags);
 }
 
-int helper(uint32_t *boot_info, uint32_t magic) {
+int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
 		return 1;
 
-	uint32_t total_size = *boot_info;
+	uint32_t total_size = *(uint32_t *)(boot_info);
 	tags_end = boot_info + total_size;
 	tags = boot_info + 8;
 
-	putn(*(boot_info), 10);
+	int tag = 0;
+	while ((tag = get_tag()) > 0) {
+		putn(tag, 10);
+		putc(' ');
+		putn(cur_tag_sz, 10);
+		putc('\n');
 
-	// uint8_t *screen = (uint8_t *)0xB8000;
-	// int tag = 0;
-	// while ((tag = get_tag()) > 0) {
-		
+		if (tag == MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME) {
+			puts(tags + 8);
+			putc('\n');
+		}
 
-	// 	tags += cur_tag_sz;
-	// }
+		tags += cur_tag_sz;
+	}
 
 	return 0;
 }

@@ -1,7 +1,7 @@
 PRODUCT := Arctan
 CPPFLAGS = 
 
-all:
+all: clean
 	make -C bootstrap CPPFLAGS=$(CPPFLAGS)
 	make -C kernel CPPFLAGS=$(CPPFLAGS)
 
@@ -14,7 +14,7 @@ all:
 	grub-mkrescue -o $(PRODUCT).iso iso
 
 
-run:
+run: all
 	qemu-system-x86_64 -cdrom $(PRODUCT).iso -debugcon stdio
 
 clean:
