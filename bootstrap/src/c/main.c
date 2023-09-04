@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "include/multiboot2.h"
+#include "include/interface.h"
 
 uint32_t *tags = NULL;
 uint32_t *tags_end = NULL;
@@ -26,14 +27,15 @@ int helper(uint32_t *boot_info, uint32_t magic) {
 	tags_end = boot_info + total_size;
 	tags = boot_info + 8;
 
-	uint8_t *screen = (uint8_t *)0xB8000;
-	int tag = 0;
-	while ((tag = get_tag()) > 0) {
-		*screen = 'A';
-		screen += 2;
+	putn(*(boot_info), 10);
 
-		tags += cur_tag_sz;
-	}
+	// uint8_t *screen = (uint8_t *)0xB8000;
+	// int tag = 0;
+	// while ((tag = get_tag()) > 0) {
+		
+
+	// 	tags += cur_tag_sz;
+	// }
 
 	return 0;
 }

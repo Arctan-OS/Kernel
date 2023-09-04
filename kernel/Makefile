@@ -5,9 +5,10 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
+CPPFLAGS ?=
 CFLAGS := -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs \
 		       -nostdlib -ffreestanding -c -I src/c/icnlude/ -masm=intel \
-		       -Wall -Wextra
+		       -Wall -Wextra $(CPPFLAGS)
 
 LDFLAGS := -Tlinker.ld -melf_x86_64 -z max-page-size=0x1000 -o $(PRODUCT)
 
