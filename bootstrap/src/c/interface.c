@@ -42,16 +42,22 @@ void puts(char *s) {
 		putc(*(s++));
 }
 
-// TODO: Depth is able to constrain the size.
-//	 (i.e. 0xABAB with depth of 2 = 0xAB)
 const char *ALNUM = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-int putn(uint32_t val, uint8_t base, int depth) {
+int __putn(uint32_t val, uint8_t base, int depth, int org_depth) {
+	int r = 1;
 	if (val / base != 0 || depth > 0)
-		putn(val / base, base, (depth == -1) ? (-1) : (depth - 1));
+		r = __putn(val / base, base, (depth == -1) ? (-1) : (depth - 1), org_depth);
+
+	if (r > org_depth && org_depth > 0)
+		return r + 1;
 
 	putc(*(ALNUM + (val % base)));
 
-	return 0;
+	return r + 1;
+}
+
+int putn(uint32_t val, uint8_t base, int depth) {
+	return __putn(val, base, depth, depth);
 }
 
 void printf(const char *form, ...) {
