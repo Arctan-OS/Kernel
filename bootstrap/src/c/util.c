@@ -5,6 +5,11 @@ void memset(void *dest, int value, size_t length) {
 		*((uint8_t *)dest + i) = value;
 }
 
+void memcpy(void *dest, void* src, size_t length) {
+	for (size_t i = 0; i < length; i++)
+		*((uint8_t *)dest + i) = *((uint8_t *)src + i);
+}
+
 size_t strlen(char *a) {
 	size_t sz = 0;
 	while (*(a + sz))

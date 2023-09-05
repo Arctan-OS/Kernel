@@ -10,6 +10,23 @@ const char *kernel_module_name = "arctan-module.kernel.efi";
 
 uint32_t kernel_phys_start = 0x0;
 uint32_t kernel_phys_end = 0x0;
+uint64_t mem_phys_first_free = 0x0;
+uint64_t size_phys_first_free = 0x0;
+
+const char *mem_types[] = {
+	[MULTIBOOT_MEMORY_AVAILABLE] = "Available",
+	[MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "ACPI Reclaimable",
+	[MULTIBOOT_MEMORY_BADRAM] = "Bad",
+	[MULTIBOOT_MEMORY_NVS] = "NVS",
+	[MULTIBOOT_MEMORY_RESERVED] = "Reserved",
+};
+
+// Paging tables
+// These should be temporary, to jump to 64-bit mode
+uint64_t pml4[512] __attribute__((aligned(0x1000)));
+uint64_t pml3[512] __attribute__((aligned(0x1000)));
+uint64_t pml2[512] __attribute__((aligned(0x1000)));
+uint64_t pml1[512] __attribute__((aligned(0x1000)));
 
 int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
@@ -18,6 +35,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	uint32_t total_size = *(uint32_t *)(boot_info);
 	tags_end = boot_info + total_size;
 	tags = boot_info + 8;
+
 
 	int tag = 0;
 	do {
@@ -54,6 +72,8 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			break;
 		}
 
+		// SAVE THIS STRUCTURE
+		// PASS IT TO 64-BIT KERNEL
 		case MULTIBOOT_TAG_TYPE_MMAP: {
 			struct multiboot_tag_mmap *info = (struct multiboot_tag_mmap *)tags;
 
@@ -63,7 +83,13 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			for (uint8_t *entry_base = tags + 16; entry_base < tags + cur_tag_sz; entry_base += info->entry_size, i++) {
 				struct multiboot_mmap_entry *entry = (struct multiboot_mmap_entry *)entry_base;
 
-				printf("\tEntry %d: @ 0x%8X, 0x%8X B, Type: %d\n", i, (uint32_t)entry->addr, (uint32_t)entry->len, entry->type);
+				if (entry->type == MULTIBOOT_MEMORY_AVAILABLE && entry->len > size_phys_first_free) {
+					mem_phys_first_free = entry->addr;
+					size_phys_first_free = entry->len;
+				}
+
+
+				printf("\tEntry %d: @ 0x%8X, 0x%8X B, Type: %s (%d)\n", i, (uint32_t)entry->addr, (uint32_t)entry->len, mem_types[entry->type], entry->type);
 			}
 
 			break;
@@ -75,6 +101,61 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	ASSERT(kernel_phys_start != 0)
 	ASSERT(kernel_phys_end != 0)
+
+	ASSERT(mem_phys_first_free != 0)
+	ASSERT(size_phys_first_free != 0)
+
+	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
+
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
+	printf("Words words I can speak words until the end of time, can you?\n");
 
 	return 0;
 }

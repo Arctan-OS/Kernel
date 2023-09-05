@@ -31,9 +31,23 @@ void putc(char c) {
 			char_y++;
 		}
 
-		
 		break;
 	}
+
+	if (char_y >= HEIGHT) {
+		memcpy(screen, screen + (WIDTH * 2), WIDTH * HEIGHT * 2);
+		char_y--;
+	}
+
+	// Move cursor
+	uint16_t pos = char_y * WIDTH + char_x;
+	outb(0x3D4, 0x0F);
+	outb(0x3D5, (uint8_t)(pos & 0xFF));
+	outb(0x3D4, 0x0E);
+	outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
+
+	for (int i = 0; i < 0x100000; i++)
+		outb(0x80, 0);
 
 	E9_HACK(c)
 }
@@ -45,7 +59,7 @@ void puts(char *s) {
 
 const char *ALNUM = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 int __putn(uint32_t val, uint8_t base, int depth, int org_depth) {
-	int r = 1;
+	int r = 0;
 	if (val / base != 0 || depth > 0)
 		r = __putn(val / base, base, (depth == -1) ? (-1) : (depth - 1), org_depth);
 
