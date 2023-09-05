@@ -1,4 +1,5 @@
 #include "include/interface.h"
+#include "include/global.h"
 
 #define WIDTH 80
 #define HEIGHT 25
@@ -126,9 +127,7 @@ void printf(const char *form, ...) {
 		if (!found_arg)
 			putc(*form);
 
-		for (int i = 0; i < 16; i++)
-			aux_chars[i] = 0;
-
+		memset(aux_chars, 0, 16);
 		aux_idx = 0;
 
 		found_arg = 0;

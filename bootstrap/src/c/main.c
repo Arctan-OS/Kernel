@@ -1,5 +1,3 @@
-#include <stddef.h>
-#include <stdint.h>
 #include "include/multiboot2.h"
 #include "include/interface.h"
 #include "include/global.h"
@@ -7,6 +5,11 @@
 uint8_t *tags = NULL;
 uint8_t *tags_end = NULL;
 uint32_t cur_tag_sz = 0;
+
+const char *kernel_module_name = "arctan-module.kernel.efi";
+
+uint32_t kernel_phys_start = 0x0;
+uint32_t kernel_phys_end = 0x0;
 
 int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
@@ -41,8 +44,12 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 			printf("Module: \"%s\" (0x%X -> 0x%X)\n", info->cmdline, info->mod_start, info->mod_end);
 
-			// Add code to find the kernel image
-			// and save its start and end addresses
+			if (strcmp(info->cmdline, kernel_module_name) == 0) {
+				printf("! FOUND KERNEL !\n");
+
+				kernel_phys_start = info->mod_start;
+				kernel_phys_end = info->mod_end;
+			}
 
 			break;
 		}
@@ -56,7 +63,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			for (uint8_t *entry_base = tags + 16; entry_base < tags + cur_tag_sz; entry_base += info->entry_size, i++) {
 				struct multiboot_mmap_entry *entry = (struct multiboot_mmap_entry *)entry_base;
 
-				printf("\tEntry %d: @ 0x%2X, 0x%8X B, Type: %d\n", i, (uint32_t)entry->addr, (uint32_t)entry->len, entry->type);
+				printf("\tEntry %d: @ 0x%8X, 0x%8X B, Type: %d\n", i, (uint32_t)entry->addr, (uint32_t)entry->len, entry->type);
 			}
 
 			break;
@@ -65,6 +72,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 		tags += cur_tag_sz;
 	} while (tag);
+
+	ASSERT(kernel_phys_start != 0)
+	ASSERT(kernel_phys_end != 0)
 
 	return 0;
 }
