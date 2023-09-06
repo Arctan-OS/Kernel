@@ -46,7 +46,7 @@ void putc(char c) {
 	outb(0x3D4, 0x0E);
 	outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 
-	for (int i = 0; i < 0x100000; i++)
+	for (int i = 0; i < 50000/4; i++)
 		outb(0x80, 0);
 
 	E9_HACK(c)

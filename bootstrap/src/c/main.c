@@ -23,10 +23,10 @@ const char *mem_types[] = {
 
 // Paging tables
 // These should be temporary, to jump to 64-bit mode
-uint64_t pml4[512] __attribute__((aligned(0x1000)));
-uint64_t pml3[512] __attribute__((aligned(0x1000)));
-uint64_t pml2[512] __attribute__((aligned(0x1000)));
-uint64_t pml1[512] __attribute__((aligned(0x1000)));
+uint64_t pml4[512] __attribute__((aligned(0x1000))); // PML4 Entries
+uint64_t pml3[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries
+uint64_t pml2[512] __attribute__((aligned(0x1000))); // Page Directory Entries
+uint64_t pml1[512] __attribute__((aligned(0x1000))); // Page Table Entries
 
 int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
@@ -107,55 +107,25 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
 
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
-	printf("Words words I can speak words until the end of time, can you?\n");
+
+	pml4[(KMAP_ADDR >> 39) & 0xFF] = (uint64_t)&pml3 | 3; // Address of next entry | RW | P 
+	pml3[(KMAP_ADDR >> 30) & 0xFF] = (uint64_t)&pml2 | 3; // Address of next entry | RW | P
+	pml2[(KMAP_ADDR >> 21) & 0xFF] = (uint64_t)&pml2 | 3; // Address of next entry | RW | P
+
+	if ((kernel_phys_start >= mem_phys_first_free) && ((kernel_phys_end - kernel_phys_start) < size_phys_first_free)) {
+		// Kernel is located in our desired free memory
+		uint64_t phys_addr = kernel_phys_start;
+		for (int i = 0; i < 512; i++) {
+			pml1[i] = phys_addr | 3; // Address | RW | P
+			phys_addr += 0x1000; // Goto next page
+		}
+
+		printf("Ideal conditions met, kernel mapped to %4X%4X. %d bytes available\n", (uint32_t)(KMAP_ADDR >> 32), (uint32_t)KMAP_ADDR, 512 * 0x1000);
+	} else {
+		// Kernel is not located in our desired free memory
+
+		printf("Guh\n");
+	}
 
 	return 0;
 }
