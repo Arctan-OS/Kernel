@@ -67,6 +67,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 				kernel_phys_start = info->mod_start;
 				kernel_phys_end = info->mod_end;
+
+				for (int i = 0; i < 16; i++)
+					printf("%2X ", *(uint8_t *)(kernel_phys_start + i));
 			}
 
 			break;
@@ -88,8 +91,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 					size_phys_first_free = entry->len;
 				}
 
-
-				printf("\tEntry %d: @ 0x%8X, 0x%8X B, Type: %s (%d)\n", i, (uint32_t)entry->addr, (uint32_t)entry->len, mem_types[entry->type], entry->type);
+				printf("\tEntry %d: @ 0x%4X%4X, 0x%4X%4X B, Type: %s (%d)\n", i, (uint32_t)(entry->addr >> 32), (uint32_t)entry->addr, (uint32_t)(entry->len >> 32), (uint32_t)entry->len, mem_types[entry->type], entry->type);
 			}
 
 			break;
