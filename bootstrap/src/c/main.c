@@ -101,19 +101,23 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		tags += cur_tag_sz;
 	} while (tag);
 
+	// Assert the kernel exists (should not be located at 0x0000)
 	ASSERT(kernel_phys_start != 0)
+	ASSERT((kernel_phys_start & 0xFFF) == 0) // Ensure kernel is page aligned
 	ASSERT(kernel_phys_end != 0)
 
+	// Assert we have some free memory to map
 	ASSERT(mem_phys_first_free != 0)
 	ASSERT(size_phys_first_free != 0)
 
 	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
 
-
 	pml4[(KMAP_ADDR >> 39) & 0xFF] = (uint64_t)&pml3 | 3; // Address of next entry | RW | P 
 	pml3[(KMAP_ADDR >> 30) & 0xFF] = (uint64_t)&pml2 | 3; // Address of next entry | RW | P
 	pml2[(KMAP_ADDR >> 21) & 0xFF] = (uint64_t)&pml2 | 3; // Address of next entry | RW | P
 
+	// TODO, ensure that we are not relying on a single
+	// long section of memory.
 	if ((kernel_phys_start >= mem_phys_first_free) && ((kernel_phys_end - kernel_phys_start) < size_phys_first_free)) {
 		// Kernel is located in our desired free memory
 		uint64_t phys_addr = kernel_phys_start;
@@ -125,8 +129,28 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		printf("Ideal conditions met, kernel mapped to %4X%4X. %d bytes available\n", (uint32_t)(KMAP_ADDR >> 32), (uint32_t)KMAP_ADDR, 512 * 0x1000);
 	} else {
 		// Kernel is not located in our desired free memory
+		uint64_t phys_addr = kernel_phys_start;
+		size_t kernel_size_pages = ALIGN((kernel_phys_end - kernel_phys_start), 0x1000) / 0x1000;
 
-		printf("Guh\n");
+		int i = 0;
+		for (; i < kernel_size_pages; i++) {
+			pml1[i] = phys_addr | 3; // Address | RW | P
+			phys_addr += 0x1000; // Goto next page
+		}
+
+		phys_addr = mem_phys_first_free;
+		int ram_page = i;
+		for (; i < 512; i++) {
+			pml1[i] = phys_addr | 3; // Address | RW | P
+			phys_addr += 0x1000; // Goto next page
+		}
+
+		printf("Kernel is independent from free memory. Mapping kernel to 0x%4X%4X for %d pages. Mapping 0x%4X%4X to 0x%4X%4X.\n", (uint32_t)(KMAP_ADDR >> 32), (uint32_t)KMAP_ADDR,
+																	        kernel_size_pages,
+																		(uint32_t)(mem_phys_first_free >> 32),
+																		(uint32_t)(mem_phys_first_free),
+																		(uint32_t)((KMAP_ADDR + ram_page * 0x1000) >> 32),
+																		(uint32_t)(KMAP_ADDR + ram_page * 0x1000));
 	}
 
 	return 0;
