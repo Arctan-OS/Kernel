@@ -1,6 +1,7 @@
 #include "include/multiboot2.h"
 #include "include/interface.h"
 #include "include/global.h"
+#include "include/gdt.h"
 
 uint8_t *tags = NULL;
 uint8_t *tags_end = NULL;
@@ -12,6 +13,8 @@ uint32_t kernel_phys_start = 0x0;
 uint32_t kernel_phys_end = 0x0;
 uint64_t mem_phys_first_free = 0x0;
 uint64_t size_phys_first_free = 0x0;
+uint32_t bootstrap_start = 0x0;
+extern uint8_t __BOOTSTRAP_END__; // Address should be aligned to 0x1000
 
 const char *mem_types[] = {
 	[MULTIBOOT_MEMORY_AVAILABLE] = "Available",
@@ -21,12 +24,17 @@ const char *mem_types[] = {
 	[MULTIBOOT_MEMORY_RESERVED] = "Reserved",
 };
 
-// Paging tables
-// These should be temporary, to jump to 64-bit mode
 uint64_t pml4[512] __attribute__((aligned(0x1000))); // PML4 Entries
-uint64_t pml3[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries
-uint64_t pml2[512] __attribute__((aligned(0x1000))); // Page Directory Entries
-uint64_t pml1[512] __attribute__((aligned(0x1000))); // Page Table Entries
+// Paging tables (Higher Half)
+// These should be temporary, to jump to 64-bit mode
+uint64_t pml3_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries
+uint64_t pml2_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Entries
+uint64_t pml1_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
+
+// Paging tables (Bootstrapper)
+uint64_t pml3_boot[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries
+uint64_t pml2_boot[512] __attribute__((aligned(0x1000))); // Page Directory Entries
+uint64_t pml1_boot[512] __attribute__((aligned(0x1000))); // Page Table Entries
 
 int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
@@ -36,6 +44,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	tags_end = boot_info + total_size;
 	tags = boot_info + 8;
 
+	install_gdt();
 
 	int tag = 0;
 	do {
@@ -67,9 +76,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 				kernel_phys_start = info->mod_start;
 				kernel_phys_end = info->mod_end;
-
-				for (int i = 0; i < 16; i++)
-					printf("%2X ", *(uint8_t *)(kernel_phys_start + i));
 			}
 
 			break;
@@ -96,6 +102,16 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 			break;
 		}
+
+		case MULTIBOOT_TAG_TYPE_LOAD_BASE_ADDR: {
+			struct multiboot_tag_load_base_addr *info = (struct multiboot_tag_load_base_addr *)tags;
+
+			bootstrap_start = info->load_base_addr;
+
+			printf("Entry: 0x%4X, 0x%4X\n", info->load_base_addr, &__BOOTSTRAP_END__);
+
+			break;
+		}
 		}
 
 		tags += cur_tag_sz;
@@ -112,9 +128,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
 
-	pml4[(KMAP_ADDR >> 39) & 0xFF] = (uint64_t)&pml3 | 3; // Address of next entry | RW | P 
-	pml3[(KMAP_ADDR >> 30) & 0xFF] = (uint64_t)&pml2 | 3; // Address of next entry | RW | P
-	pml2[(KMAP_ADDR >> 21) & 0xFF] = (uint64_t)&pml2 | 3; // Address of next entry | RW | P
+	pml4       [(KMAP_ADDR >> 39) & 0xFF] = (uint64_t)&pml3_kernel | 3; // Address of next entry | RW | P 
+	pml3_kernel[(KMAP_ADDR >> 30) & 0xFF] = (uint64_t)&pml2_kernel | 3; // Address of next entry | RW | P
+	pml2_kernel[(KMAP_ADDR >> 21) & 0xFF] = (uint64_t)&pml2_kernel | 3; // Address of next entry | RW | P
 
 	// TODO, ensure that we are not relying on a single
 	// long section of memory.
@@ -122,7 +138,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		// Kernel is located in our desired free memory
 		uint64_t phys_addr = kernel_phys_start;
 		for (int i = 0; i < 512; i++) {
-			pml1[i] = phys_addr | 3; // Address | RW | P
+			pml1_kernel[i] = phys_addr | 3; // Address | RW | P
 			phys_addr += 0x1000; // Goto next page
 		}
 
@@ -134,14 +150,14 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 		int i = 0;
 		for (; i < kernel_size_pages; i++) {
-			pml1[i] = phys_addr | 3; // Address | RW | P
+			pml1_kernel[i] = phys_addr | 3; // Address | RW | P
 			phys_addr += 0x1000; // Goto next page
 		}
 
 		phys_addr = mem_phys_first_free;
 		int ram_page = i;
 		for (; i < 512; i++) {
-			pml1[i] = phys_addr | 3; // Address | RW | P
+			pml1_kernel[i] = phys_addr | 3; // Address | RW | P
 			phys_addr += 0x1000; // Goto next page
 		}
 
@@ -152,6 +168,20 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 																		(uint32_t)((KMAP_ADDR + ram_page * 0x1000) >> 32),
 																		(uint32_t)(KMAP_ADDR + ram_page * 0x1000));
 	}
+
+	size_t bootstrap_size = (((uintptr_t)&__BOOTSTRAP_END__) - bootstrap_start) / 0x1000;
+
+	pml4     [(bootstrap_start >> 39) & 0xFF] = (uint64_t)&pml3_boot | 3; // Address of next entry | RW | P 
+	pml3_boot[(bootstrap_start >> 30) & 0xFF] = (uint64_t)&pml2_boot | 3; // Address of next entry | RW | P
+	pml2_boot[(bootstrap_start >> 21) & 0xFF] = (uint64_t)&pml2_boot | 3; // Address of next entry | RW | P
+
+	uint32_t phys_addr = bootstrap_start;
+	for (int i = 0; i < bootstrap_size; i++) {
+		pml1_boot[i] = phys_addr | 3; // RW | P
+		phys_addr += 0x1000;
+	}
+
+	printf("Identity mapped the bootstrapper.\n");
 
 	return 0;
 }

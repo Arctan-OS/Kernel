@@ -20,4 +20,6 @@ SECTIONS {
 		*(COMMON)
 		*(.bss .bss.*)
 	}
+
+	__BOOTSTRAP_END__ = .;
 }
