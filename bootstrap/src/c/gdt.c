@@ -33,8 +33,10 @@ void set_gdt_gate(int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t 
 extern void _install_gdt();
 void install_gdt() {
 	set_gdt_gate(0, 0, 0, 0, 0);
-	set_gdt_gate(1, 0, 0xFFFFFFFF, 0b10011010, 0b00001100); // Kernel Code
-	set_gdt_gate(2, 0, 0xFFFFFFFF, 0b10010110, 0b00001100); // Kernel Data
+	set_gdt_gate(1, 0, 0xFFFFFFFF, 0b10011010, 0b00001100); // Kernel Code 32
+	set_gdt_gate(2, 0, 0xFFFFFFFF, 0b10010110, 0b00001100); // Kernel Data 32
+	set_gdt_gate(3, 0, 0xFFFFFFFF, 0b10011010, 0b00001010); // Kernel Code 64
+	set_gdt_gate(4, 0, 0xFFFFFFFF, 0b10010110, 0b00001010); // Kernel Data 64
 
 	gdtr.size = sizeof(gdt_entries) * 8 - 1;
 	gdtr.base = (uintptr_t)&gdt_entries;

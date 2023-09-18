@@ -27,7 +27,7 @@ const char *mem_types[] = {
 uint64_t pml4[512] __attribute__((aligned(0x1000))); // PML4 Entries
 // Paging tables (Higher Half)
 // These should be temporary, to jump to 64-bit mode
-uint64_t pml3_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries
+uint64_t pml3_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries * Cast this to a uint32_t * so we can create a PML3 table when we enter
 uint64_t pml2_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Entries
 uint64_t pml1_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
 
@@ -35,6 +35,14 @@ uint64_t pml1_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entrie
 uint64_t pml3_boot[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries
 uint64_t pml2_boot[512] __attribute__((aligned(0x1000))); // Page Directory Entries
 uint64_t pml1_boot[512] __attribute__((aligned(0x1000))); // Page Table Entries
+
+
+// 32-bit paging tables
+uint32_t pml2_boot32[1024]   __attribute__((aligned(0x1000)));
+uint32_t pml1_1_boot32[1024] __attribute__((aligned(0x1000)));
+uint32_t pml1_2_boot32[1024] __attribute__((aligned(0x1000)));
+
+extern void enable_paging_32();
 
 int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
@@ -45,6 +53,20 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	tags = boot_info + 8;
 
 	install_gdt();
+
+	printf("Identity mapping the first megabyte\n");
+
+	pml2_boot32[0] = (uintptr_t)pml1_1_boot32 | 3;
+	pml2_boot32[1] = (uintptr_t)pml1_2_boot32 | 3;
+
+	for (int i = 0; i < 1024; i++) {
+		pml1_1_boot32[i] =  (i << 12) | 3;
+		pml1_2_boot32[i] = ((i + 1024) << 12) | 3;
+	}
+
+	enable_paging_32();
+
+	printf("Identity mapped and 32-bit paging is enabled\n");
 
 	int tag = 0;
 	do {
