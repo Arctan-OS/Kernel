@@ -18,6 +18,14 @@ boot_header:		dd MAGIC
 			dw 6
 			dw 0
 			dd 8
+
+			; Framebuffer Request Tag
+			dw 5
+			dw 0
+			dd 20
+			dd 0 							; Allow bootloader to pick width
+			dd 0 							; Allow bootloader to pick height
+			dd 0 							; Allow bootloader to picl bpp
 			
 			; End Of Tags tag
 			dw 0

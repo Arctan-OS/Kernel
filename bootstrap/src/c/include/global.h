@@ -17,4 +17,6 @@ void memcpy(void *dest, void *src, size_t length);
 size_t strlen(char *a);
 int strcmp(char *a, char *b);
 
+extern struct multiboot_tag_framebuffer *framebuffer_tag;
+
 #endif

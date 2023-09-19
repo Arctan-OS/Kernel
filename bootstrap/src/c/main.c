@@ -16,6 +16,8 @@ uint64_t size_phys_first_free = 0x0;
 uint32_t bootstrap_start = 0x0;
 extern uint8_t __BOOTSTRAP_END__; // Address should be aligned to 0x1000
 
+struct multiboot_tag_framebuffer *framebuffer_tag = NULL;
+
 const char *mem_types[] = {
 	[MULTIBOOT_MEMORY_AVAILABLE] = "Available",
 	[MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "ACPI Reclaimable",
@@ -48,25 +50,13 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
 		return 1;
 
+	install_gdt();
+
+	process_tags:;
+
 	uint32_t total_size = *(uint32_t *)(boot_info);
 	tags_end = boot_info + total_size;
 	tags = boot_info + 8;
-
-	install_gdt();
-
-	printf("Identity mapping the first megabyte\n");
-
-	pml2_boot32[0] = (uintptr_t)pml1_1_boot32 | 3;
-	pml2_boot32[1] = (uintptr_t)pml1_2_boot32 | 3;
-
-	for (int i = 0; i < 1024; i++) {
-		pml1_1_boot32[i] =  (i << 12) | 3;
-		pml1_2_boot32[i] = ((i + 1024) << 12) | 3;
-	}
-
-	enable_paging_32();
-
-	printf("Identity mapped and 32-bit paging is enabled\n");
 
 	int tag = 0;
 	do {
@@ -134,6 +124,13 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 			break;
 		}
+
+		case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
+			if (framebuffer_tag == NULL) {
+				framebuffer_tag = (struct multiboot_tag_framebuffer *)tags;
+				goto process_tags;
+			}
+		}
 		}
 
 		tags += cur_tag_sz;
@@ -147,6 +144,20 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	// Assert we have some free memory to map
 	ASSERT(mem_phys_first_free != 0)
 	ASSERT(size_phys_first_free != 0)
+
+	printf("Identity mapping the first megabyte\n");
+
+	pml2_boot32[0] = (uintptr_t)pml1_1_boot32 | 3;
+	pml2_boot32[1] = (uintptr_t)pml1_2_boot32 | 3;
+
+	for (int i = 0; i < 1024; i++) {
+		pml1_1_boot32[i] = (((i) << 12)) | 3;
+		pml1_2_boot32[i] = (((i + bootstrap_start / 0x1000) + 1024) << 12) | 3;
+	}
+
+	enable_paging_32();
+
+	printf("Identity mapped and 32-bit paging is enabled\n");
 
 	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
 
@@ -197,11 +208,8 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	pml3_boot[(bootstrap_start >> 30) & 0xFF] = (uint64_t)&pml2_boot | 3; // Address of next entry | RW | P
 	pml2_boot[(bootstrap_start >> 21) & 0xFF] = (uint64_t)&pml2_boot | 3; // Address of next entry | RW | P
 
-	uint32_t phys_addr = bootstrap_start;
-	for (int i = 0; i < bootstrap_size; i++) {
-		pml1_boot[i] = phys_addr | 3; // RW | P
-		phys_addr += 0x1000;
-	}
+	for (int i = 0; i < bootstrap_size; i++)
+		pml1_boot[i] = (i << 12) | 3; // RW | P
 
 	printf("Identity mapped the bootstrapper.\n");
 
