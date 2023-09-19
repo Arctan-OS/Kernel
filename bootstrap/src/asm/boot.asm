@@ -13,24 +13,24 @@ boot_header:		dd MAGIC
 			dd ARCH
 			dd LENGTH
 			dd CHECKSUM
-			
+		
 			; Module Align tag
-			dw 6
-			dw 0
-			dd 8
+			dw 0x6
+			dw 0x0
+			dd 0x8
 
 			; Framebuffer Request Tag
-			dw 5
-			dw 0
-			dd 20
-			dd 0 							; Allow bootloader to pick width
-			dd 0 							; Allow bootloader to pick height
-			dd 0 							; Allow bootloader to picl bpp
+			dw 0x5
+			dw 0x0
+			dd 0x20
+			dd 0x0 							; Allow bootloader to pick width
+			dd 0x0 							; Allow bootloader to pick height
+			dd 0x0 							; Allow bootloader to picl bpp
 			
 			; End Of Tags tag
-			dw 0
-			dw 0
-			dd 8
+			dw 0x0
+			dw 0x0
+			dd 0x8
 boot_header_end:	
 
 section .text

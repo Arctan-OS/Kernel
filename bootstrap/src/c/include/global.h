@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "multiboot2.h"
 
 #define ASSERT(cond) if (!(cond)) { \
 			printf("Assertion %s failed (%s:%d)\n", #cond, __FILE__, __LINE__); \

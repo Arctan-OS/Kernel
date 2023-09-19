@@ -43,6 +43,7 @@ uint64_t pml1_boot[512] __attribute__((aligned(0x1000))); // Page Table Entries
 uint32_t pml2_boot32[1024]   __attribute__((aligned(0x1000)));
 uint32_t pml1_1_boot32[1024] __attribute__((aligned(0x1000)));
 uint32_t pml1_2_boot32[1024] __attribute__((aligned(0x1000)));
+uint32_t pml1_3_boot32[1024] __attribute__((aligned(0x1000)));
 
 extern void enable_paging_32();
 
@@ -120,7 +121,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 			bootstrap_start = info->load_base_addr;
 
-			printf("Entry: 0x%4X, 0x%4X\n", info->load_base_addr, &__BOOTSTRAP_END__);
+			printf("Entry: 0x%X, 0x%X\n", info->load_base_addr , &__BOOTSTRAP_END__);
 
 			break;
 		}
@@ -147,12 +148,16 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	printf("Identity mapping the first megabyte\n");
 
+	printf("%dx%dx%d %4X%4X(%d)\n", framebuffer_tag->common.framebuffer_width, framebuffer_tag->common.framebuffer_height, framebuffer_tag->common.framebuffer_bpp, (uint32_t)(framebuffer_tag->common.framebuffer_addr >> 32), (uint32_t)(framebuffer_tag->common.framebuffer_addr), framebuffer_tag->common.framebuffer_type);
+
 	pml2_boot32[0] = (uintptr_t)pml1_1_boot32 | 3;
 	pml2_boot32[1] = (uintptr_t)pml1_2_boot32 | 3;
+	pml2_boot32[2] = (uintptr_t)pml1_2_boot32 | 3;
 
 	for (int i = 0; i < 1024; i++) {
-		pml1_1_boot32[i] = (((i) << 12)) | 3;
-		pml1_2_boot32[i] = (((i + bootstrap_start / 0x1000) + 1024) << 12) | 3;
+		pml1_1_boot32[i] = (i << 12) | 3;
+		pml1_2_boot32[i] = ((i + 1024) << 12) | 3;
+		pml1_3_boot32[i] = ((i + 2048) << 12) | 3;
 	}
 
 	enable_paging_32();
