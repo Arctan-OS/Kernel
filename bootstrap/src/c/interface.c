@@ -10,8 +10,8 @@ uint8_t *screen = NULL;
 
 void putc(char c) {
 	if (screen == NULL) {
-		// screen = (uint8_t *)framebuffer_tag->common.framebuffer_addr;
-		// return;
+		screen = (uint8_t *)framebuffer_tag->common.framebuffer_addr;
+		return;
 	}
 
 	switch (c) {
@@ -40,7 +40,7 @@ void putc(char c) {
 	}
 
 	if (char_y >= HEIGHT) {
-		memcpy(screen, screen + (WIDTH * 2), WIDTH * HEIGHT * 2);
+		// memcpy(screen, screen + (WIDTH * 2), WIDTH * HEIGHT * 2);
 		char_y--;
 	}
 

@@ -37,7 +37,6 @@ section .text
 
 extern helper
 extern pml4
-extern install_gdt
 global _entry
 _entry:			mov esp, stack_end					; Setup stack
 			mov ebp, esp						; Make sure base gets the memo
@@ -45,27 +44,27 @@ _entry:			mov esp, stack_end					; Setup stack
 			push ebx						; Push boot information
 			call helper						; HELP!
 
-			; mov eax, cr0
-			; xor eax, 1 << 31
-			; mov cr0, eax
+			; PAE
+			mov edx, cr4
+			or edx, 1 << 5
+			mov cr4, edx
 
-			; mov ecx, 0xC0000080
-			; rdmsr
-			; or eax, 1 << 8
-			; wrsmr
+			; LME
+			mov ecx, 0xC0000080
+			rdmsr
+			or eax, 1 << 8
+			wrsmr
+			
+			; Point to table
+			mov eax, pml4
+			mov cr3, eax
 
-			; mov eax, cr4
-			; or eax, 1 << 5
-			; mov cr4, eax
+			; Enable paging
+			mov eax, cr0
+			or eax, 1 << 31
+			mov cr0, eax
 
-			; mov eax, pml4
-			; mov cr3, eax
-
-			; mov eax, cr0
-			; or eax, 1 << 31
-			; mov cr0, eax
-
-			; jmp 0x18:temp						; Long jump to kernel code
+			jmp 0x18:temp						; Long jump to kernel code
 			jmp $
 
 global outb
@@ -73,18 +72,6 @@ outb:			mov al, [esp + 8]
 			mov dx, [esp + 4]
 			out dx, al
 			ret
-
-global enable_paging_32
-extern pml2_boot32
-enable_paging_32:	mov eax, pml2_boot32
-			mov cr3, eax
-
-			mov eax, cr0
-			or eax, (1 << 31)
-			mov cr0, eax
-
-			ret
-
 
 global _install_gdt
 extern gdtr
@@ -102,6 +89,8 @@ bits 64
 
 temp:			jmp $
 
+
+bits 32
 section .bss
 
 global stack
