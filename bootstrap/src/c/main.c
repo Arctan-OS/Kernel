@@ -3,6 +3,8 @@
 #include "include/global.h"
 #include "include/gdt.h"
 
+#include <cpuid.h>
+
 uint8_t *tags = NULL;
 uint8_t *tags_end = NULL;
 uint32_t cur_tag_sz = 0;
@@ -29,9 +31,9 @@ const char *mem_types[] = {
 uint64_t pml4[512] __attribute__((aligned(0x1000))); // PML4 Entries
 // Paging tables (Higher Half)
 // These should be temporary, to jump to 64-bit mode
-uint64_t pml3_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries * Cast this to a uint32_t * so we can create a PML3 table when we enter
-uint64_t pml2_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Entries
-uint64_t pml1_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
+// uint64_t pml3_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries * Cast this to a uint32_t * so we can create a PML3 table when we enter
+// uint64_t pml2_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Entries
+// uint64_t pml1_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
 
 // Paging tables (Bootstrapper)
 uint64_t pml3_boot[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries
@@ -42,9 +44,26 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
 		return 1;
 
-	install_gdt();
+	// Preform checks
+	uint32_t __eax, __ebx, __ecx, __edx;
 
-	process_tags:;
+	__cpuid(0x80000001, __eax, __ebx, __ecx, __edx);
+
+	// Check for LM
+	if (((__edx >> 29) & 1) == 0) {
+		printf(" CPU not up to scratch! 0x%X 0x%X 0x%X 0x%X (0x80000001)\n", __eax, __ebx, __ecx, __edx);
+		__asm__("hlt");
+	}
+
+	__cpuid(1, __eax, __ebx, __ecx, __edx);
+
+	// Check for PAE
+	if (((__edx >> 6) & 1) == 0) {
+		printf(" CPU not up to scratch! 0x%X 0x%X 0x%X 0x%X (0x01)\n", __eax, __ebx, __ecx, __edx);
+		__asm__("hlt");
+	}
+
+	install_gdt();
 
 	uint32_t total_size = *(uint32_t *)(boot_info);
 	tags_end = boot_info + total_size;
@@ -120,7 +139,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
 			if (framebuffer_tag == NULL) {
 				framebuffer_tag = (struct multiboot_tag_framebuffer *)tags;
-				goto process_tags;
+				tags = boot_info + 8;
+
+				continue;
 			}
 		}
 		}

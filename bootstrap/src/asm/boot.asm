@@ -40,6 +40,7 @@ extern pml4
 global _entry
 _entry:			mov esp, stack_end					; Setup stack
 			mov ebp, esp						; Make sure base gets the memo
+
 			push eax						; Push multiboot2 loader signature
 			push ebx						; Push boot information
 			call helper						; HELP!
@@ -49,23 +50,22 @@ _entry:			mov esp, stack_end					; Setup stack
 			or edx, 1 << 5
 			mov cr4, edx
 
-			; LME
-			mov ecx, 0xC0000080
-			rdmsr
-			or eax, 1 << 8
-			wrsmr
-			
 			; Point to table
 			mov eax, pml4
 			mov cr3, eax
 
+			; LME
+			mov ecx, 0xC0000080
+			rdmsr
+			or eax, 1 << 8
+			wrmsr
+			
 			; Enable paging
 			mov eax, cr0
 			or eax, 1 << 31
 			mov cr0, eax
 
 			jmp 0x18:temp						; Long jump to kernel code
-			jmp $
 
 global outb
 outb:			mov al, [esp + 8]
@@ -87,7 +87,13 @@ _gdt_set_cs:		mov ax, 0x10
 
 bits 64
 
-temp:			jmp $
+temp:			mov ax, 0x20
+			mov ds, ax
+			mov fs, ax
+			mov gs, ax
+			mov ss, ax
+			mov es, ax
+			jmp $
 
 
 bits 32
