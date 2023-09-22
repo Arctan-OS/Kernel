@@ -55,9 +55,16 @@ static const char *pt_names[] = {
 	// [PT_HIPROC] = "HIPROC"
 };
 
-uint32_t *load_elf(uint32_t elf_addr) {
+uint64_t info[2];
+
+uint64_t *load_elf(uint32_t elf_addr) {
 	struct elf_header *elf_header = (struct elf_header *)((uintptr_t)elf_addr);
 	struct program_header *prog_header = (struct program_header *)((uintptr_t)(elf_addr + elf_header->e_phoff));
+
+	info[0] = prog_header->p_offset;
+	info[1] = prog_header->p_vaddr;
+
+	printf("Entry: %4X%4X\n", (uint32_t)(elf_header->e_entry >> 32), (uint32_t)(elf_header->e_entry));
 
 	for (int i = 0; i < elf_header->e_phnum; i += elf_header->e_phentsize) {
 		printf("Program Header %d, Type \"%s\", P:%4X%4X, V:%4X%4X\n", i, pt_names[prog_header->p_type], (uint32_t)(prog_header->p_paddr >> 32),
@@ -65,5 +72,5 @@ uint32_t *load_elf(uint32_t elf_addr) {
 	}
 
 	
-	return NULL;
+	return info;
 }

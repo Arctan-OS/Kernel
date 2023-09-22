@@ -84,6 +84,7 @@ kernel_station:		mov ax, 0x20						; Set AX to 64-bit data offset
 			mov ss, ax						; Set SS to AX
 			mov es, ax						; Set ES to AX
 
+			mov [0xB8000], byte 'A'
 			; call 0xFFFFFFFF00000000					; Call to kernel
 
 			jmp $							; Spin

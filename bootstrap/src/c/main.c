@@ -14,7 +14,8 @@ const char *kernel_module_name = "arctan-module.kernel.efi";
 
 uint32_t kernel_phys_start = 0x0;
 uint32_t kernel_phys_end = 0x0;
-uint32_t *kernel_sections = 0x0;
+uint64_t *kernel_info = NULL;
+
 uint64_t mem_phys_first_free = 0x0;
 uint64_t size_phys_first_free = 0x0;
 uint32_t bootstrap_start = 0x0;
@@ -99,8 +100,8 @@ void read_tags(uint8_t *boot_info) {
 				kernel_phys_start = info->mod_start;
 				kernel_phys_end = info->mod_end;
 
-				kernel_sections = load_elf(info->mod_start);
-				printf("%s\n", ((kernel_sections != NULL) ? "Parsed Kernel ELF!" : "Failed to parse Kernel ELF"));
+				kernel_info = load_elf(info->mod_start);
+				printf("%s\n", ((kernel_info[0] != 0) ? "Parsed Kernel ELF!" : "Failed to parse Kernel ELF"));
 			}
 
 			break;
@@ -173,9 +174,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
 
-	pml4       [(KMAP_ADDR >> 39) & 0x1FF] = (uintptr_t)pml3_kernel | 3; // Address of next entry | RW | P 
-	pml3_kernel[(KMAP_ADDR >> 30) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
-	pml2_kernel[(KMAP_ADDR >> 21) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
+	pml4       [(kernel_info[1] >> 39) & 0x1FF] = (uintptr_t)pml3_kernel | 3; // Address of next entry | RW | P 
+	pml3_kernel[(kernel_info[1] >> 30) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
+	pml2_kernel[(kernel_info[1] >> 21) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
 
 	// TODO, ensure that we are not relying on a single
 	// long section of memory.
@@ -187,7 +188,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			phys_addr += 0x1000; // Goto next page
 		}
 
-		printf("Ideal conditions met, kernel mapped to %4X%4X. %d bytes available\n", (uint32_t)(KMAP_ADDR >> 32), (uint32_t)KMAP_ADDR, 512 * 0x1000);
+		printf("Ideal conditions met, kernel mapped to %4X%4X. %d bytes available\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1], 512 * 0x1000);
 	} else {
 		// Kernel is not located in our desired free memory
 		uint64_t phys_addr = kernel_phys_start + 0x1000;
@@ -206,12 +207,12 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			phys_addr += 0x1000; // Goto next page
 		}
 
-		printf("Kernel is independent from free memory. Mapping kernel to 0x%4X%4X for %d pages. Mapping 0x%4X%4X to 0x%4X%4X.\n", (uint32_t)(KMAP_ADDR >> 32), (uint32_t)KMAP_ADDR,
+		printf("Kernel is independent from free memory. Mapping kernel to 0x%4X%4X for %d pages. Mapping 0x%4X%4X to 0x%4X%4X.\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1],
 																	        kernel_size_pages,
 																		(uint32_t)(mem_phys_first_free >> 32),
 																		(uint32_t)(mem_phys_first_free),
-																		(uint32_t)((KMAP_ADDR + ram_page * 0x1000) >> 32),
-																		(uint32_t)(KMAP_ADDR + ram_page * 0x1000));
+																		(uint32_t)((kernel_info[1] + ram_page * 0x1000) >> 32),
+																		(uint32_t)(kernel_info[1] + ram_page * 0x1000));
 	}
 
 	pml4     [0] = (uintptr_t)pml3_boot | 3; // Address of next entry | RW | P 
