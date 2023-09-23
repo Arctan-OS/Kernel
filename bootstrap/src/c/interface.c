@@ -9,10 +9,10 @@ int char_y = 0;
 uint8_t *screen = NULL;
 
 void putc(char c) {
-	if (screen == NULL) {
-		screen = (uint8_t *)framebuffer_tag->common.framebuffer_addr;
-		return;
-	}
+	// if (screen == NULL) {
+	// 	screen = (uint8_t *)framebuffer_tag->common.framebuffer_addr;
+	// 	return;
+	// }
 
 	switch (c) {
 	case '\n':

@@ -1,7 +1,7 @@
 ENTRY(kernel_main)
 
 SECTIONS {
-	. = 0xFFFFFFFF00000000;
+	. = 0xFFFFFFFF80000000;
 
 	.text BLOCK(0x1000) : ALIGN(0x1000) {
 		*(.text .text.*)

@@ -174,6 +174,8 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
 
+	printf("PML4[%X] PML3_kernel[%X] PML2_kernel[%X]\n", (kernel_info[1] >> 39) & 0x1FF, (kernel_info[1] >> 30) & 0x1FF, (kernel_info[1] >> 21) & 0x1FF);
+
 	pml4       [(kernel_info[1] >> 39) & 0x1FF] = (uintptr_t)pml3_kernel | 3; // Address of next entry | RW | P 
 	pml3_kernel[(kernel_info[1] >> 30) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
 	pml2_kernel[(kernel_info[1] >> 21) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
@@ -182,16 +184,20 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	// long section of memory.
 	if ((kernel_phys_start >= mem_phys_first_free) && ((kernel_phys_end - kernel_phys_start) < size_phys_first_free)) {
 		// Kernel is located in our desired free memory
-		uint64_t phys_addr = kernel_phys_start + 0x1000;
+		uint64_t phys_addr = kernel_phys_start + kernel_info[0];
 		for (int i = 0; i < 512; i++) {
 			pml1_kernel[i] = phys_addr | 3; // Address | RW | P
+
+			if (i == 0)
+				printf("%8X\n", phys_addr);
+
 			phys_addr += 0x1000; // Goto next page
 		}
 
 		printf("Ideal conditions met, kernel mapped to %8X%8X. %d bytes available\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1], 512 * 0x1000);
 	} else {
 		// Kernel is not located in our desired free memory
-		uint64_t phys_addr = kernel_phys_start + 0x1000;
+		uint64_t phys_addr = kernel_phys_start + kernel_info[0];
 		size_t kernel_size_pages = ALIGN((kernel_phys_end - kernel_phys_start), 0x1000) >> 12;
 
 		int i = 0;
