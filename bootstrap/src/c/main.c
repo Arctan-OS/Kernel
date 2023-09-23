@@ -123,7 +123,7 @@ void read_tags(uint8_t *boot_info) {
 					size_phys_first_free = entry->len;
 				}
 
-				printf("\tEntry %d: @ 0x%4X%4X, 0x%4X%4X B, Type: %s (%d)\n", i, (uint32_t)(entry->addr >> 32), (uint32_t)entry->addr, (uint32_t)(entry->len >> 32), (uint32_t)entry->len, mem_types[entry->type], entry->type);
+				printf("\tEntry %d: @ 0x%8X%8X, 0x%8X%8X B, Type: %s (%d)\n", i, (uint32_t)(entry->addr >> 32), (uint32_t)entry->addr, (uint32_t)(entry->len >> 32), (uint32_t)entry->len, mem_types[entry->type], entry->type);
 			}
 
 			break;
@@ -170,7 +170,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	ASSERT(mem_phys_first_free != 0)
 	ASSERT(size_phys_first_free != 0)
 
-	printf("%dx%dx%d %4X%4X(%d)\n", framebuffer_tag->common.framebuffer_width, framebuffer_tag->common.framebuffer_height, framebuffer_tag->common.framebuffer_bpp, (uint32_t)(framebuffer_tag->common.framebuffer_addr), 0, framebuffer_tag->common.framebuffer_type);
+	printf("%dx%dx%d %8X%8X(%d)\n", framebuffer_tag->common.framebuffer_width, framebuffer_tag->common.framebuffer_height, framebuffer_tag->common.framebuffer_bpp, (uint32_t)(framebuffer_tag->common.framebuffer_addr >> 32), (uint32_t)(framebuffer_tag->common.framebuffer_addr), 0, framebuffer_tag->common.framebuffer_type);
 
 	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
 
@@ -188,7 +188,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			phys_addr += 0x1000; // Goto next page
 		}
 
-		printf("Ideal conditions met, kernel mapped to %4X%4X. %d bytes available\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1], 512 * 0x1000);
+		printf("Ideal conditions met, kernel mapped to %8X%8X. %d bytes available\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1], 512 * 0x1000);
 	} else {
 		// Kernel is not located in our desired free memory
 		uint64_t phys_addr = kernel_phys_start + 0x1000;
@@ -207,7 +207,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			phys_addr += 0x1000; // Goto next page
 		}
 
-		printf("Kernel is independent from free memory. Mapping kernel to 0x%4X%4X for %d pages. Mapping 0x%4X%4X to 0x%4X%4X.\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1],
+		printf("Kernel is independent from free memory. Mapping kernel to 0x%8X%8X for %d pages. Mapping 0x%8X%8X to 0x%8X%8X.\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1],
 																	        kernel_size_pages,
 																		(uint32_t)(mem_phys_first_free >> 32),
 																		(uint32_t)(mem_phys_first_free),

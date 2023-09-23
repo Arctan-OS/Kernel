@@ -110,6 +110,8 @@ void printf(const char *form, ...) {
 						depth += (aux_chars[i] - '0') * multiplier;
 						multiplier *= 10;
 					}
+
+					depth--;
 				}
 
 				putn(va_arg(args, uint32_t), 16, depth);

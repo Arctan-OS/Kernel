@@ -85,8 +85,9 @@ kernel_station:		mov ax, 0x20						; Set AX to 64-bit data offset
 			mov es, ax						; Set ES to AX
 
 			mov [0xB8000], byte 'A'
-			; call 0xFFFFFFFF00000000					; Call to kernel
-
+			mov rax, 0xFFFFFFFF00000000
+			jmp rax							; Call to kernel		Seems like kernel does a hop, skip,
+										;				and a leap resulting in a triple fault.
 			jmp $							; Spin
 
 

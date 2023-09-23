@@ -64,13 +64,12 @@ uint64_t *load_elf(uint32_t elf_addr) {
 	info[0] = prog_header->p_offset;
 	info[1] = prog_header->p_vaddr;
 
-	printf("Entry: %4X%4X\n", (uint32_t)(elf_header->e_entry >> 32), (uint32_t)(elf_header->e_entry));
+	printf("Entry: %8X%8X\n", (uint32_t)(elf_header->e_entry >> 32), (uint32_t)(elf_header->e_entry));
 
 	for (int i = 0; i < elf_header->e_phnum; i += elf_header->e_phentsize) {
-		printf("Program Header %d, Type \"%s\", P:%4X%4X, V:%4X%4X\n", i, pt_names[prog_header->p_type], (uint32_t)(prog_header->p_paddr >> 32),
+		printf("Program Header %d, Type \"%s\", P:%8X%8X, V:%8X%8X\n", i, pt_names[prog_header->p_type], (uint32_t)(prog_header->p_paddr >> 32),
 									(uint32_t)(prog_header->p_paddr), (uint32_t)(prog_header->p_vaddr >> 32), (uint32_t)(prog_header->p_vaddr));
 	}
 
-	
 	return info;
 }
