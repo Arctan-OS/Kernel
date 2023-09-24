@@ -3,6 +3,16 @@
 
 #include <global.h>
 
-void init_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp);
+struct framebuffer_context {
+	void *physical_buffer;
+	void *virtual_buffer; // NULL means (physical_buffer = virtual_buffer)
+	int width;
+	int height;
+	int bpp;
+	size_t size; // in bytes
+};
+extern struct framebuffer_context fb_current_context;
+
+void init_master_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp);
 
 #endif

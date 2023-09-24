@@ -1,22 +1,25 @@
 #include <framebuffer/framebuffer.h>
 
-struct framebuffer_context {
-	void *physical_buffer;
-	void *virtual_buffer; // NULL means (physical_buffer = virtual_buffer)
-	uint64_t width;
-	uint64_t height;
-	uint64_t bpp;
-	size_t size; // in bytes
-};
-struct framebuffer_context current_context = { 0 };
+struct framebuffer_context fb_current_context = { 0 };
 
-void init_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp) {
-	current_context.physical_buffer = physical_buffer;
-	current_context.virtual_buffer = virtual_buffer;
-	current_context.width = width;
-	current_context.height = height;
-	current_context.bpp = bpp;
-	current_context.size = width * height * (bpp / 8);
+int init_branch_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp) {
+	// Allocate a section of memory as a "branch" framebuffer.
+	// Place newly created branch into the next free position in the list.
 
-	*((uint32_t *)physical_buffer) = 0xFFFFFFFF;
+	return -1; // Return position of framebuffer in list (-1 = error)
+}
+
+void draw_branch_framebuffers() {
+	// Walk through branch list 0 -> n, copying each branch into the master buffer.
+	// An addition of all branches onto the main buffer.
+}
+
+void init_master_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp) {
+	fb_current_context.physical_buffer = physical_buffer;
+	fb_current_context.virtual_buffer = (virtual_buffer == NULL ? physical_buffer : virtual_buffer);
+	// Ensure buffers are mapped
+	fb_current_context.width = width;
+	fb_current_context.height = height;
+	fb_current_context.bpp = bpp;
+	fb_current_context.size = width * height * (bpp / 8);
 }

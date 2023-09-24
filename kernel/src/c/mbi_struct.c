@@ -20,11 +20,11 @@ int parse_mbi(uint32_t ptr) {
 		case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
 			struct multiboot_tag_framebuffer *info = (struct multiboot_tag_framebuffer *)((uintptr_t)(ptr + sizeof(struct mbi_tag_common) + bytes_parsed));
 
-			init_framebuffer((void *)info->common.framebuffer_addr, NULL, info->common.framebuffer_width, info->common.framebuffer_height, info->common.framebuffer_bpp);
+			init_master_framebuffer((void *)info->common.framebuffer_addr, NULL, info->common.framebuffer_width, info->common.framebuffer_height, info->common.framebuffer_bpp);
 		}
 		}
 
-		bytes_parsed += ALIGN(tag->size, 4);
+		bytes_parsed += ALIGN(tag->size, 8);
 	}
 
 	return 0;
