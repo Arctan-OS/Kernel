@@ -42,6 +42,7 @@ _entry:			mov esp, stack_end					; Setup stack
 			mov ebp, esp						; Make sure base gets the memo
 			push eax						; Push multiboot2 loader signature
 			push ebx						; Push boot information
+			mov dword [mbi_struct], ebx				; Save MBI Structure pointer
 			call helper						; HELP!
 			mov eax, cr4						; Read CR4
 			or eax, 1 << 5						; Set PAE bit
@@ -87,9 +88,8 @@ kernel_station:		mov ax, 0x20						; Set AX to 64-bit data offset
 			mov ss, ax						; Set SS to AX
 			mov es, ax						; Set ES to AX
 
-			mov rdi, [framebuffer_width]
-			mov rsi, [framebuffer_height]
-			mov rax, 0xFFFFFFFF80000000
+			mov edi, dword [mbi_struct]				; Pass the pointer of MBI Structure
+			mov rax, 0xFFFFFFFF80000000				; Address of kernel
 			call rax						; Call to kernel
 			
 			jmp $							; Spin
@@ -97,6 +97,8 @@ kernel_station:		mov ax, 0x20						; Set AX to 64-bit data offset
 
 bits 32
 section .bss
+
+mbi_struct:		resb 4							; Pointer to MBI Structure
 
 global stack
 global stack_end
