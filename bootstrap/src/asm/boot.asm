@@ -19,13 +19,13 @@ boot_header:		dd MAGIC
 			dw 0x0
 			dd 0x8
 
-			; ; Framebuffer Request Tag
-			; dw 0x5
-			; dw 0x0
-			; dd 0x20
-			; dd 0x0 							; Allow bootloader to pick width
-			; dd 0x0 							; Allow bootloader to pick height
-			; dd 0x0 							; Allow bootloader to picl bpp
+			; Framebuffer Request Tag
+			dw 0x5
+			dw 0x0
+			dd 0x20
+			dd 0x0 							; Allow bootloader to pick width
+			dd 0x0 							; Allow bootloader to pick height
+			dd 0x0 							; Allow bootloader to picl bpp
 			
 			; End Of Tags tag
 			dw 0x0
@@ -77,6 +77,9 @@ _gdt_set_cs:		mov ax, 0x10						; Set AX to 32-bit data offset
 
 bits 64
 
+extern framebuffer_width
+extern framebuffer_height
+
 kernel_station:		mov ax, 0x20						; Set AX to 64-bit data offset
 			mov ds, ax						; Set DS to AX
 			mov fs, ax						; Set FS to AX
@@ -84,14 +87,11 @@ kernel_station:		mov ax, 0x20						; Set AX to 64-bit data offset
 			mov ss, ax						; Set SS to AX
 			mov es, ax						; Set ES to AX
 
-			mov al, byte [0xFFFFFFFF80000000]
-			; add rax, 'A'
-			mov [0xB8000], al
-
-			; mov rax, 0xFFFFFFFF80000000
-
-			; call rax						; Call to kernel		Seems like kernel does a hop, skip,
-										;				and a leap resulting in a triple fault.
+			mov rdi, [framebuffer_width]
+			mov rsi, [framebuffer_height]
+			mov rax, 0xFFFFFFFF80000000
+			call rax						; Call to kernel
+			
 			jmp $							; Spin
 
 

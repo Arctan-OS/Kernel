@@ -38,6 +38,14 @@ uint64_t pml3_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Po
 uint64_t pml2_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Entries
 uint64_t pml1_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
 
+// Screen
+// uint64_t pml3_framebuffer[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries * Cast this to a uint32_t * so we can create a PML3 table when we enter
+uint64_t pml2_framebuffer[512] __attribute__((aligned(0x1000))); // Page Directory Entries
+uint64_t pml1_framebuffer[512] __attribute__((aligned(0x1000))); // Page Table Entries
+uint64_t pml1_2_framebuffer[512] __attribute__((aligned(0x1000))); // Page Table Entries
+uint64_t pml1_3_framebuffer[512] __attribute__((aligned(0x1000))); // Page Table Entries
+uint64_t pml1_4_framebuffer[512] __attribute__((aligned(0x1000))); // Page Table Entries
+
 // Paging tables (Bootstrapper)
 uint64_t pml3_boot[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries
 uint64_t pml2_boot[512] __attribute__((aligned(0x1000))); // Page Directory Entries
@@ -153,6 +161,9 @@ void read_tags(uint8_t *boot_info) {
 	} while (tag);
 }
 
+int framebuffer_width = 0;
+int framebuffer_height = 0;
+
 int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
 		return 1;
@@ -174,24 +185,17 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
 
-	printf("PML4[%X] PML3_kernel[%X] PML2_kernel[%X]\n", (kernel_info[1] >> 39) & 0x1FF, (kernel_info[1] >> 30) & 0x1FF, (kernel_info[1] >> 21) & 0x1FF);
-
 	pml4       [(kernel_info[1] >> 39) & 0x1FF] = (uintptr_t)pml3_kernel | 3; // Address of next entry | RW | P 
 	pml3_kernel[(kernel_info[1] >> 30) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
-	pml2_kernel[(kernel_info[1] >> 21) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
+	pml2_kernel[(kernel_info[1] >> 21) & 0x1FF] = (uintptr_t)pml1_kernel | 3; // Address of next entry | RW | P
 
 	// TODO, ensure that we are not relying on a single
 	// long section of memory.
 	if ((kernel_phys_start >= mem_phys_first_free) && ((kernel_phys_end - kernel_phys_start) < size_phys_first_free)) {
 		// Kernel is located in our desired free memory
 		uint64_t phys_addr = kernel_phys_start + kernel_info[0];
-		for (int i = 0; i < 512; i++) {
-			pml1_kernel[i] = phys_addr | 3; // Address | RW | P
-
-			if (i == 0)
-				printf("%8X\n", phys_addr);
-
-			phys_addr += 0x1000; // Goto next page
+		for (int i = (kernel_info[1] >> 12) & 0x1FF; i < 512; i++) {
+			pml1_kernel[i] = (phys_addr + (i << 12)) | 3; // Address | RW | P
 		}
 
 		printf("Ideal conditions met, kernel mapped to %8X%8X. %d bytes available\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1], 512 * 0x1000);
@@ -228,7 +232,28 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	for (int i = 0; i < 512; i++)
 		pml1_boot[i] = ((i) << 12) | 3; // RW | P
 
-	printf("Identity mapped the bootstrapper.\n");
+	printf("Identity mapped the bootstrapper\n");
+
+	// TODO: Implement checks to see if we need our own PML4 entry, PML3 entry, or PML2 entry.
+	//       Should not be relying on the fact the the framebuffer is basically in the same spot
+	//	 as the bootloader.
+	pml3_boot[(framebuffer_tag->common.framebuffer_addr >> 30) & 0x1FF] = (uintptr_t)pml2_framebuffer | 3; // Address of next entry | RW | P
+	pml2_framebuffer[(framebuffer_tag->common.framebuffer_addr >> 21) & 0x1FF] = (uintptr_t)pml1_framebuffer | 3; // Address of next entry | RW | P
+	pml2_framebuffer[((framebuffer_tag->common.framebuffer_addr >> 21) & 0x1FF) + 1] = (uintptr_t)pml1_2_framebuffer | 3; // Address of next entry | RW | P
+	pml2_framebuffer[((framebuffer_tag->common.framebuffer_addr >> 21) & 0x1FF) + 2] = (uintptr_t)pml1_3_framebuffer | 3; // Address of next entry | RW | P
+	pml2_framebuffer[((framebuffer_tag->common.framebuffer_addr >> 21) & 0x1FF) + 3] = (uintptr_t)pml1_4_framebuffer | 3; // Address of next entry | RW | P
+
+	for (int i = 0; i < 512; i++) {
+		pml1_framebuffer[i] = (framebuffer_tag->common.framebuffer_addr + (i << 12)) | 3;
+		pml1_2_framebuffer[i] = (framebuffer_tag->common.framebuffer_addr + ((i + 512) << 12)) | 3;
+		pml1_3_framebuffer[i] = (framebuffer_tag->common.framebuffer_addr + ((i + 1024) << 12)) | 3;
+		pml1_4_framebuffer[i] = (framebuffer_tag->common.framebuffer_addr + ((i + 1536) << 12)) | 3;
+	}
+
+	printf("Identity mapped framebuffer\n");
+
+	framebuffer_width = framebuffer_tag->common.framebuffer_width;
+	framebuffer_height = framebuffer_tag->common.framebuffer_height;
 
 	return 0;
 }
