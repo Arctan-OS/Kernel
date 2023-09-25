@@ -4,7 +4,7 @@ struct framebuffer_context fb_current_context = { 0 };
 struct framebuffer_context branches[MAX_BRANCH_FRAMEBUFFERS];
 uint64_t branch_bmp = 0; // 0: free, 1: allocated
 
-int init_branch_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp) {
+int init_branch_framebuffer(void *physical_buffer, void *virtual_buffer) {
 	// Allocate a section of memory as a "branch" framebuffer.
 	// Place newly created branch into the next free position in the list.
 
@@ -20,19 +20,40 @@ void draw_branch_framebuffers() {
 			continue;
 
 		// TODO: Test the below assembly code
-		__asm__("   mov rcx, %2;\
-			    mov rsi, %0;\
-			    mov rdi, %1;\
-			 0: mov rax, qword [rsi];\
-			    mov qword [rdi], rax;\
-			    add rdi, 8;\
-			    add rsi, 8;\
-			    dec rcx;\
-			    jnz 0b;" : : 
-			"m"(branches[i].virtual_buffer),
-			"m"(fb_current_context.virtual_buffer),
-			"r"((branches[i].size / 8)) : // Divide the size by the number of bytes we copy at a time (making dec rcx possible)
-			"rax", "rcx", "rsi", "rdi");
+		switch (fb_current_context.bpp) {
+		case 32: {
+			__asm__("   mov rcx, %2;\
+				mov rsi, %0;\
+				mov rdi, %1;\
+				0: mov rax, dword [rsi];\
+				add dword [rdi], rax;\
+				add rdi, 4;\
+				add rsi, 4;\
+				dec rcx;\
+				jnz 0b;" : : 
+				"m"(branches[i].virtual_buffer),
+				"m"(fb_current_context.virtual_buffer),
+				"r"((fb_current_context.size / 4)) : // Divide the size by the number of bytes we copy at a time (making dec rcx possible)
+				"rax", "rcx", "rsi", "rdi");
+
+			break;
+		}
+
+		case 24: {
+
+			break;
+		}
+
+		case 16: {
+
+			break;
+		}
+
+		case 8: {
+
+			break;
+		}
+		}
 	}
 
 }

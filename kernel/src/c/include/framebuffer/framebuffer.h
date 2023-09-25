@@ -15,7 +15,7 @@ struct framebuffer_context {
 };
 extern struct framebuffer_context fb_current_context;
 
-int init_branch_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp);
+int init_branch_framebuffer(void *physical_buffer, void *virtual_buffer);
 void draw_branch_framebuffers();
 void init_master_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp);
 
