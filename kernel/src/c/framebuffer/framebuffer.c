@@ -1,6 +1,8 @@
 #include <framebuffer/framebuffer.h>
 
 struct framebuffer_context fb_current_context = { 0 };
+struct framebuffer_context branches[MAX_BRANCH_FRAMEBUFFERS];
+uint64_t branch_bmp = 0; // 0: free, 1: allocated
 
 int init_branch_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp) {
 	// Allocate a section of memory as a "branch" framebuffer.
@@ -12,6 +14,27 @@ int init_branch_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_
 void draw_branch_framebuffers() {
 	// Walk through branch list 0 -> n, copying each branch into the master buffer.
 	// An addition of all branches onto the main buffer.
+
+	for (int i = 0; i < MAX_BRANCH_FRAMEBUFFERS; i++) {
+		if (((branch_bmp >> i) & 1) == 0)
+			continue;
+
+		// TODO: Test the below assembly code
+		__asm__("   mov rcx, %2;\
+			    mov rsi, %0;\
+			    mov rdi, %1;\
+			 0: mov rax, qword [rsi];\
+			    mov qword [rdi], rax;\
+			    add rdi, 8;\
+			    add rsi, 8;\
+			    dec rcx;\
+			    jnz 0b;" : : 
+			"m"(branches[i].virtual_buffer),
+			"m"(fb_current_context.virtual_buffer),
+			"r"((branches[i].size / 8)) : // Divide the size by the number of bytes we copy at a time (making dec rcx possible)
+			"rax", "rcx", "rsi", "rdi");
+	}
+
 }
 
 void init_master_framebuffer(void *physical_buffer, void *virtual_buffer, uint64_t width, uint64_t height, uint64_t bpp) {
