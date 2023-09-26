@@ -19,4 +19,6 @@ SECTIONS {
 		*(COMMON)
 		*(.bss .bss.*)
 	}
+
+	__KERNEL_END__ = .;
 }

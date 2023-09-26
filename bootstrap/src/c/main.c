@@ -92,7 +92,7 @@ void read_tags(uint8_t *boot_info) {
 		case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO: {
 			struct multiboot_tag_basic_meminfo *info = (struct multiboot_tag_basic_meminfo *)tags;
 			
-			printf("Basic Memory Info:\n	Lower: 0x%X KiB\n	Upper: 0x%X KiB\n", info->mem_lower, info->mem_upper);
+			printf("Basic Memory Info:\n	Lower: 0x%X KB\n	Upper: 0x%X KB\n", info->mem_lower, info->mem_upper);
 
 			break;
 		}
