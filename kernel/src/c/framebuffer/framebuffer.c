@@ -1,4 +1,5 @@
 #include <framebuffer/framebuffer.h>
+#include <temp/interface.h>
 
 struct framebuffer_context fb_current_context = { 0 };
 struct framebuffer_context branches[MAX_BRANCH_FRAMEBUFFERS];
@@ -66,4 +67,6 @@ void init_master_framebuffer(void *physical_buffer, void *virtual_buffer, uint64
 	fb_current_context.height = height;
 	fb_current_context.bpp = bpp;
 	fb_current_context.size = width * height * (bpp / 8);
+
+	printf("Setup master framebuffer P:%X V:%X (%dx%dx%d)\n", (uintptr_t)physical_buffer, (uintptr_t)virtual_buffer, width, height, bpp);
 }
