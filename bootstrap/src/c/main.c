@@ -37,6 +37,9 @@ uint64_t pml4[512] __attribute__((aligned(0x1000))); // PML4 Entries
 uint64_t pml3_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries * Cast this to a uint32_t * so we can create a PML3 table when we enter
 uint64_t pml2_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Entries
 uint64_t pml1_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
+uint64_t pml1_2_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
+uint64_t pml1_3_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
+uint64_t pml1_4_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
 
 // Screen
 // uint64_t pml3_framebuffer[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries * Cast this to a uint32_t * so we can create a PML3 table when we enter
@@ -188,6 +191,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	pml4       [(kernel_info[1] >> 39) & 0x1FF] = (uintptr_t)pml3_kernel | 3; // Address of next entry | RW | P 
 	pml3_kernel[(kernel_info[1] >> 30) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
 	pml2_kernel[(kernel_info[1] >> 21) & 0x1FF] = (uintptr_t)pml1_kernel | 3; // Address of next entry | RW | P
+	pml2_kernel[((kernel_info[1] >> 21) + 1) & 0x1FF] = (uintptr_t)pml1_2_kernel | 3; // Address of next entry | RW | P
+	pml2_kernel[((kernel_info[1] >> 21) + 2) & 0x1FF] = (uintptr_t)pml1_3_kernel | 3; // Address of next entry | RW | P
+	pml2_kernel[((kernel_info[1] >> 21) + 3) & 0x1FF] = (uintptr_t)pml1_4_kernel | 3; // Address of next entry | RW | P
 
 	// TODO, ensure that we are not relying on a single
 	// long section of memory.
@@ -196,6 +202,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		uint64_t phys_addr = kernel_phys_start + kernel_info[0];
 		for (int i = (kernel_info[1] >> 12) & 0x1FF; i < 512; i++) {
 			pml1_kernel[i] = (phys_addr + (i << 12)) | 3; // Address | RW | P
+			pml1_2_kernel[i] = (phys_addr + ((i + 512) << 12)) | 3; // Address | RW | P
+			pml1_3_kernel[i] = (phys_addr + ((i + 1024) << 12)) | 3; // Address | RW | P
+			pml1_4_kernel[i] = (phys_addr + ((i + 1596) << 12)) | 3; // Address | RW | P
 		}
 
 		printf("Ideal conditions met, kernel mapped to %8X%8X. %d bytes available\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1], 512 * 0x1000);

@@ -1,6 +1,7 @@
 #include <mbi_struct.h>
 #include <multiboot2.h>
 #include <framebuffer/framebuffer.h>
+#include <mm/pmm.h>
 
 struct mbi_tag_common {
 	uint32_t type;
@@ -18,9 +19,17 @@ int parse_mbi(uint32_t ptr) {
 
 		switch (tag->type) {
 		case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
-			struct multiboot_tag_framebuffer *info = (struct multiboot_tag_framebuffer *)((uintptr_t)(ptr + sizeof(struct mbi_tag_common) + bytes_parsed));
+			struct multiboot_tag_framebuffer *info = (struct multiboot_tag_framebuffer *)tag;
 
 			init_master_framebuffer((void *)info->common.framebuffer_addr, NULL, info->common.framebuffer_width, info->common.framebuffer_height, info->common.framebuffer_bpp);
+
+			break;
+		}
+
+		case MULTIBOOT_TAG_TYPE_MMAP: {
+			initialize_pmm((struct multiboot_tag_mmap *)tag);
+
+			break;
 		}
 		}
 
