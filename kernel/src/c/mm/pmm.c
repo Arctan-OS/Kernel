@@ -14,10 +14,10 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 	for (int i = 0; i < entry_count; i++)
 		total_mem_size += mmap->entries[i].len;
 
-	printf("Need %d bytes represent %d bytes of free RAM, BMP is at 0x%X\n", (total_mem_size / 0x1000) / 8, total_mem_size, pmm_bmp);
+	printf("Need %d bytes represent 0x%X bytes of free RAM, BMP is at 0x%X\n", (total_mem_size / PAGE_SIZE) / 8, total_mem_size, pmm_bmp);
 	
 	// "memset(pmm_bmp, 0, bmp_size)"
-	for (size_t i = 0; i < (total_mem_size / 0x1000) / 8; i++)
+	for (size_t i = 0; i < (total_mem_size / PAGE_SIZE) / 8; i++)
 		pmm_bmp[i] = 0x00;
 
 	// ERROR:
@@ -25,24 +25,24 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 	// This makes me think that the section of code where we calculate
 	// the total size of all sections is incorrect.
 	for (int i = 0; i < entry_count; i++) {
-		printf("Interpreting MMAP Entry %d(%d): @ 0x%8X, 0x%8X bytes\n", i, mmap->entries[i].type, mmap->entries[i].addr, mmap->entries[i].len);
+		printf("Interpreting MMAP Entry %d(%d): @ 0x%X, 0x%X bytes\n", i, mmap->entries[i].type, mmap->entries[i].addr, mmap->entries[i].len);
 
 		if (mmap->entries[i].type == MULTIBOOT_MEMORY_AVAILABLE)
 			continue;
 
 		int64_t section_idx = (mmap->entries[i].addr >> 12) / 8;
-		int64_t section_len = (ALIGN(mmap->entries[i].len, 0x1000) / 0x1000);
+		int64_t section_len = (ALIGN(mmap->entries[i].len, PAGE_SIZE) / PAGE_SIZE);
 
-		printf("\tWould set byte %d of BMP (%d)\n", section_idx, section_len);
+		printf("\tWould set byte %d of BMP(%d, %d, %X)\n", section_idx, i, section_len, ALIGN(mmap->entries[i].len, PAGE_SIZE) / PAGE_SIZE);
 
-		pmm_bmp[section_idx] |= (0xFF << ((mmap->entries[i].addr / 0x1000) % 8));
-		section_len -= (mmap->entries[i].addr / 0x1000) % 8;
+		pmm_bmp[section_idx] |= (0xFF << ((mmap->entries[i].addr / PAGE_SIZE) % 8));
+		section_len -= ((mmap->entries[i].addr / PAGE_SIZE) % 8) == 0 ? 8 : (mmap->entries[i].addr / PAGE_SIZE) % 8;
 		section_idx++;
 
 		if (section_len > 0) {
 			while (section_len > 8) {
 				if (section_len > 8) {
-					printf("\tWould set byte %d of BMP(%d, %d, %X)\n", section_idx, i, section_len, ALIGN(mmap->entries[i].len, 0x1000) / 0x1000);
+					printf("\tWould set byte %d of BMP(%d, %d, %X)\n", section_idx, i, section_len, ALIGN(mmap->entries[i].len, PAGE_SIZE) / PAGE_SIZE);
 					
 					pmm_bmp[section_idx++] |= 0xFF;
 
@@ -51,7 +51,7 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 				}
 			}
 
-			pmm_bmp[section_idx] |= 0xFF & ~(0xFF << (section_len % 8));
+			pmm_bmp[section_idx] |= 0xFF & ~(0xFF << ((section_len % 8) == 0 ? 8 : (section_len % 8)));
 		}
 
 		printf("\tMarked BMP bits as \"allocated\"\n");
