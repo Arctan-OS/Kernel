@@ -4,22 +4,6 @@
 
 uint8_t *pmm_bmp = (uint8_t *)&__KERNEL_END__;
 
-// void bmp_set_range(uintptr_t base, size_t size) {
-// 	uint64_t start_byte = (base /0x1000 / 8);
-// 	uint8_t start_bit = ((base / 0x1000) % 8);
-
-// 	uint64_t stop_byte = ((base + size) / 0x1000 / 8);
-// 	uint8_t stop_bit = (((base + size) / 0x1000) % 8);
-
-// 	for (uint64_t byte = start_byte; byte < stop_byte; byte++) {
-// 		pmm_bmp[byte] = 0xFF;
-
-// 		if (byte == stop_byte - 1)
-// 			for (uint8_t i = 7; i > stop_bit; i--)
-// 				pmm_bmp[byte] &= ~(1 << i);
-// 	}
-// }
-
 int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 	// Create a bitmap structure at the end of the
 	// kernel for managing physical memory.
@@ -36,31 +20,41 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 	for (size_t i = 0; i < (total_mem_size / 0x1000) / 8; i++)
 		pmm_bmp[i] = 0x00;
 
-	int cur_page = 0;
+	// ERROR:
+	// The last entry in QEMU, seems to be causing a really large error.
+	// This makes me think that the section of code where we calculate
+	// the total size of all sections is incorrect.
 	for (int i = 0; i < entry_count; i++) {
-		printf("MMAP Interpreted entry %d(%d): 0x%8X, 0x%8X B\n", i, mmap->entries[i].type, mmap->entries[i].addr, mmap->entries[i].len);
+		printf("Interpreting MMAP Entry %d(%d): @ 0x%8X, 0x%8X bytes\n", i, mmap->entries[i].type, mmap->entries[i].addr, mmap->entries[i].len);
 
-		int page_count = ALIGN(mmap->entries[i].len / 0x1000, 0x1000);
-		
-		// Memory is not available, set bits
-		if (mmap->entries[i].type != MULTIBOOT_MEMORY_AVAILABLE) {
-			pmm_bmp[page_count] |= 0xFF & (0xFF << ((cur_page + page_count) % 8));
+		if (mmap->entries[i].type == MULTIBOOT_MEMORY_AVAILABLE)
+			continue;
 
-			if (page_count == 1)
-				goto next_page;
+		int64_t section_idx = (mmap->entries[i].addr >> 12) / 8;
+		int64_t section_len = (ALIGN(mmap->entries[i].len, 0x1000) / 0x1000);
 
-			pmm_bmp[((cur_page + page_count - 1) >> 3)] = 0xFF & ~(0xFF << ((cur_page + page_count) % 8));
+		printf("\tWould set byte %d of BMP (%d)\n", section_idx, section_len);
 
-			if (page_count == 2)
-				goto next_page;
+		pmm_bmp[section_idx] |= (0xFF << ((mmap->entries[i].addr / 0x1000) % 8));
+		section_len -= (mmap->entries[i].addr / 0x1000) % 8;
+		section_idx++;
 
-			for (int p = 1; p < page_count; p++) {
-				pmm_bmp[cur_page + p] = 0xFF;
+		if (section_len > 0) {
+			while (section_len > 8) {
+				if (section_len > 8) {
+					printf("\tWould set byte %d of BMP(%d, %d, %X)\n", section_idx, i, section_len, ALIGN(mmap->entries[i].len, 0x1000) / 0x1000);
+					
+					pmm_bmp[section_idx++] |= 0xFF;
+
+					section_len -= 8;
+					continue;
+				}
 			}
+
+			pmm_bmp[section_idx] |= 0xFF & ~(0xFF << (section_len % 8));
 		}
 
-		next_page:;
-		cur_page += page_count;
+		printf("\tMarked BMP bits as \"allocated\"\n");
 	}
 
 	return 0;
