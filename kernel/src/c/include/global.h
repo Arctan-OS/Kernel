@@ -8,6 +8,7 @@
 #define ALIGN(v, a) ((v + (a - 1)) & ~(a - 1))
 
 #define PAGE_SIZE 0x1000
+#define DEAD_64	  0xDEAD0ADDFFFFFFFF
 
 extern uint8_t __KERNEL_END__;
 

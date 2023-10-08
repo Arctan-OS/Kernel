@@ -2,60 +2,69 @@
 #include <global.h>
 #include <temp/interface.h>
 
-uint8_t *pmm_bmp = (uint8_t *)&__KERNEL_END__;
+int mmap_entry_count = 0;
+struct arctan_mmap_entry {
+	uint64_t floor;
+	uint64_t ciel;
+	uint64_t bit_rep_floor;
+	uint64_t bit_rep_ciel;
+};
+
+struct arctan_mmap_entry *standard_table = NULL;
+uint8_t *pmm_bmp = NULL;
+
+uint64_t addr2bit(uint64_t addr) {
+	for (int i = 0; i < mmap_entry_count; i++) {
+		printf("ADDR: %X, FLOOR: %X, CIEL: %X\n", addr, standard_table[i].floor, standard_table[i].ciel);
+
+		if (addr >= standard_table[i].floor && addr <= standard_table[i].ciel) {
+			return ((addr - standard_table[i].floor) >> 12) + standard_table[i].bit_rep_floor;
+		}
+	}
+
+	return DEAD_64;
+}
+
+uint64_t bit2addr(uint64_t bit) {
+	int i = 0;
+	for (; i < mmap_entry_count; i++)
+		if (bit >= standard_table[i].bit_rep_ciel)
+			bit -= standard_table[i].bit_rep_ciel;
+
+	return (bit << 12) + standard_table[i].floor;
+}
 
 int initialize_pmm(struct multiboot_tag_mmap *mmap) {
-	// Create a bitmap structure at the end of the
-	// kernel for managing physical memory.
+	standard_table = (struct arctan_mmap_entry *)&__KERNEL_END__;
 
-	int entry_count = (mmap->size - ALIGN(sizeof(struct multiboot_tag_mmap), 8)) / sizeof(struct multiboot_mmap_entry);
+	mmap_entry_count = (mmap->size - ALIGN(sizeof(struct multiboot_tag_mmap), 8)) / sizeof(struct multiboot_mmap_entry);
+	pmm_bmp = (uint8_t *)&__KERNEL_END__ + (mmap_entry_count * sizeof(struct arctan_mmap_entry));
+
 	size_t total_mem_size = 0;
 
-	for (int i = 0; i < entry_count; i++)
+	uint64_t cur_rep_bit = 0;
+	for (int i = 0; i < mmap_entry_count; i++) {
+		if (mmap->entries[i].type != MULTIBOOT_MEMORY_AVAILABLE)
+			continue;
+
 		total_mem_size += mmap->entries[i].len;
+		standard_table[i].floor = mmap->entries[i].addr;
+		standard_table[i].ciel = mmap->entries[i].addr + mmap->entries[i].len;
+		standard_table[i].bit_rep_floor = cur_rep_bit;
+		cur_rep_bit += (mmap->entries[i].len) >> 12;
+		standard_table[i].bit_rep_ciel = cur_rep_bit - 1;
+	}
 
 	printf("Need %d bytes represent 0x%X bytes of free RAM, BMP is at 0x%X\n", (total_mem_size / PAGE_SIZE) / 8, total_mem_size, pmm_bmp);
 	
 	// "memset(pmm_bmp, 0, bmp_size)"
-	for (size_t i = 0; i < (total_mem_size / PAGE_SIZE) / 8; i++)
+	for (size_t i = 0; i < (total_mem_size / PAGE_SIZE) / 8; i++) {
 		pmm_bmp[i] = 0x00;
-
-	// ERROR:
-	// The last entry in QEMU, seems to be causing a really large error.
-	// This makes me think that the section of code where we calculate
-	// the total size of all sections is incorrect.
-	for (int i = 0; i < entry_count; i++) {
-		printf("Interpreting MMAP Entry %d(%d): @ 0x%X, 0x%X bytes\n", i, mmap->entries[i].type, mmap->entries[i].addr, mmap->entries[i].len);
-
-		if (mmap->entries[i].type == MULTIBOOT_MEMORY_AVAILABLE)
-			continue;
-
-		int64_t section_idx = (mmap->entries[i].addr >> 12) / 8;
-		int64_t section_len = (ALIGN(mmap->entries[i].len, PAGE_SIZE) / PAGE_SIZE);
-
-		printf("\tWould set byte %d of BMP(%d, %d, %X)\n", section_idx, i, section_len, ALIGN(mmap->entries[i].len, PAGE_SIZE) / PAGE_SIZE);
-
-		pmm_bmp[section_idx] |= (0xFF << ((mmap->entries[i].addr / PAGE_SIZE) % 8));
-		section_len -= ((mmap->entries[i].addr / PAGE_SIZE) % 8) == 0 ? 8 : (mmap->entries[i].addr / PAGE_SIZE) % 8;
-		section_idx++;
-
-		if (section_len > 0) {
-			while (section_len > 8) {
-				if (section_len > 8) {
-					printf("\tWould set byte %d of BMP(%d, %d, %X)\n", section_idx, i, section_len, ALIGN(mmap->entries[i].len, PAGE_SIZE) / PAGE_SIZE);
-					
-					pmm_bmp[section_idx++] |= 0xFF;
-
-					section_len -= 8;
-					continue;
-				}
-			}
-
-			pmm_bmp[section_idx] |= 0xFF & ~(0xFF << ((section_len % 8) == 0 ? 8 : (section_len % 8)));
-		}
-
-		printf("\tMarked BMP bits as \"allocated\"\n");
 	}
+
+	printf("%X: %X\n", addr2bit(0x0), bit2addr(0));
+	printf("%X: %X\n", addr2bit(0x1FF00FF00), bit2addr(addr2bit(0x1FF00FF00)));
+	printf("%X: %X\n", addr2bit(0xABAB), bit2addr(addr2bit(0xABAB)));
 
 	return 0;
 }
