@@ -14,6 +14,11 @@ struct arctan_mmap_entry {
 struct arctan_mmap_entry *standard_table = NULL;
 uint8_t *pmm_bmp = NULL;
 
+// Byte which contains the next free bit
+uint64_t next_free_byte = 0;
+uint8_t next_free_bit = 0;
+uint64_t bmp_length = 0;
+
 uint64_t addr2bit(uint64_t addr) {
 	for (int i = 0; i < mmap_entry_count; i++) {
 		if (addr >= standard_table[i].floor && addr < standard_table[i].ciel && standard_table[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
@@ -32,6 +37,57 @@ uint64_t bit2addr(uint64_t bit) {
 	}
 
 	return DEAD_64;
+}
+
+void *pmm_allocate(size_t size) {
+	if (size == 0) {
+		return NULL;
+	}
+
+	// Round up the number of pages we want to allocate
+	size_t pages = ALIGN(((size + 0x1000) / 0x1000), PAGE_SIZE);
+	size_t avl_bits = pages;
+	uint64_t byte_offset = 0;
+
+	while (avl_bits > 0) {
+		if (next_free_byte >= bmp_length) {
+			next_free_byte = 0;
+			byte_offset = 0;
+		}
+
+		uint8_t cur_byte = pmm_bmp[next_free_byte + byte_offset];
+		int shift = 0;
+
+		while ((cur_byte >> shift) > 0)
+			shift++;
+
+		if (shift < 8) {
+			avl_bits -= shift;
+			byte_offset++;
+		} else {
+			next_free_byte++;
+			byte_offset = 0;
+			avl_bits = pages;
+		}
+	}
+
+	void *base = (void *)((next_free_byte * 8 + next_free_bit) * PAGE_SIZE);
+
+	// Mark pages number of bits as 1 at cur_byte_idx
+	pmm_bmp[next_free_byte] |= 0xFF & (0xFF << next_free_bit);
+
+	for (size_t i = 1; i < byte_offset; i++) {
+		pmm_bmp[next_free_byte + i] = 0xFF;
+	}
+
+	pmm_bmp[next_free_byte + byte_offset] |= 0xFF & (0xFF >> 3);
+
+	return base;
+}
+
+void *pmm_free(void *address, size_t size) {
+
+	return NULL;
 }
 
 int initialize_pmm(struct multiboot_tag_mmap *mmap) {
@@ -60,17 +116,18 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 		total_mem_size += mmap->entries[i].len;
 	}
 
-	printf("Need %d bytes represent 0x%X bytes of free RAM, BMP is at 0x%X\n", (free_ram_size / PAGE_SIZE) / 8, free_ram_size, pmm_bmp);
+	bmp_length = (free_ram_size / PAGE_SIZE) / 8;
+	printf("Need %d bytes represent 0x%X bytes of free RAM, BMP is at 0x%X\n", bmp_length, free_ram_size, pmm_bmp);
 	printf("%d bytes of physical RAM present in memory map.\n", total_mem_size);
 	
 	// "memset(pmm_bmp, 0, bmp_size)"
-	for (size_t i = 0; i < (free_ram_size / PAGE_SIZE) / 8; i++) {
+	for (size_t i = 0; i < bmp_length; i++) {
 		pmm_bmp[i] = 0x00;
 	}
 
-	printf("%X: %X\n", addr2bit(0x0), bit2addr(0));
-	printf("%X: %X\n", addr2bit(0x100000000), bit2addr(addr2bit(0x100000000)));
-	printf("%X: %X\n", addr2bit(0xABAB), bit2addr(addr2bit(0xABAB)));
+	// Causes triple fault
+	printf("%X\n", pmm_allocate(0x1000));
+	printf("%X\n", pmm_allocate(0x1000));
 
 	return 0;
 }
