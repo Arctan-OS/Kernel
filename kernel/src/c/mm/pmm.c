@@ -15,8 +15,7 @@ struct arctan_mmap_entry *standard_table = NULL;
 uint8_t *pmm_bmp = NULL;
 
 // Byte which contains the next free bit
-uint64_t next_free_byte = 0;
-uint8_t next_free_bit = 0;
+size_t next_free_page = 0;
 uint64_t bmp_length = 0;
 
 uint64_t addr2bit(uint64_t addr) {
@@ -44,49 +43,50 @@ void *pmm_allocate(size_t size) {
 		return NULL;
 	}
 
-	// Round up the number of pages we want to allocate
-	size_t pages = ALIGN(((size + 0x1000) / 0x1000), PAGE_SIZE);
-	size_t avl_bits = pages;
-	uint64_t byte_offset = 0;
+	size_t page_count = ALIGN(size, PAGE_SIZE) / PAGE_SIZE;
+	
+	size_t page_base = next_free_page;
+	size_t page_top = 0;
 
-	while (avl_bits > 0) {
-		if (next_free_byte >= bmp_length) {
-			next_free_byte = 0;
-			byte_offset = 0;
+	while (page_base + page_top < bmp_length) {
+		// Check if page is allocated
+		uint8_t bmp_value = (pmm_bmp[(page_base + page_top) / 8] >> ((page_base + page_top) % 8)) & 1;
+		
+		// If so, advance
+		if (bmp_value == 1) {
+			page_top = 0;
+			page_base++;
+
+			continue;
 		}
 
-		uint8_t cur_byte = pmm_bmp[next_free_byte + byte_offset];
-		int shift = 0;
+		// Found free section
+		if (page_top >= page_count) {
+			// Mark pages as used
+			for (size_t i = page_base; i < page_base + page_top; i++) {
+				pmm_bmp[i / 8] |= 1 << (i % 8);
+			}
 
-		while ((cur_byte >> shift) > 0)
-			shift++;
-
-		if (shift < 8) {
-			avl_bits -= shift;
-			byte_offset++;
-		} else {
-			next_free_byte++;
-			byte_offset = 0;
-			avl_bits = pages;
+			break;
 		}
+
+		// Above conditions not met, assume free page, increment pages found
+		// advance
+		page_top++;
+	}
+	
+	// Could not find free section
+	if (page_top < page_count) {
+		return NULL;
 	}
 
-	void *base = (void *)((next_free_byte * 8 + next_free_bit) * PAGE_SIZE);
-
-	// Mark pages number of bits as 1 at cur_byte_idx
-	pmm_bmp[next_free_byte] |= 0xFF & (0xFF << next_free_bit);
-
-	for (size_t i = 1; i < byte_offset; i++) {
-		pmm_bmp[next_free_byte + i] = 0xFF;
-	}
-
-	pmm_bmp[next_free_byte + byte_offset] |= 0xFF & (0xFF >> 3);
-
-	return base;
+	next_free_page += page_top;
+	
+	return (void *)bit2addr(page_base);
 }
 
 void *pmm_free(void *address, size_t size) {
-
+	
 	return NULL;
 }
 
@@ -126,8 +126,8 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 	}
 
 	// Causes triple fault
-	printf("%X\n", pmm_allocate(0x1000));
-	printf("%X\n", pmm_allocate(0x1000));
+	printf("%X\n", pmm_allocate(0x1));
+	printf("%X\n", pmm_allocate(PAGE_SIZE));
 
 	return 0;
 }
