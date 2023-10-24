@@ -86,8 +86,20 @@ void *pmm_allocate(size_t size) {
 }
 
 void *pmm_free(void *address, size_t size) {
+	if (size == 0) {
+		return NULL;
+	}
 	
-	return NULL;
+	size_t page_index = addr2bit((uint64_t)address);
+	size_t page_count = ALIGN(size, PAGE_SIZE) / PAGE_SIZE;
+
+	for (size_t i = page_index; i < page_index + page_count; i++) {
+		pmm_bmp[i / 8] &= ~(1 << (i % 8));
+	}
+
+	next_free_page = page_index;
+
+	return address;
 }
 
 int initialize_pmm(struct multiboot_tag_mmap *mmap) {
@@ -125,9 +137,23 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 		pmm_bmp[i] = 0x00;
 	}
 
-	// Causes triple fault
-	printf("%X\n", pmm_allocate(0x1));
-	printf("%X\n", pmm_allocate(PAGE_SIZE));
+	printf("%X\n", pmm_allocate(PAGE_SIZE * 16));
+	for (int i = 0; i < 16; i++)
+		printf("%2X ", pmm_bmp[i]);
+
+	printf("\n");
+
+	printf("%X\n", pmm_free(0x0, PAGE_SIZE * 7));
+	for (int i = 0; i < 16; i++)
+		printf("%2X ", pmm_bmp[i]);
+
+	printf("\n");
+
+	printf("%X\n", pmm_allocate(PAGE_SIZE * 2));
+	for (int i = 0; i < 16; i++)
+		printf("%2X ", pmm_bmp[i]);
+
+	printf("\n");
 
 	return 0;
 }
