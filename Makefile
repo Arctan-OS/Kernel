@@ -16,7 +16,7 @@ all: clean
 
 
 run: all
-	qemu-system-x86_64 -cdrom $(PRODUCT).iso -debugcon stdio $(QEMUFLAGS) -d cpu_reset -cpu qemu64 -m 8G
+	qemu-system-x86_64 -cdrom $(PRODUCT).iso -debugcon stdio $(QEMUFLAGS) -d cpu_reset -cpu qemu64 -m 4G
 
 clean:
 	find . -type f -name "*.o" -delete

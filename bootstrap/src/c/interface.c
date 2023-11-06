@@ -6,14 +6,9 @@
 
 int char_x = 0;
 int char_y = 0;
-uint8_t *screen = NULL;
+uint8_t *screen = (uint8_t *)0xB8000;
 
 void putc(char c) {
-	// if (screen == NULL) {
-	// 	screen = (uint8_t *)framebuffer_tag->common.framebuffer_addr;
-	// 	return;
-	// }
-
 	switch (c) {
 	case '\n':
 		char_y++;
@@ -28,7 +23,7 @@ void putc(char c) {
 		break;
 
 	default:
-		// *(screen + (char_x + (char_y * WIDTH)) * 2) = c;
+		*(screen + (char_x + (char_y * WIDTH)) * 2) = c;
 		char_x++;
 
 		if (char_x >= WIDTH) {
@@ -40,7 +35,7 @@ void putc(char c) {
 	}
 
 	if (char_y >= HEIGHT) {
-		// memcpy(screen, screen + (WIDTH * 2), WIDTH * HEIGHT * 2);
+		memcpy(screen, screen + (WIDTH * 2), WIDTH * HEIGHT * 2);
 		char_y--;
 	}
 

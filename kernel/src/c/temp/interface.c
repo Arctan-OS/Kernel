@@ -1,5 +1,6 @@
 #include <global.h>
 #include <temp/interface.h>
+#include <util.h>
 
 #define WIDTH 80
 #define HEIGHT 25
@@ -7,11 +8,6 @@
 int char_x = 0;
 int char_y = 0;
 uint8_t *screen = NULL;
-
-void memset(void *dest, int value, size_t length) {
-	for (size_t i = 0; i < length; i++)
-		*((uint8_t *)dest + i) = value;
-}
 
 void putc(char c) {
 	// if (screen == NULL) {

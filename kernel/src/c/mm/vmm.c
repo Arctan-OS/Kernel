@@ -1,105 +1,44 @@
 #include <mm/vmm.h>
 
-#define VMM_RANGE_TABLE_MID (VMM_RANGE_TABLE_MAX / 2)
+struct pml1_entry {
+	uint64_t data;
+}__attribute((packed));
 
-#define VMM_RANGE_FLAG_USED (1 << 0)
-
-struct vmm_range {
-	uint64_t base;
-	size_t length;
-	uint8_t flags;
+struct pml1 {
+	struct pml1_entry entries[512];
 };
 
-static struct vmm_range range_table[VMM_RANGE_TABLE_MAX];
-int allocations = 0;
+struct pml2_entry {
+	uint64_t data;
+}__attribute__((packed));
 
-void *vmm_allocate(size_t size) {
-	int i = 0;
-	uint64_t free_space = 0;
+struct pml2 {
+	struct pml2_entry entries[512];
+};
 
-	for (; i < (allocations / 2) + (allocations % 2); i++) {
-		struct vmm_range range = range_table[VMM_RANGE_TABLE_MID + i];
+struct pml3_entry {
+	uint64_t data;
+}__attribute__((packed));
 
-check_hemisphere:
-		if ((range.flags & VMM_RANGE_FLAG_USED) == 0 && range.length >= size) {
-			free_space = range.base;
-			range.flags |= VMM_RANGE_FLAG_USED;
+struct pml3 {
+	struct pml3_entry entries[512];
+};
 
-			break;
-		}
+struct pml4_entry {
+	uint64_t data;
+}__attribute__((packed));
 
-		// Reached a brand new, untouched entry
-		// Check complementary ranges for free
-		// space.
-		if (range.length == 0) {
-			free_space = 0x0;
-		}
+struct pml4 {
+	struct pml4_entry entries[512];
+};
 
-		// Keep track of free space.
-		
+struct pml4 *head = NULL;
 
-		// Flip i around and check the other
-		// hemisphere.
-		i *= -1;
-
-		if (i < 0) {
-			goto check_hemisphere;
-		}
-	}
-
-	if (allocations == 0) {
-		range_table[VMM_RANGE_TABLE_MID].base = free_space;
-		range_table[VMM_RANGE_TABLE_MID].length = ALIGN(size, PAGE_SIZE);
-	}
-
-	if ((allocations % 2) == 1) {
-		// Insert on the left hand side
-	} else {
-		// Insert on the right hand side
-	}
-
-	allocations++;
-
-	return NULL;
+void init_pml4() {
+	
 }
 
-void *vmm_use(void *address, size_t size) {
-	int i = 0;
-
-	for (; i < allocations; i++) {
-		struct vmm_range range = range_table[VMM_RANGE_TABLE_MID + i];
-		if (range.length == 0) {
-			break;
-		}
-	}
-
-	if (allocations == 0) {
-		range_table[VMM_RANGE_TABLE_MID].base = (uintptr_t)address;
-		range_table[VMM_RANGE_TABLE_MID].length = ALIGN(size, PAGE_SIZE);
-
-		return address;
-	}
-
-	if ((allocations % 2) == 1) {
-		// Insert on the left hand side
-
-	} else {
-		// Insert on the right hand side
-	}
-
-	allocations++;
-
-	return address;
-}
-
-void *vmm_free(void *address, size_t size) {
-
-
-	return NULL;
-}
 
 void initialize_vmm() {
-
-
 
 }
