@@ -1,36 +1,5 @@
 #include <mm/vmm.h>
-
-struct pml1_entry {
-	uint64_t data;
-}__attribute((packed));
-
-struct pml1 {
-	struct pml1_entry entries[512];
-};
-
-struct pml2_entry {
-	uint64_t data;
-}__attribute__((packed));
-
-struct pml2 {
-	struct pml2_entry entries[512];
-};
-
-struct pml3_entry {
-	uint64_t data;
-}__attribute__((packed));
-
-struct pml3 {
-	struct pml3_entry entries[512];
-};
-
-struct pml4_entry {
-	uint64_t data;
-}__attribute__((packed));
-
-struct pml4 {
-	struct pml4_entry entries[512];
-};
+#include <io/ctrl_reg.h>
 
 struct pml4 *head = NULL;
 
@@ -39,7 +8,7 @@ void map_range(uint64_t physical, uint64_t virtual, size_t size) {
 }
 
 void unmap_range(uint64_t virtual, size_t size) {
-	
+
 }
 
 void init_pml4() {
@@ -48,7 +17,9 @@ void init_pml4() {
 
 // Switch CR3 to specified table
 void switch_tables(struct pml4 *table) {
-
+	head = table;
+	cr3_reg.base = (uintptr_t)(table) >> 12;
+	set_cr3();
 }
 
 // Shootdown TLB Cache

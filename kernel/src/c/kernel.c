@@ -4,6 +4,7 @@
 #include <framebuffer/framebuffer.h>
 #include <io/port.h>
 #include <temp/interface.h>
+#include <mm/vmm.h>
 
 int kernel_main(uint32_t mbi_ptr) {
 	printf("\nWelcome to 64-bit wonder land! Please enjoy your stay.\n");
@@ -12,7 +13,7 @@ int kernel_main(uint32_t mbi_ptr) {
 
 	int t = 0;
 	uint8_t sw = 1;
-	
+
 	while (1) {
 		for (int i = 0; i < fb_current_context.height; i++) {
 			for (int j = 0; j < fb_current_context.width; j++) {

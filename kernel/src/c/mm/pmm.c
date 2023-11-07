@@ -1,6 +1,7 @@
 #include <mm/pmm.h>
 #include <global.h>
 #include <temp/interface.h>
+#include <util.h>
 
 int mmap_entry_count = 0;
 struct arctan_mmap_entry {
@@ -132,28 +133,7 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 	printf("Need %d bytes represent 0x%X bytes of free RAM, BMP is at 0x%X\n", bmp_length, free_ram_size, pmm_bmp);
 	printf("%d bytes of physical RAM present in memory map.\n", total_mem_size);
 	
-	// "memset(pmm_bmp, 0, bmp_size)"
-	for (size_t i = 0; i < bmp_length; i++) {
-		pmm_bmp[i] = 0x00;
-	}
-
-	printf("%X\n", pmm_allocate(PAGE_SIZE * 16));
-	for (int i = 0; i < 16; i++)
-		printf("%2X ", pmm_bmp[i]);
-
-	printf("\n");
-
-	printf("%X\n", pmm_free(0x0, PAGE_SIZE * 7));
-	for (int i = 0; i < 16; i++)
-		printf("%2X ", pmm_bmp[i]);
-
-	printf("\n");
-
-	printf("%X\n", pmm_allocate(PAGE_SIZE * 2));
-	for (int i = 0; i < 16; i++)
-		printf("%2X ", pmm_bmp[i]);
-
-	printf("\n");
-
+	memset(pmm_bmp, 0, bmp_length);
+	
 	return 0;
 }
