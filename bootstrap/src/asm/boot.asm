@@ -2,7 +2,7 @@ bits 32
 
 MAGIC			equ 0xE85250D6
 ARCH			equ 0
-LENGTH			equ (boot_header_end - boot_header_end)
+LENGTH			equ (boot_header - boot_header_end)
 CHECKSUM		equ -(MAGIC + ARCH + LENGTH)
 STACK_SZ		equ 0x1000						; 4 KiB of stack should be fine for now
 
@@ -19,13 +19,13 @@ boot_header:		dd MAGIC
 			dw 0x0
 			dd 0x8
 
-			; Framebuffer Request Tag
+			; Framebuffer Request tag
 			dw 0x5
 			dw 0x0
 			dd 0x20
 			dd 0x0 							; Allow bootloader to pick width
 			dd 0x0 							; Allow bootloader to pick height
-			dd 0x0 							; Allow bootloader to picl bpp
+			dd 0x0 							; Allow bootloader to pick bpp
 			
 			; End Of Tags tag
 			dw 0x0
