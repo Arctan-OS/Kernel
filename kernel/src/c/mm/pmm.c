@@ -2,6 +2,7 @@
 #include <global.h>
 #include <temp/interface.h>
 #include <util.h>
+#include <mm/alloc.h>
 
 int mmap_entry_count = 0;
 struct arctan_mmap_entry {
@@ -104,10 +105,9 @@ void *pmm_free(void *address, size_t size) {
 }
 
 int initialize_pmm(struct multiboot_tag_mmap *mmap) {
-	standard_table = (struct arctan_mmap_entry *)&__KERNEL_END__;
+	standard_table = alloc_kpage(1);
 
 	mmap_entry_count = (mmap->size - ALIGN(sizeof(struct multiboot_tag_mmap), 8)) / sizeof(struct multiboot_mmap_entry);
-	pmm_bmp = (uint8_t *)&__KERNEL_END__ + (mmap_entry_count * sizeof(struct arctan_mmap_entry));
 
 	size_t total_mem_size = 0;
 	size_t free_ram_size = 0;
@@ -129,11 +129,18 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 		total_mem_size += mmap->entries[i].len;
 	}
 
-	bmp_length = (free_ram_size / PAGE_SIZE) / 8;
+	bmp_length = ((free_ram_size >> 12) + 1) / 8;
+	pmm_bmp = (uint8_t *)alloc_kpage((bmp_length >> 12) + 1);
+
+	uint8_t *test = (uint8_t *)alloc_kpage(1);
+
 	printf("Need %d bytes represent 0x%X bytes of free RAM, BMP is at 0x%X\n", bmp_length, free_ram_size, pmm_bmp);
 	printf("%d bytes of physical RAM present in memory map.\n", total_mem_size);
 	
+	memset(test, 'A', 0x1000);
 	memset(pmm_bmp, 0, bmp_length);
+	
+	printf("%c, %X, %X\n", *test, (uintptr_t)pmm_bmp, (uintptr_t)standard_table);
 	
 	return 0;
 }
