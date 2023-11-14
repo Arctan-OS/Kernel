@@ -6,7 +6,8 @@
 
 #include <global.h>
 
-void *alloc_kpage(size_t pages);
+void *alloc_kpages(size_t pages);
+void *free_kpages(void *address, size_t pages);
 
 void init_allocator();
 

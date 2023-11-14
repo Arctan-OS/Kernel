@@ -8,7 +8,7 @@
 #include <mm/alloc.h>
 
 int kernel_main(uint32_t mbi_ptr) {
-	printf("\nWelcome to 64-bit wonder land! Please enjoy your stay.\n");
+	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	init_allocator();
 	parse_mbi(mbi_ptr);
