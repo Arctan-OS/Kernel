@@ -6,6 +6,13 @@ struct free_node {
 	struct free_node *next;
 };
 
+struct pool_descriptor {
+	struct free_node *physical_base;
+	struct free_node *virtual_base;
+};
+
+struct pool_descriptor *current_descriptor = NULL;
+
 struct free_node *kernel_pool_base = NULL;
 
 // If kernel_pool_head is NULL, that means
@@ -64,6 +71,12 @@ void *free_kpages(void *address, size_t pages) {
 	}
 
 	return address;
+}
+
+int switch_to_pool(struct pool_descriptor *pool) {
+
+
+	return 0;
 }
 
 void init_allocator() {
