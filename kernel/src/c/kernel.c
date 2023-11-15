@@ -13,7 +13,22 @@ int kernel_main(uint32_t mbi_ptr) {
 	init_allocator();
 	parse_mbi(mbi_ptr);
 
+	void *a = alloc_kpages(14);
+	printf("%X\n", (uintptr_t)a);
+	free_kpages(a, 2);
+	void *b = alloc_kpages(1);
+	printf("%X\n", (uintptr_t)b);
+	b = alloc_kpages(1);
+	printf("%X\n", (uintptr_t)b);
+	b = alloc_kpages(1);
+	printf("%X\n", (uintptr_t)b);
+	b = alloc_kpages(1);
+	printf("%X\n", (uintptr_t)b);
+	b = alloc_kpages(1);
+	printf("%X\n", (uintptr_t)b);
+
 	int t = 0;
+
 	uint8_t sw = 1;
 
 	while (1) {

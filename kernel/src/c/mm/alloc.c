@@ -21,60 +21,58 @@ struct free_node *kernel_pool_base = NULL;
 struct free_node *kernel_pool_head = NULL;
 
 void *alloc_kpages(size_t pages) {
+	if (pages == 0) {
+		return NULL;
+	}
+
 	void *address = (void *)kernel_pool_head;
 
-	if (pages > 1) {
-		size_t count = 1;
+	size_t count = 1;
 
-		while (kernel_pool_head != NULL && count < pages) {
-			size_t difference = (size_t)((uintptr_t)kernel_pool_head->next - (uintptr_t)kernel_pool_head);
+	while (kernel_pool_head != NULL && count <= pages) {
+		size_t difference = (size_t)((uintptr_t)kernel_pool_head->next - (uintptr_t)kernel_pool_head);
 
-			kernel_pool_head = kernel_pool_head->next;
+		kernel_pool_head = kernel_pool_head->next;
 
-			if (difference == PAGE_SIZE) {
-				count++;
-				continue;
-			}
-
-			count = 1;
-			address = (void *)kernel_pool_head;
+		if (difference == PAGE_SIZE) {
+			count++;
+			continue;
 		}
 
-		if (count < pages) {
-			printf("Failed to allocate %d kernel pages\n", pages);
-			return NULL;
-		}
+		count = 1;
+		address = (void *)kernel_pool_head;
+	}
+
+	if (count < pages) {
+		printf("Failed to allocate %d kernel pages\n", pages);
+		return NULL;
 	}
 	
-	if (kernel_pool_head > kernel_pool_base) {
-		struct free_node *prev = (struct free_node *)((uintptr_t)address - PAGE_SIZE);
-		prev->next = kernel_pool_head->next;
-	}
-
-	kernel_pool_head = (struct free_node *)((uintptr_t)kernel_pool_head + PAGE_SIZE);
-
 	return address;
 }
 
 void *free_kpages(void *address, size_t pages) {
-	if (pages > 1) {
-		return address;
+	if (pages == 0) {
+		return NULL;
 	}
-	
+
 	struct free_node *current = (struct free_node *)address;
 
-	if (current > kernel_pool_base) {
-		struct free_node *prev = (struct free_node *)((uintptr_t)kernel_pool_head - PAGE_SIZE);
-		
-		current->next = prev->next;
-		prev->next = current;
+	for (size_t i = 0; i < pages; i++) {
+		current = (struct free_node *)((uintptr_t)address + i * PAGE_SIZE);
+		current->next = (struct free_node *)((uintptr_t)current + PAGE_SIZE);
+		current = (struct free_node *)((uintptr_t)current + PAGE_SIZE);
 	}
+
+	current->next = kernel_pool_head;
+	kernel_pool_head = (struct free_node *)address;
 
 	return address;
 }
 
 int switch_to_pool(struct pool_descriptor *pool) {
-
+	// Map pool into memory
+	// Update top pointer
 
 	return 0;
 }
@@ -85,7 +83,6 @@ void init_allocator() {
 	
 	for (int i = 0; i < 255; i++) {
 		uintptr_t address = (uintptr_t)kernel_pool_base + i * PAGE_SIZE;
-		printf("%X\n", address);
 
 		struct free_node *current = (struct free_node *)(address);
 		struct free_node *next = (struct free_node *)(address + PAGE_SIZE);
