@@ -7,24 +7,27 @@
 #include <mm/vmm.h>
 #include <mm/alloc.h>
 
+struct pool_descriptor *kernel_heap_pool;
+
 int kernel_main(uint32_t mbi_ptr) {
 	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	init_allocator();
+	*kernel_heap_pool = init_pool((void *)&__KERNEL_END__, PAGE_SIZE, 512);
+
 	parse_mbi(mbi_ptr);
 
-	void *a = alloc_kpages(14);
+	void *a = alloc_pages(kernel_heap_pool,14);
 	printf("%X\n", (uintptr_t)a);
-	free_kpages(a, 2);
-	void *b = alloc_kpages(1);
+	free_pages(kernel_heap_pool, a, 2);
+	void *b = alloc_pages(kernel_heap_pool,1);
 	printf("%X\n", (uintptr_t)b);
-	b = alloc_kpages(1);
+	b = alloc_pages(kernel_heap_pool,1);
 	printf("%X\n", (uintptr_t)b);
-	b = alloc_kpages(1);
+	b = alloc_pages(kernel_heap_pool,1);
 	printf("%X\n", (uintptr_t)b);
-	b = alloc_kpages(1);
+	b = alloc_pages(kernel_heap_pool,1);
 	printf("%X\n", (uintptr_t)b);
-	b = alloc_kpages(1);
+	b = alloc_pages(kernel_heap_pool,1);
 	printf("%X\n", (uintptr_t)b);
 
 	int t = 0;

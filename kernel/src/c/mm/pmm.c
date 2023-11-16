@@ -105,7 +105,7 @@ void *pmm_free(void *address, size_t size) {
 }
 
 int initialize_pmm(struct multiboot_tag_mmap *mmap) {
-	standard_table = alloc_kpages(1);
+	standard_table = alloc_pages(kernel_heap_pool, 1);
 
 	mmap_entry_count = (mmap->size - ALIGN(sizeof(struct multiboot_tag_mmap), 8)) / sizeof(struct multiboot_mmap_entry);
 
@@ -130,7 +130,7 @@ int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 	}
 
 	bmp_length = ((free_ram_size >> 12) + 1) / 8;
-	pmm_bmp = (uint8_t *)alloc_kpages((bmp_length >> 12) + 1);
+	pmm_bmp = (uint8_t *)alloc_pages(kernel_heap_pool, (bmp_length >> 12) + 1);
 
 	printf("Need %d bytes represent 0x%X bytes of free RAM, BMP is at 0x%X\n", bmp_length, free_ram_size, pmm_bmp);
 	printf("%d bytes of physical RAM present in memory map.\n", total_mem_size);
