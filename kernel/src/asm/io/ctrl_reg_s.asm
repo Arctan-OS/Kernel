@@ -1,4 +1,5 @@
 bits 64
+section .text
 
 global set_cr0
 set_cr0: 	push rax

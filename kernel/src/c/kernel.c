@@ -37,16 +37,28 @@ int kernel_main(uint32_t mbi_ptr) {
 	while (1) {
 		for (int i = 0; i < fb_current_context.height; i++) {
 			for (int j = 0; j < fb_current_context.width; j++) {
-				*((uint32_t *)fb_current_context.virtual_buffer + ((i * fb_current_context.width) + j)) = (i - j + t);
+				int value = (i - j + t);
+
+				int x = (j + value) % fb_current_context.width;
+				int y = (i + value) % fb_current_context.height;
+
+				int xf = ((x * x) / x);
+				int yf = ((y * y) / y);
+				
+				if (xf < 0 || yf < 0) {
+					continue;
+				}
+
+				*((uint32_t *)fb_current_context.virtual_buffer + (yf * fb_current_context.width) + xf) += value;
 			}
 		}
 
-		if (t < 0x100 && sw == 1) {
+		// if (t < 0x100 && sw == 1) {
 			t++;
-		} else if (t >= 0x100 || sw == 0) {
-			t--;
-			sw = (t <= 2);
-		}
+		// } else if (t >= 0x100 || sw == 0) {
+			// t--;
+		// 	sw = (t <= 2);
+		// }
 	}
 
 	return 0;

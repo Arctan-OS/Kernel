@@ -13,12 +13,12 @@ boot_header:		dd MAGIC
 			dd ARCH
 			dd LENGTH
 			dd CHECKSUM
-		
+align 8		
 			; Module Align tag
 			dw 0x6
 			dw 0x0
 			dd 0x8
-
+align 8
 			; Framebuffer Request tag
 			dw 0x5
 			dw 0x0
@@ -26,7 +26,7 @@ boot_header:		dd MAGIC
 			dd 0x0 							; Allow bootloader to pick width
 			dd 0x0 							; Allow bootloader to pick height
 			dd 0x0 							; Allow bootloader to pick bpp
-			
+align 8			
 			; End Of Tags tag
 			dw 0x0
 			dw 0x0
@@ -80,6 +80,7 @@ bits 64
 
 extern framebuffer_width
 extern framebuffer_height
+extern kernel_vaddr
 
 kernel_station:		mov ax, 0x20						; Set AX to 64-bit data offset
 			mov ds, ax						; Set DS to AX
@@ -89,11 +90,10 @@ kernel_station:		mov ax, 0x20						; Set AX to 64-bit data offset
 			mov es, ax						; Set ES to AX
 
 			mov edi, dword [mbi_struct]				; Pass the pointer of MBI Structure
-			mov rax, 0xFFFFFFFF80000000				; Address of kernel
+			mov rax, qword [kernel_vaddr]
 			call rax						; Call to kernel
 			
 			jmp $							; Spin
-
 
 bits 32
 section .bss

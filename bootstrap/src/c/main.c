@@ -167,6 +167,7 @@ void read_tags(uint8_t *boot_info) {
 
 int framebuffer_width = 0;
 int framebuffer_height = 0;
+uint64_t kernel_vaddr = 0;
 
 int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289)
@@ -274,6 +275,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	framebuffer_width = framebuffer_tag->common.framebuffer_width;
 	framebuffer_height = framebuffer_tag->common.framebuffer_height;
+	kernel_vaddr = kernel_info[1];
 
 	return 0;
 }
