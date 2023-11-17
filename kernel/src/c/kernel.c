@@ -45,20 +45,20 @@ int kernel_main(uint32_t mbi_ptr) {
 				int xf = ((x * x) / x);
 				int yf = ((y * y) / y);
 				
-				if (xf < 0 || yf < 0) {
+				if (xf < 0 || yf < 0 || i % 2 == (1 - sw) || j % 2 == (1 - sw)) {
 					continue;
 				}
 
-				*((uint32_t *)fb_current_context.virtual_buffer + (yf * fb_current_context.width) + xf) += value;
+				*((uint32_t *)fb_current_context.virtual_buffer + (yf * fb_current_context.width) + xf) += (value + t * (-1 * sw)) * (sw + 1);
 			}
 		}
 
-		// if (t < 0x100 && sw == 1) {
-			t++;
-		// } else if (t >= 0x100 || sw == 0) {
-			// t--;
-		// 	sw = (t <= 2);
-		// }
+		if (t < 0x400 && sw == 1) {
+			t+=13;
+		} else if (t >= 0x1000 || sw == 0) {
+			t--;
+			sw = (t <= 2);
+		}
 	}
 
 	return 0;
