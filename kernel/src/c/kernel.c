@@ -7,6 +7,8 @@
 #include <mm/vmm.h>
 #include <mm/alloc.h>
 
+// Testing
+
 struct pool_descriptor *kernel_heap_pool;
 
 int kernel_main(uint32_t mbi_ptr) {
