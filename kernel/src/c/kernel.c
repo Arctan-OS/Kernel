@@ -7,8 +7,6 @@
 #include <mm/vmm.h>
 #include <mm/alloc.h>
 
-// Testing
-
 struct pool_descriptor *kernel_heap_pool;
 
 int kernel_main(uint32_t mbi_ptr) {
@@ -18,22 +16,7 @@ int kernel_main(uint32_t mbi_ptr) {
 
 	parse_mbi(mbi_ptr);
 
-	void *a = alloc_pages(kernel_heap_pool,14);
-	printf("%X\n", (uintptr_t)a);
-	free_pages(kernel_heap_pool, a, 2);
-	void *b = alloc_pages(kernel_heap_pool,1);
-	printf("%X\n", (uintptr_t)b);
-	b = alloc_pages(kernel_heap_pool,1);
-	printf("%X\n", (uintptr_t)b);
-	b = alloc_pages(kernel_heap_pool,1);
-	printf("%X\n", (uintptr_t)b);
-	b = alloc_pages(kernel_heap_pool,1);
-	printf("%X\n", (uintptr_t)b);
-	b = alloc_pages(kernel_heap_pool,1);
-	printf("%X\n", (uintptr_t)b);
-
 	int t = 0;
-
 	uint8_t sw = 1;
 
 	while (1) {
@@ -47,7 +30,7 @@ int kernel_main(uint32_t mbi_ptr) {
 				int xf = ((x * x) / x);
 				int yf = ((y * y) / y);
 				
-				if (xf < 0 || yf < 0 || i % 2 == (1 - sw) || j % 2 == (1 - sw)) {
+				if (xf < 0 || yf < 0) {
 					continue;
 				}
 
@@ -56,7 +39,7 @@ int kernel_main(uint32_t mbi_ptr) {
 		}
 
 		if (t < 0x400 && sw == 1) {
-			t+=13;
+			t++;
 		} else if (t >= 0x1000 || sw == 0) {
 			t--;
 			sw = (t <= 2);
