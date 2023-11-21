@@ -29,7 +29,7 @@ int kernel_main(uint32_t mbi_ptr) {
 
 				int xf = ((x * x) / x);
 				int yf = ((y * y) / y);
-				
+
 				if (xf < 0 || yf < 0) {
 					continue;
 				}

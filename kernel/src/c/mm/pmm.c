@@ -14,6 +14,7 @@ struct arctan_mmap_entry {
 };
 
 struct arctan_mmap_entry *standard_table = NULL;
+
 uint8_t *pmm_bmp = NULL;
 
 // Byte which contains the next free bit
