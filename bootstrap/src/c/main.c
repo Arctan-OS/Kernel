@@ -3,6 +3,7 @@
 #include "include/global.h"
 #include "include/gdt.h"
 #include "include/elf.h"
+#include "include/alloc.h"
 
 #include <cpuid.h>
 
@@ -77,6 +78,8 @@ void cpu_checks() {
 }
 
 void read_tags(uint8_t *boot_info) {
+	struct multiboot_tag_mmap *mmap = NULL;
+
 	uint32_t total_size = *(uint32_t *)(boot_info);
 	tags_end = boot_info + total_size;
 	tags = boot_info + 8;
@@ -122,12 +125,12 @@ void read_tags(uint8_t *boot_info) {
 		// SAVE THIS STRUCTURE
 		// PASS IT TO 64-BIT KERNEL
 		case MULTIBOOT_TAG_TYPE_MMAP: {
-			struct multiboot_tag_mmap *info = (struct multiboot_tag_mmap *)tags;
+			mmap = (struct multiboot_tag_mmap *)tags;
 
-			printf("Detailed Memory Map (Version: %d):\n", info->entry_version);
+			printf("Detailed Memory Map (Version: %d):\n", mmap->entry_version);
 
 			int i = 1;
-			for (uint8_t *entry_base = tags + 16; entry_base < tags + cur_tag_sz; entry_base += info->entry_size, i++) {
+			for (uint8_t *entry_base = tags + 16; entry_base < tags + cur_tag_sz; entry_base += mmap->entry_size, i++) {
 				struct multiboot_mmap_entry *entry = (struct multiboot_mmap_entry *)entry_base;
 
 				if (entry->type == MULTIBOOT_MEMORY_AVAILABLE && entry->len > size_phys_first_free) {
@@ -163,6 +166,10 @@ void read_tags(uint8_t *boot_info) {
 
 		tags += cur_tag_sz;
 	} while (tag);
+
+	init_allocator(mmap->entries, (mmap->size - 8) / mmap->entry_size, kernel_phys_end);
+
+
 }
 
 int framebuffer_width = 0;
@@ -276,6 +283,13 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	framebuffer_width = framebuffer_tag->common.framebuffer_width;
 	framebuffer_height = framebuffer_tag->common.framebuffer_height;
 	kernel_vaddr = kernel_info[1];
+
+	void *a = alloc();
+	printf("%X\n", a);
+	printf("%X\n", alloc());
+	free(a);
+	printf("%X\n", alloc());
+
 
 	return 0;
 }
