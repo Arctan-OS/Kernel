@@ -6,6 +6,7 @@
 #include "include/alloc.h"
 
 #include <cpuid.h>
+#include <stdint.h>
 
 uint8_t *tags = NULL;
 uint8_t *tags_end = NULL;
@@ -20,7 +21,14 @@ uint64_t *kernel_info = NULL;
 uint64_t mem_phys_first_free = 0x0;
 uint64_t size_phys_first_free = 0x0;
 uint32_t bootstrap_start = 0x0;
+size_t memsize = 0;
 extern uint8_t __BOOTSTRAP_END__; // Address should be aligned to 0x1000
+
+// Temp
+int framebuffer_width = 0;
+int framebuffer_height = 0;
+uint64_t kernel_vaddr = 0;
+uint64_t *hhdm_pml4 = NULL;
 
 struct multiboot_tag_framebuffer *framebuffer_tag = NULL;
 
@@ -31,30 +39,6 @@ const char *mem_types[] = {
 	[MULTIBOOT_MEMORY_NVS] = "NVS",
 	[MULTIBOOT_MEMORY_RESERVED] = "Reserved",
 };
-
-uint64_t pml4[512] __attribute__((aligned(0x1000))); // PML4 Entries
-// Paging tables (Higher Half)
-// These should be temporary, to jump to 64-bit mode
-uint64_t pml3_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries * Cast this to a uint32_t * so we can create a PML3 table when we enter
-uint64_t pml2_kernel[512] __attribute__((aligned(0x1000))); // Page Directory Entries
-uint64_t pml1_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
-uint64_t pml1_2_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
-uint64_t pml1_3_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
-uint64_t pml1_4_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
-uint64_t pml1_5_kernel[512] __attribute__((aligned(0x1000))); // Page Table Entries
-
-// Screen
-// uint64_t pml3_framebuffer[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries * Cast this to a uint32_t * so we can create a PML3 table when we enter
-uint64_t pml2_framebuffer[512] __attribute__((aligned(0x1000))); // Page Directory Entries
-uint64_t pml1_framebuffer[512] __attribute__((aligned(0x1000))); // Page Table Entries
-uint64_t pml1_2_framebuffer[512] __attribute__((aligned(0x1000))); // Page Table Entries
-uint64_t pml1_3_framebuffer[512] __attribute__((aligned(0x1000))); // Page Table Entries
-uint64_t pml1_4_framebuffer[512] __attribute__((aligned(0x1000))); // Page Table Entries
-
-// Paging tables (Bootstrapper)
-uint64_t pml3_boot[512] __attribute__((aligned(0x1000))); // Page Directory Pointer Entries
-uint64_t pml2_boot[512] __attribute__((aligned(0x1000))); // Page Directory Entries
-uint64_t pml1_boot[512] __attribute__((aligned(0x1000))); // Page Table Entries
 
 void cpu_checks() {
 	// Preform checks
@@ -87,18 +71,18 @@ void read_tags(uint8_t *boot_info) {
 	int tag = 0;
 	do {
 		tag = *(uint32_t*)(tags);
-		cur_tag_sz = ALIGN(*(uint32_t *)(tags + 4), 8); 
+		cur_tag_sz = ALIGN(*(uint32_t *)(tags + 4), 8);
 
 		switch (tag) {
 		case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME: {
 			printf("Bootloader: %s\n", tags + 8);
-			
+
 			break;
 		}
 
 		case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO: {
 			struct multiboot_tag_basic_meminfo *info = (struct multiboot_tag_basic_meminfo *)tags;
-			
+
 			printf("Basic Memory Info:\n	Lower: 0x%X KB\n	Upper: 0x%X KB\n", info->mem_lower, info->mem_upper);
 
 			break;
@@ -139,6 +123,7 @@ void read_tags(uint8_t *boot_info) {
 				}
 
 				printf("\tEntry %d: @ 0x%8X%8X, 0x%8X%8X B, Type: %s (%d)\n", i, (uint32_t)(entry->addr >> 32), (uint32_t)entry->addr, (uint32_t)(entry->len >> 32), (uint32_t)entry->len, mem_types[entry->type], entry->type);
+				memsize += entry->len;
 			}
 
 			break;
@@ -168,17 +153,12 @@ void read_tags(uint8_t *boot_info) {
 	} while (tag);
 
 	init_allocator(mmap->entries, (mmap->size - 8) / mmap->entry_size, kernel_phys_end);
-
-
 }
 
-int framebuffer_width = 0;
-int framebuffer_height = 0;
-uint64_t kernel_vaddr = 0;
-
 int helper(uint8_t *boot_info, uint32_t magic) {
-	if (magic != 0x36D76289)
+	if (magic != 0x36D76289) {
 		return 1;
+	}
 
 	cpu_checks();
 	install_gdt();
@@ -195,101 +175,87 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	printf("%dx%dx%d %8X%8X(%d)\n", framebuffer_tag->common.framebuffer_width, framebuffer_tag->common.framebuffer_height, framebuffer_tag->common.framebuffer_bpp, (uint32_t)(framebuffer_tag->common.framebuffer_addr >> 32), (uint32_t)(framebuffer_tag->common.framebuffer_addr), 0, framebuffer_tag->common.framebuffer_type);
 
-	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start, (uint32_t)mem_phys_first_free);
-
-	pml4       [(kernel_info[1] >> 39) & 0x1FF] = (uintptr_t)pml3_kernel | 3; // Address of next entry | RW | P 
-	pml3_kernel[(kernel_info[1] >> 30) & 0x1FF] = (uintptr_t)pml2_kernel | 3; // Address of next entry | RW | P
-	pml2_kernel[(kernel_info[1] >> 21) & 0x1FF] = (uintptr_t)pml1_kernel | 3; // Address of next entry | RW | P
-	pml2_kernel[((kernel_info[1] >> 21) + 1) & 0x1FF] = (uintptr_t)pml1_2_kernel | 3; // Address of next entry | RW | P
-	pml2_kernel[((kernel_info[1] >> 21) + 2) & 0x1FF] = (uintptr_t)pml1_3_kernel | 3; // Address of next entry | RW | P
-	pml2_kernel[((kernel_info[1] >> 21) + 3) & 0x1FF] = (uintptr_t)pml1_4_kernel | 3; // Address of next entry | RW | P
-	pml2_kernel[((kernel_info[1] >> 21) + 4) & 0x1FF] = (uintptr_t)pml1_5_kernel | 3; // Address of next entry | RW | P
-
-	// TODO, ensure that we are not relying on a single
-	// long section of memory.
-	if ((kernel_phys_start >= mem_phys_first_free) && ((kernel_phys_end - kernel_phys_start) < size_phys_first_free)) {
-		// Kernel is located in our desired free memory
-		uint64_t phys_addr = kernel_phys_start + kernel_info[0];
-
-		for (int i = (kernel_info[1] >> 12) & 0x1FF; i < 512; i++) {
-			pml1_kernel[i] = (phys_addr + (i << 12)) | 3; // Address | RW | P
-			pml1_2_kernel[i] = (phys_addr + ((i + 512) << 12)) | 3; // Address | RW | P
-			pml1_3_kernel[i] = (phys_addr + ((i + 1024) << 12)) | 3; // Address | RW | P
-			pml1_4_kernel[i] = (phys_addr + ((i + 1596) << 12)) | 3; // Address | RW | P
-			pml1_5_kernel[i] = (phys_addr + ((i + 2048) << 12)) | 3; // Address | RW | P
-		}
-
-		printf("Ideal conditions met, kernel mapped to %8X%8X. %d bytes available\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1], 512 * 0x1000);
-	} else {
-		// Kernel is not located in our desired free memory
-		uint64_t phys_addr = kernel_phys_start + kernel_info[0];
-		size_t kernel_size_pages = ALIGN((kernel_phys_end - kernel_phys_start), 0x1000) >> 12;
-
-		int i = 0;
-		for (; i < kernel_size_pages; i++) {
-			pml1_kernel[i] = phys_addr | 3; // Address | RW | P
-			phys_addr += 0x1000; // Goto next page
-		}
-
-		phys_addr = mem_phys_first_free;
-		int ram_page = i;
-		for (; i < 512; i++) {
-			pml1_kernel[i] = phys_addr | 3; // Address | RW | P
-			phys_addr += 0x1000; // Goto next page
-		}
-
-		for (i = 0; i < 512; i++) {
-			pml1_2_kernel[i] = (phys_addr + ((i) << 12)) | 3;
-			pml1_3_kernel[i] = (phys_addr + ((i + 512) << 12)) | 3;
-			pml1_4_kernel[i] = (phys_addr + ((i + 1024) << 12)) | 3;
-			pml1_5_kernel[i] = (phys_addr + ((i + 1596) << 12)) | 3;
-		}
-
-		printf("Kernel is independent from free memory. Mapping kernel to 0x%8X%8X for %d pages. Mapping 0x%8X%8X to 0x%8X%8X.\n", (uint32_t)(kernel_info[1] >> 32), (uint32_t)kernel_info[1],
-																	        kernel_size_pages,
-																		(uint32_t)(mem_phys_first_free >> 32),
-																		(uint32_t)(mem_phys_first_free),
-																		(uint32_t)((kernel_info[1] + ram_page * 0x1000) >> 32),
-																		(uint32_t)(kernel_info[1] + ram_page * 0x1000));
-	}
-
-	pml4     [0] = (uintptr_t)pml3_boot | 3; // Address of next entry | RW | P 
-	pml3_boot[0] = (uintptr_t)pml2_boot | 3; // Address of next entry | RW | P
-	pml2_boot[0] = (uintptr_t)pml1_boot | 3; // Address of next entry | RW | P
-
-	for (int i = 0; i < 512; i++)
-		pml1_boot[i] = ((i) << 12) | 3; // RW | P
-
-	printf("Identity mapped the bootstrapper\n");
-
-	// TODO: Implement checks to see if we need our own PML4 entry, PML3 entry, or PML2 entry.
-	//       Should not be relying on the fact the the framebuffer is basically in the same spot
-	//	 as the bootloader.
-	pml3_boot[(framebuffer_tag->common.framebuffer_addr >> 30) & 0x1FF] = (uintptr_t)pml2_framebuffer | 3; // Address of next entry | RW | P
-	pml2_framebuffer[(framebuffer_tag->common.framebuffer_addr >> 21) & 0x1FF] = (uintptr_t)pml1_framebuffer | 3; // Address of next entry | RW | P
-	pml2_framebuffer[((framebuffer_tag->common.framebuffer_addr >> 21) & 0x1FF) + 1] = (uintptr_t)pml1_2_framebuffer | 3; // Address of next entry | RW | P
-	pml2_framebuffer[((framebuffer_tag->common.framebuffer_addr >> 21) & 0x1FF) + 2] = (uintptr_t)pml1_3_framebuffer | 3; // Address of next entry | RW | P
-	pml2_framebuffer[((framebuffer_tag->common.framebuffer_addr >> 21) & 0x1FF) + 3] = (uintptr_t)pml1_4_framebuffer | 3; // Address of next entry | RW | P
-
-	for (int i = 0; i < 512; i++) {
-		pml1_framebuffer[i] = (framebuffer_tag->common.framebuffer_addr + (i << 12)) | 3;
-		pml1_2_framebuffer[i] = (framebuffer_tag->common.framebuffer_addr + ((i + 512) << 12)) | 3;
-		pml1_3_framebuffer[i] = (framebuffer_tag->common.framebuffer_addr + ((i + 1024) << 12)) | 3;
-		pml1_4_framebuffer[i] = (framebuffer_tag->common.framebuffer_addr + ((i + 1536) << 12)) | 3;
-	}
-
-	printf("Identity mapped framebuffer\n");
+	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start);
 
 	framebuffer_width = framebuffer_tag->common.framebuffer_width;
 	framebuffer_height = framebuffer_tag->common.framebuffer_height;
 	kernel_vaddr = kernel_info[1];
 
-	void *a = alloc();
-	printf("%X\n", a);
-	printf("%X\n", alloc());
-	free(a);
-	printf("%X\n", alloc());
+	size_t page_count = memsize >> 12;
+	size_t hhdm_pml1_count = page_count / 512;
 
+	uint64_t *pml1_base = NULL;
+
+	for (size_t i = 0; i < hhdm_pml1_count; i++) {
+		uint64_t *pml1 = (uint64_t *)alloc();
+
+		if (pml1_base == NULL) {
+			pml1_base = pml1;
+		}
+
+		for (int j = 0; j < 512; j++) {
+			pml1[j] = ((i * 512 + j) << 12) | 3;
+		}
+	}
+
+	size_t hhdm_pml2_count = hhdm_pml1_count / 512;
+
+	uint64_t *pml2_base = NULL;
+
+	for (size_t i = 0; i < hhdm_pml2_count; i++) {
+		uint64_t *pml2 = (uint64_t *)alloc();
+
+		if (pml2_base == NULL) {
+			pml2_base = pml2;
+		}
+
+		for (int j = 0; j < 512; j++) {
+			pml2[j] = (((uintptr_t)pml1_base + ((i * 512 + j) << 12))) | 3;
+		}
+	}
+
+	size_t hhdm_pml3_count = hhdm_pml2_count / 512;
+
+	hhdm_pml4 = (uint64_t *)alloc();
+	uint64_t *pml3_base = NULL;
+
+	for (size_t i = 0; i < hhdm_pml3_count; i++) {
+		uint64_t *pml3 = (uint64_t *)alloc();
+		hhdm_pml4[i] = (uintptr_t)pml3 | 3;
+
+		if (pml3_base == NULL) {
+			pml3_base = pml3;
+		}
+
+		for (int j = 0; j < 512; j++) {
+			pml3[j] = (((uintptr_t)pml2_base + ((i * 512 + j) << 12))) | 3;
+		}
+	}
+
+	size_t kernel_count = ((kernel_phys_end - kernel_phys_start) >> 12);
+
+	uint64_t *kpml1 = (uint64_t *)alloc();
+
+	for (size_t i = 0; i < 512; i++) {
+		if (i <= kernel_count) {
+			kpml1[i] = (kernel_phys_start + (i << 12)) | 3;
+
+			continue;
+		}
+
+		kpml1[i] = ((uintptr_t)alloc()) | 3;
+	}
+
+	int kpml4_ei = (kernel_info[0] >> 39) & 0x1FF;
+	int kpml3_ei = (kernel_info[0] >> 30) & 0x1FF;
+	int kpml2_ei = (kernel_info[0] >> 21) & 0x1FF;
+
+	uint64_t *kpml3 = (uint64_t *)alloc();
+	uint64_t *kpml2 = (uint64_t *)alloc();
+
+	hhdm_pml4[kpml4_ei] = ((uintptr_t)kpml3) | 3;
+	kpml3[kpml3_ei] = ((uintptr_t)kpml2) | 3;
+	kpml2[kpml2_ei] = ((uintptr_t)kpml1) | 3;
 
 	return 0;
 }

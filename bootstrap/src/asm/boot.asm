@@ -36,45 +36,45 @@ boot_header_end:
 section .text
 
 extern helper
-extern pml4
+extern hhdm_pml4
 global _entry
-_entry:			mov esp, stack_end					; Setup stack
+_entry:		mov esp, stack_end					; Setup stack
 			mov ebp, esp						; Make sure base gets the memo
-			push eax						; Push multiboot2 loader signature
-			push ebx						; Push boot information
-			mov dword [mbi_struct], ebx				; Save MBI Structure pointer
-			call helper						; HELP!
+			push eax							; Push multiboot2 loader signature
+			push ebx							; Push boot information
+			mov dword [mbi_struct], ebx			; Save MBI Structure pointer
+			call helper							; HELP!
 			mov eax, cr4						; Read CR4
 			or eax, 1 << 5						; Set PAE bit
 			mov cr4, eax						; Write CR4
-			mov eax, pml4						; Point EAX to PML4[0]
+			mov eax, hhdm_pml4					; Point EAX to PML4[0]
 			mov cr3, eax						; Point CR3
 			mov ecx, 0xC0000080					; Code for EFER MSR
-			rdmsr							; Read EFER
+			rdmsr								; Read EFER
 			or eax, 1 << 8						; Set LME
-			wrmsr							; Write EFER
+			wrmsr								; Write EFER
 			mov eax, cr0						; Read CR0
 			or eax, 1 << 31						; Set PG bit
 			mov cr0, eax						; Set CR0
-			jmp 0x18:kernel_station					; Goto to station, set CS to 64-bit code offset
+			jmp 0x18:kernel_station				; Goto to station, set CS to 64-bit code offset
 
 global outb
-outb:			mov al, [esp + 8]					; Get 8-bit data
+outb:		mov al, [esp + 8]					; Get 8-bit data
 			mov dx, [esp + 4]					; Get 16-bit port
-			out dx, al						; Write data to port
-			ret							; Return
+			out dx, al							; Write data to port
+			ret									; Return
 
 global _install_gdt
 extern gdtr
-_install_gdt:		lgdt [gdtr]						; Load GDTR
-			jmp 0x08:_gdt_set_cs					; Set CS
-_gdt_set_cs:		mov ax, 0x10						; Set AX to 32-bit data offset
-			mov ds, ax						; Set DS to AX
-			mov fs, ax						; Set FS to AX
-			mov gs, ax						; Set GS to AX
-			mov ss, ax						; Set SS to AX
-			mov es, ax						; Set ES to AX
-			ret							; Return
+_install_gdt:		lgdt [gdtr]					; Load GDTR
+					jmp 0x08:_gdt_set_cs		; Set CS
+_gdt_set_cs:		mov ax, 0x10				; Set AX to 32-bit data offset
+					mov ds, ax					; Set DS to AX
+					mov fs, ax					; Set FS to AX
+					mov gs, ax					; Set GS to AX
+					mov ss, ax					; Set SS to AX
+					mov es, ax					; Set ES to AX
+					ret							; Return
 
 bits 64
 
@@ -82,23 +82,23 @@ extern framebuffer_width
 extern framebuffer_height
 extern kernel_vaddr
 
-kernel_station:		mov ax, 0x20						; Set AX to 64-bit data offset
-			mov ds, ax						; Set DS to AX
-			mov fs, ax						; Set FS to AX
-			mov gs, ax						; Set GS to AX
-			mov ss, ax						; Set SS to AX
-			mov es, ax						; Set ES to AX
+kernel_station:		mov ax, 0x20					; Set AX to 64-bit data offset
+					mov ds, ax						; Set DS to AX
+					mov fs, ax						; Set FS to AX
+					mov gs, ax						; Set GS to AX
+					mov ss, ax						; Set SS to AX
+					mov es, ax						; Set ES to AX
 
-			mov edi, dword [mbi_struct]				; Pass the pointer of MBI Structure
-			mov rax, qword [kernel_vaddr]
-			call rax						; Call to kernel
-			
-			jmp $							; Spin
+					mov edi, dword [mbi_struct]		; Pass the pointer of MBI Structure
+					mov rax, qword [kernel_vaddr]
+					call rax						; Call to kernel
+
+					jmp $							; Spin
 
 bits 32
 section .bss
 
-mbi_struct:		resb 4							; Pointer to MBI Structure
+mbi_struct:		resb 4								; Pointer to MBI Structure
 
 global stack
 global stack_end

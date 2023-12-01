@@ -1,5 +1,5 @@
 PRODUCT := Arctan
-CPPFLAGS = 
+CPPFLAGS =
 QEMUFLAGS = 
 
 all: clean
@@ -23,7 +23,7 @@ clean:
 	find . -type f -name "*.elf" -delete
 	find . -type f -name "*.iso" -delete
 	rm -rf iso
-	
+
 debug: CPPFLAGS += -DDEBUG
 debug: all
 

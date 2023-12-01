@@ -1,4 +1,5 @@
 #include "include/alloc.h"
+#include "include/interface.h"
 
 struct free_node {
 	struct free_node *next;
@@ -29,7 +30,7 @@ void init_allocator(struct multiboot_mmap_entry *entries, int size, uintptr_t ke
 			continue;
 		}
 
-		j = contains_kernel_end ? kernel_end + 0x1000 : j;
+		j = ALIGN(contains_kernel_end ? kernel_end + 0x1000 : j, 0x1000);
 
 		if (head == NULL) {
 			head = (struct free_node *)j;
@@ -42,4 +43,6 @@ void init_allocator(struct multiboot_mmap_entry *entries, int size, uintptr_t ke
 			current = current->next;
 		}
 	}
+
+	printf("Allocator head = %X\n", head);
 }
