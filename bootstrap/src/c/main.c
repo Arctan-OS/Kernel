@@ -152,7 +152,7 @@ void read_tags(uint8_t *boot_info) {
 		tags += cur_tag_sz;
 	} while (tag);
 
-	init_allocator(mmap->entries, (mmap->size - 8) / mmap->entry_size, kernel_phys_end);
+	init_allocator(mmap->entries, (mmap->size - 16) / mmap->entry_size, kernel_phys_end);
 }
 
 int helper(uint8_t *boot_info, uint32_t magic) {
@@ -180,6 +180,10 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	framebuffer_width = framebuffer_tag->common.framebuffer_width;
 	framebuffer_height = framebuffer_tag->common.framebuffer_height;
 	kernel_vaddr = kernel_info[1];
+
+	hhdm_pml4 = (uint64_t *)alloc();
+
+	printf("%X\n", hhdm_pml4);
 
 	size_t page_count = memsize >> 12;
 	size_t hhdm_pml1_count = page_count / 512;
@@ -214,9 +218,10 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		}
 	}
 
+	printf("%X\n", pml2_base);
+
 	size_t hhdm_pml3_count = hhdm_pml2_count / 512;
 
-	hhdm_pml4 = (uint64_t *)alloc();
 	uint64_t *pml3_base = NULL;
 
 	for (size_t i = 0; i < hhdm_pml3_count; i++) {
@@ -245,6 +250,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 		kpml1[i] = ((uintptr_t)alloc()) | 3;
 	}
+
+	size_t total_pages = hhdm_pml1_count + hhdm_pml2_count + hhdm_pml3_count + 1;
+	printf("%d pages used for the HHDM\n", total_pages);
 
 	int kpml4_ei = (kernel_info[0] >> 39) & 0x1FF;
 	int kpml3_ei = (kernel_info[0] >> 30) & 0x1FF;

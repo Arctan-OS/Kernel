@@ -8,6 +8,11 @@ struct free_node {
 static struct free_node *head = NULL;
 
 void *alloc() {
+	if (head == NULL) {
+		printf("Ran out of memory!\n");
+		return NULL;
+	}
+
 	void *address = (void *)head;
 	head = head->next;
 	return address;
