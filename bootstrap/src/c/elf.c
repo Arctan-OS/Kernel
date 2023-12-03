@@ -37,10 +37,6 @@ struct program_header {
 #define PT_NOTE 4
 #define PT_SHLIB 5 
 #define PT_PHDR 6 
-#define PT_LOOS 0x60000000
-#define PT_HIOS 0x6FFFFFFF
-#define PT_LOPROC 0x70000000
-#define PT_HIPROC 0x7FFFFFFF
 
 static const char *pt_names[] = {
 	[PT_NULL] = "NULL",
@@ -49,10 +45,6 @@ static const char *pt_names[] = {
 	[PT_INTERP] = "INTERP",
 	[PT_SHLIB] = "SHLIB",
 	[PT_PHDR] = "PHDR",
-	// [PT_LOOS] = "LOOS",
-	// [PT_HIOS] = "HIOS",
-	// [PT_LOPROC] = "LOPROC",
-	// [PT_HIPROC] = "HIPROC"
 };
 
 uint64_t info[2];
@@ -67,9 +59,7 @@ uint64_t *load_elf(uint32_t elf_addr) {
 	printf("Entry: %8X%8X\n", (uint32_t)(elf_header->e_entry >> 32), (uint32_t)(elf_header->e_entry));
 
 	for (int i = 0; i < elf_header->e_phnum; i += elf_header->e_phentsize) {
-		printf("Program Header %d, Type \"%s\", P:%8X%8X, V:%8X%8X, Offset: %8X%8X\n", i, pt_names[prog_header->p_type], (uint32_t)(prog_header->p_paddr >> 32),
-									(uint32_t)(prog_header->p_paddr), (uint32_t)(prog_header->p_vaddr >> 32), (uint32_t)(prog_header->p_vaddr),
-									(uint32_t)(prog_header->p_offset >> 32), (uint32_t)(prog_header->p_offset));
+		printf("Program Header %d, Type \"%s\", P:%"PRIX64", V:%"PRIX64", Offset: %"PRIX64"\n", i, pt_names[prog_header->p_type], prog_header->p_paddr, prog_header->p_vaddr, prog_header->p_offset);
 	}
 
 	return info;

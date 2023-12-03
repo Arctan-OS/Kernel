@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <inttypes.h>
 #include "multiboot2.h"
 
 #define ASSERT(cond) if (!(cond)) { \

@@ -7,6 +7,7 @@
 
 #include <cpuid.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 uint8_t *tags = NULL;
 uint8_t *tags_end = NULL;
@@ -122,7 +123,7 @@ void read_tags(uint8_t *boot_info) {
 					size_phys_first_free = entry->len;
 				}
 
-				printf("\tEntry %d: @ 0x%8X%8X, 0x%8X%8X B, Type: %s (%d)\n", i, (uint32_t)(entry->addr >> 32), (uint32_t)entry->addr, (uint32_t)(entry->len >> 32), (uint32_t)entry->len, mem_types[entry->type], entry->type);
+				printf("\tEntry %d: @ 0x%16"PRIX64", 0x%16"PRIX64" B, Type: %s (%d)\n", i, entry->addr, entry->len, mem_types[entry->type], entry->type);
 				memsize += entry->len;
 			}
 
@@ -173,17 +174,16 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	ASSERT(mem_phys_first_free != 0)
 	ASSERT(size_phys_first_free != 0)
 
-	printf("%dx%dx%d %8X%8X(%d)\n", framebuffer_tag->common.framebuffer_width, framebuffer_tag->common.framebuffer_height, framebuffer_tag->common.framebuffer_bpp, (uint32_t)(framebuffer_tag->common.framebuffer_addr >> 32), (uint32_t)(framebuffer_tag->common.framebuffer_addr), 0, framebuffer_tag->common.framebuffer_type);
+	printf("%dx%dx%d %"PRIX64"(%d)\n", framebuffer_tag->common.framebuffer_width, framebuffer_tag->common.framebuffer_height, framebuffer_tag->common.framebuffer_bpp, framebuffer_tag->common.framebuffer_addr, framebuffer_tag->common.framebuffer_type);
 
-	printf("All is well, kernel module is located at 0x%8X.\nGoing to poke into free RAM at 0x%8X.\n", (uint32_t)kernel_phys_start);
+	printf("All is well, kernel module is located at 0x%X.\n", (uint32_t)kernel_phys_start);
+
 
 	framebuffer_width = framebuffer_tag->common.framebuffer_width;
 	framebuffer_height = framebuffer_tag->common.framebuffer_height;
 	kernel_vaddr = kernel_info[1];
 
 	hhdm_pml4 = (uint64_t *)alloc();
-
-	printf("%X\n", hhdm_pml4);
 
 	size_t page_count = memsize >> 12;
 	size_t hhdm_pml1_count = page_count / 512;
@@ -217,8 +217,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			pml2[j] = (((uintptr_t)pml1_base + ((i * 512 + j) << 12))) | 3;
 		}
 	}
-
-	printf("%X\n", pml2_base);
 
 	size_t hhdm_pml3_count = hhdm_pml2_count / 512;
 
