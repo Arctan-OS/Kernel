@@ -12,6 +12,16 @@
 		     }
 #define ALIGN(v, a) ((v + (a - 1)) & ~(a - 1))
 
+#define max(a, b) \
+        ({ __typeof__ (a) _a = (a); \
+        __typeof__ (b) _b = (b); \
+        _a > _b ? _a : _b; })
+
+#define min(a, b) \
+        ({ __typeof__ (a) _a = (a); \
+        __typeof__ (b) _b = (b); \
+        _a < _b ? _a : _b; })
+
 void memset(void *dest, int value, size_t length);
 void memcpy(void *dest, void *src, size_t length);
 size_t strlen(char *a);

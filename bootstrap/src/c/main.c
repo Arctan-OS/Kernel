@@ -22,7 +22,7 @@ uint64_t *kernel_info = NULL;
 uint64_t mem_phys_first_free = 0x0;
 uint64_t size_phys_first_free = 0x0;
 uint32_t bootstrap_start = 0x0;
-size_t memsize = 0;
+uint64_t memsize = 0;
 extern uint8_t __BOOTSTRAP_END__; // Address should be aligned to 0x1000
 
 // Temp
@@ -49,7 +49,7 @@ void cpu_checks() {
 
 	// Check for LM
 	if (((__edx >> 29) & 1) == 0) {
-		printf(" CPU not up to scratch! 0x%X 0x%X 0x%X 0x%X (0x80000001)\n", __eax, __ebx, __ecx, __edx);
+		printf("CPU not up to scratch! 0x%X 0x%X 0x%X 0x%X (0x80000001)\n", __eax, __ebx, __ecx, __edx);
 		__asm__("hlt");
 	}
 
@@ -57,7 +57,7 @@ void cpu_checks() {
 
 	// Check for PAE
 	if (((__edx >> 6) & 1) == 0) {
-		printf(" CPU not up to scratch! 0x%X 0x%X 0x%X 0x%X (0x01)\n", __eax, __ebx, __ecx, __edx);
+		printf("CPU not up to scratch! 0x%X 0x%X 0x%X 0x%X (0x01)\n", __eax, __ebx, __ecx, __edx);
 		__asm__("hlt");
 	}
 }
@@ -174,68 +174,79 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	ASSERT(mem_phys_first_free != 0)
 	ASSERT(size_phys_first_free != 0)
 
-	printf("%dx%dx%d %"PRIX64"(%d)\n", framebuffer_tag->common.framebuffer_width, framebuffer_tag->common.framebuffer_height, framebuffer_tag->common.framebuffer_bpp, framebuffer_tag->common.framebuffer_addr, framebuffer_tag->common.framebuffer_type);
-
-	printf("All is well, kernel module is located at 0x%X.\n", (uint32_t)kernel_phys_start);
-
-
 	framebuffer_width = framebuffer_tag->common.framebuffer_width;
 	framebuffer_height = framebuffer_tag->common.framebuffer_height;
+
+	printf("%dx%dx%d %"PRIX64"(%d)\n", framebuffer_width, framebuffer_height, framebuffer_tag->common.framebuffer_bpp, framebuffer_tag->common.framebuffer_addr, framebuffer_tag->common.framebuffer_type);
+	printf("All is well, kernel module is located at 0x%X.\n", (uint32_t)kernel_phys_start);
+
 	kernel_vaddr = kernel_info[1];
 
 	hhdm_pml4 = (uint64_t *)alloc();
+	memset(hhdm_pml4, 0, 0x1000);
 
-	size_t page_count = memsize >> 12;
-	size_t hhdm_pml1_count = page_count / 512;
+	uint64_t page_count = (uint64_t)(memsize >> 12) + 1;
+	uint64_t hhdm_pml1_count = (uint64_t)(page_count >> 9) + 1;
+	uint64_t hhdm_pml2_count = (uint64_t)(hhdm_pml1_count >> 9) + 1;
+	uint64_t hhdm_pml3_count = (uint64_t)(hhdm_pml2_count >> 9) + 1;
 
-	uint64_t *pml1_base = NULL;
+	printf("%"PRId64" %"PRId64" %"PRId64"\n", hhdm_pml1_count, hhdm_pml2_count, hhdm_pml3_count);
 
-	for (size_t i = 0; i < hhdm_pml1_count; i++) {
-		uint64_t *pml1 = (uint64_t *)alloc();
+	uint64_t page_address = 0x0;
 
-		if (pml1_base == NULL) {
-			pml1_base = pml1;
+	for (uint64_t pdp = 0; pdp < hhdm_pml3_count; pdp++) {
+		// Allocate table
+		uint64_t *pdp_table = (uint64_t *)alloc();
+		memset(pdp_table, 0, 0x1000);
+
+		// Get limited count
+		int pd_count = min(512, hhdm_pml2_count);
+
+		for (int pd = 0; pd < pd_count; pd++) {
+			// Allocate table
+			uint64_t *pd_table = (uint64_t *)alloc();
+			memset(pd_table, 0, 0x1000);
+
+			// Get limited count
+			int pt_count = min(512, hhdm_pml1_count);
+
+			for (int pt = 0; pt < pt_count; pt++) {
+				// ALlocate PT
+				uint64_t *pt_table = (uint64_t *)alloc();
+				memset(pt_table, 0, 0x1000);
+
+				// Fill out PT
+				for (int i = 0; i < 512; i++) {
+					pt_table[i] = (page_address) | 3;
+//					printf("Identity mapped address: %"PRIX64"\n", page_address);
+					page_address += 0x1000;
+				}
+
+				// Link PT into PD
+				pd_table[pt] = ((uint64_t)pt_table) | 3;
+
+//				printf("Linked PT %d into PD %d\n", (uint32_t)pt, (uint32_t)pd);
+			}
+
+			// Change count
+			hhdm_pml1_count -= pt_count;
+
+			// Link PD into PDP table
+			pdp_table[pd] = ((uint64_t)pd_table) | 3;
+
+//			printf("Linked PD %"PRId32" into PDP %"PRId32"\n", pd, pdp);
 		}
 
-		for (int j = 0; j < 512; j++) {
-			pml1[j] = ((i * 512 + j) << 12) | 3;
-		}
+		// Change count
+		hhdm_pml2_count -= pd_count;
+
+		// Link PDP into PML4
+		hhdm_pml4[pdp] = ((uint64_t)pdp_table) | 3;
+
+//		printf("Linked PDP %"PRId32" into PML4\n", pdp);
 	}
 
-	size_t hhdm_pml2_count = hhdm_pml1_count / 512;
-
-	uint64_t *pml2_base = NULL;
-
-	for (size_t i = 0; i < hhdm_pml2_count; i++) {
-		uint64_t *pml2 = (uint64_t *)alloc();
-
-		if (pml2_base == NULL) {
-			pml2_base = pml2;
-		}
-
-		for (int j = 0; j < 512; j++) {
-			pml2[j] = (((uintptr_t)pml1_base + ((i * 512 + j) << 12))) | 3;
-		}
-	}
-
-	size_t hhdm_pml3_count = hhdm_pml2_count / 512;
-
-	uint64_t *pml3_base = NULL;
-
-	for (size_t i = 0; i < hhdm_pml3_count; i++) {
-		uint64_t *pml3 = (uint64_t *)alloc();
-		hhdm_pml4[i] = (uintptr_t)pml3 | 3;
-
-		if (pml3_base == NULL) {
-			pml3_base = pml3;
-		}
-
-		for (int j = 0; j < 512; j++) {
-			pml3[j] = (((uintptr_t)pml2_base + ((i * 512 + j) << 12))) | 3;
-		}
-	}
-
-	size_t kernel_count = ((kernel_phys_end - kernel_phys_start) >> 12);
+	uint64_t kernel_count = ((kernel_phys_end - kernel_phys_start) >> 12);
 
 	uint64_t *kpml1 = (uint64_t *)alloc();
 
@@ -249,9 +260,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		kpml1[i] = ((uintptr_t)alloc()) | 3;
 	}
 
-	size_t total_pages = hhdm_pml1_count + hhdm_pml2_count + hhdm_pml3_count + 1;
-	printf("%d pages used for the HHDM\n", total_pages);
-
 	int kpml4_ei = (kernel_info[0] >> 39) & 0x1FF;
 	int kpml3_ei = (kernel_info[0] >> 30) & 0x1FF;
 	int kpml2_ei = (kernel_info[0] >> 21) & 0x1FF;
@@ -262,6 +270,10 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	hhdm_pml4[kpml4_ei] = ((uintptr_t)kpml3) | 3;
 	kpml3[kpml3_ei] = ((uintptr_t)kpml2) | 3;
 	kpml2[kpml2_ei] = ((uintptr_t)kpml1) | 3;
+
+	printf("HHDM PML4 Located at: 0x%"PRIX64"\n", (uint64_t)hhdm_pml4);
+
+	for (;;);
 
 	return 0;
 }

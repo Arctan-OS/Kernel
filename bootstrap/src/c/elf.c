@@ -56,7 +56,7 @@ uint64_t *load_elf(uint32_t elf_addr) {
 	info[0] = prog_header->p_offset;
 	info[1] = elf_header->e_entry;
 
-	printf("Entry: %8X%8X\n", (uint32_t)(elf_header->e_entry >> 32), (uint32_t)(elf_header->e_entry));
+	printf("Entry: %"PRIX64"\n", (elf_header->e_entry));
 
 	for (int i = 0; i < elf_header->e_phnum; i += elf_header->e_phentsize) {
 		printf("Program Header %d, Type \"%s\", P:%"PRIX64", V:%"PRIX64", Offset: %"PRIX64"\n", i, pt_names[prog_header->p_type], prog_header->p_paddr, prog_header->p_vaddr, prog_header->p_offset);

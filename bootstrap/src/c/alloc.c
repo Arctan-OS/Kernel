@@ -14,9 +14,6 @@ void *alloc() {
 	}
 
 	void *address = (void *)head;
-
-	printf("Allocated %p\n", address);
-
 	head = head->next;
 	return address;
 }
