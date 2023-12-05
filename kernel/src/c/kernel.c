@@ -10,13 +10,14 @@
 struct pool_descriptor *kernel_heap_pool;
 
 int kernel_main(uint32_t mbi_ptr) {
-	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
-
+	outb(0xE9, 'A');
 	for (;;);
 
-	*kernel_heap_pool = init_pool((void *)&__KERNEL_END__, PAGE_SIZE, 512);
+//	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	parse_mbi(mbi_ptr);
+//	*kernel_heap_pool = init_pool((void *)&__KERNEL_END__, PAGE_SIZE, 512);
+
+//	parse_mbi(mbi_ptr);
 
 	int t = 0;
 	uint8_t sw = 1;

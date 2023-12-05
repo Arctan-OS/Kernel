@@ -38,7 +38,7 @@ void init_allocator(struct multiboot_mmap_entry *entries, int size, uintptr_t ke
 			continue;
 		}
 
-		printf("Freeing region: %d %d\n", i, contains_kernel_end);
+		printf("Found free region (MMAP Entry %d), %s, initializing as free\n", i + 1, (contains_kernel_end ? "which contains the end of the kernel" : "which does not contain the end of the kernel"));
 
 		j = ALIGN(contains_kernel_end ? kernel_end + 0x1000 : j, 0x1000);
 
@@ -57,5 +57,6 @@ void init_allocator(struct multiboot_mmap_entry *entries, int size, uintptr_t ke
 		}
 	}
 
-	printf("Allocator head = %X\n", head);
+	printf("Allocator head is located at 0x%"PRIX64"\n", (uint64_t)head);
+	printf("Allocator tail is located at 0x%"PRIX64"\n", (uint64_t)current);
 }

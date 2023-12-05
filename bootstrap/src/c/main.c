@@ -17,7 +17,8 @@ const char *kernel_module_name = "arctan-module.kernel.efi";
 
 uint32_t kernel_phys_start = 0x0;
 uint32_t kernel_phys_end = 0x0;
-uint64_t *kernel_info = NULL;
+uint64_t kernel_vaddr = 0x0;
+uint64_t kernel_elf_off = 0x0;
 
 uint64_t mem_phys_first_free = 0x0;
 uint64_t size_phys_first_free = 0x0;
@@ -28,7 +29,6 @@ extern uint8_t __BOOTSTRAP_END__; // Address should be aligned to 0x1000
 // Temp
 int framebuffer_width = 0;
 int framebuffer_height = 0;
-uint64_t kernel_vaddr = 0;
 uint64_t *hhdm_pml4 = NULL;
 
 struct multiboot_tag_framebuffer *framebuffer_tag = NULL;
@@ -100,8 +100,11 @@ void read_tags(uint8_t *boot_info) {
 				kernel_phys_start = info->mod_start;
 				kernel_phys_end = info->mod_end;
 
-				kernel_info = load_elf(info->mod_start);
-				printf("%s\n", ((kernel_info[0] != 0) ? "Parsed Kernel ELF!" : "Failed to parse Kernel ELF"));
+				uint64_t *kernel_info = load_elf(info->mod_start);
+				kernel_elf_off = kernel_info[0];
+				kernel_vaddr = kernel_info[1];
+
+				printf("%s offset is %"PRIX64"\n", ((kernel_info[0] != 0) ? "Parsed Kernel ELF!" : "Failed to parse Kernel ELF"), kernel_info[0]);
 			}
 
 			break;
@@ -141,12 +144,12 @@ void read_tags(uint8_t *boot_info) {
 		}
 
 		case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
-			if (framebuffer_tag == NULL) {
+			//if (framebuffer_tag == NULL) {
 				framebuffer_tag = (struct multiboot_tag_framebuffer *)tags;
-				tags = boot_info + 8;
-
-				continue;
-			}
+			//	tags = boot_info + 8;
+			//
+			//	continue;
+			//}
 		}
 		}
 
@@ -164,7 +167,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	cpu_checks();
 	install_gdt();
 	read_tags(boot_info);
-	
+
 	// Assert the kernel exists (should not be located at 0x0000)
 	ASSERT(kernel_phys_start != 0)
 	ASSERT((kernel_phys_start & 0xFFF) == 0) // Ensure kernel is page aligned
@@ -177,10 +180,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	framebuffer_width = framebuffer_tag->common.framebuffer_width;
 	framebuffer_height = framebuffer_tag->common.framebuffer_height;
 
-	printf("%dx%dx%d %"PRIX64"(%d)\n", framebuffer_width, framebuffer_height, framebuffer_tag->common.framebuffer_bpp, framebuffer_tag->common.framebuffer_addr, framebuffer_tag->common.framebuffer_type);
+	printf("%"PRId32"x%"PRId32"x%"PRId32" 0x%"PRIX64"(%d)\n", framebuffer_width, framebuffer_height, framebuffer_tag->common.framebuffer_bpp, framebuffer_tag->common.framebuffer_addr, framebuffer_tag->common.framebuffer_type);
 	printf("All is well, kernel module is located at 0x%X.\n", (uint32_t)kernel_phys_start);
 
-	kernel_vaddr = kernel_info[1];
 
 	hhdm_pml4 = (uint64_t *)alloc();
 	memset(hhdm_pml4, 0, 0x1000);
@@ -190,7 +192,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	uint64_t hhdm_pml2_count = (uint64_t)(hhdm_pml1_count >> 9) + 1;
 	uint64_t hhdm_pml3_count = (uint64_t)(hhdm_pml2_count >> 9) + 1;
 
-	printf("%"PRId64" %"PRId64" %"PRId64"\n", hhdm_pml1_count, hhdm_pml2_count, hhdm_pml3_count);
+//	printf("Need %"PRId64" page table(s), %"PRId64" page directory(s), and %"PRId64" page directory pointer(s) for the HHDM\n", hhdm_pml1_count, hhdm_pml2_count, hhdm_pml3_count);
 
 	uint64_t page_address = 0x0;
 
@@ -218,21 +220,20 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 				// Fill out PT
 				for (int i = 0; i < 512; i++) {
 					pt_table[i] = (page_address) | 3;
-//					printf("Identity mapped address: %"PRIX64"\n", page_address);
 					page_address += 0x1000;
 				}
 
 				// Link PT into PD
-				pd_table[pt] = ((uint64_t)pt_table) | 3;
+				pd_table[pt] = ((uintptr_t)pt_table) | 3;
 
-//				printf("Linked PT %d into PD %d\n", (uint32_t)pt, (uint32_t)pd);
+//				printf("Linked PT %"PRId64" into PD %"PRId32"\n", pt, pd);
 			}
 
 			// Change count
 			hhdm_pml1_count -= pt_count;
 
 			// Link PD into PDP table
-			pdp_table[pd] = ((uint64_t)pd_table) | 3;
+			pdp_table[pd] = ((uintptr_t)pd_table) | 3;
 
 //			printf("Linked PD %"PRId32" into PDP %"PRId32"\n", pd, pdp);
 		}
@@ -241,18 +242,19 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		hhdm_pml2_count -= pd_count;
 
 		// Link PDP into PML4
-		hhdm_pml4[pdp] = ((uint64_t)pdp_table) | 3;
+		hhdm_pml4[pdp] = ((uintptr_t)pdp_table) | 3;
 
 //		printf("Linked PDP %"PRId32" into PML4\n", pdp);
 	}
 
-	uint64_t kernel_count = ((kernel_phys_end - kernel_phys_start) >> 12);
+	uint64_t kernel_count = ((kernel_phys_end - kernel_phys_start - kernel_elf_off) >> 12);
 
 	uint64_t *kpml1 = (uint64_t *)alloc();
 
+
 	for (size_t i = 0; i < 512; i++) {
 		if (i <= kernel_count) {
-			kpml1[i] = (kernel_phys_start + (i << 12)) | 3;
+			kpml1[i] = (kernel_phys_start + kernel_elf_off + (i << 12)) | 3;
 
 			continue;
 		}
@@ -260,9 +262,11 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		kpml1[i] = ((uintptr_t)alloc()) | 3;
 	}
 
-	int kpml4_ei = (kernel_info[0] >> 39) & 0x1FF;
-	int kpml3_ei = (kernel_info[0] >> 30) & 0x1FF;
-	int kpml2_ei = (kernel_info[0] >> 21) & 0x1FF;
+	int kpml4_ei = (kernel_vaddr >> 39) & 0x1FF;
+	int kpml3_ei = (kernel_vaddr >> 30) & 0x1FF;
+	int kpml2_ei = (kernel_vaddr >> 21) & 0x1FF;
+
+	printf("%d %d %d\n", kpml4_ei, kpml3_ei, kpml2_ei);
 
 	uint64_t *kpml3 = (uint64_t *)alloc();
 	uint64_t *kpml2 = (uint64_t *)alloc();
@@ -273,7 +277,5 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	printf("HHDM PML4 Located at: 0x%"PRIX64"\n", (uint64_t)hhdm_pml4);
 
-	for (;;);
-
-	return 0;
+	return (uint32_t)hhdm_pml4;
 }

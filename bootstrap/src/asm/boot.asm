@@ -36,7 +36,6 @@ boot_header_end:
 section .text
 
 extern helper
-extern hhdm_pml4
 global _entry
 _entry:		mov esp, stack_end					; Setup stack
 			mov ebp, esp						; Make sure base gets the memo
@@ -44,10 +43,11 @@ _entry:		mov esp, stack_end					; Setup stack
 			push ebx							; Push boot information
 			mov dword [mbi_struct], ebx			; Save MBI Structure pointer
 			call helper							; HELP!
+			push eax
 			mov eax, cr4						; Read CR4
 			or eax, 1 << 5						; Set PAE bit
 			mov cr4, eax						; Write CR4
-			mov eax, hhdm_pml4					; Point EAX to PML4[0]
+			pop eax								; Point EAX to PML4[0]
 			mov cr3, eax						; Point CR3
 			mov ecx, 0xC0000080					; Code for EFER MSR
 			rdmsr								; Read EFER

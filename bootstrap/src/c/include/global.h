@@ -22,6 +22,8 @@
         __typeof__ (b) _b = (b); \
         _a < _b ? _a : _b; })
 
+#define printf printf_
+
 void memset(void *dest, int value, size_t length);
 void memcpy(void *dest, void *src, size_t length);
 size_t strlen(char *a);
