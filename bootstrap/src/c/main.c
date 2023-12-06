@@ -4,6 +4,7 @@
 #include "include/gdt.h"
 #include "include/elf.h"
 #include "include/alloc.h"
+#include "include/idt.h"
 
 #include <cpuid.h>
 #include <stdint.h>
@@ -166,6 +167,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	cpu_checks();
 	install_gdt();
+	install_idt();
 	read_tags(boot_info);
 
 	// Assert the kernel exists (should not be located at 0x0000)
@@ -192,7 +194,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	uint64_t hhdm_pml2_count = (uint64_t)(hhdm_pml1_count >> 9) + 1;
 	uint64_t hhdm_pml3_count = (uint64_t)(hhdm_pml2_count >> 9) + 1;
 
-//	printf("Need %"PRId64" page table(s), %"PRId64" page directory(s), and %"PRId64" page directory pointer(s) for the HHDM\n", hhdm_pml1_count, hhdm_pml2_count, hhdm_pml3_count);
+	printf("Need %"PRId64" page table(s), %"PRId64" page directory(s), and %"PRId64" page directory pointer(s) for the HHDM\n", hhdm_pml1_count, hhdm_pml2_count, hhdm_pml3_count);
 
 	uint64_t page_address = 0x0;
 
@@ -225,8 +227,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 				// Link PT into PD
 				pd_table[pt] = ((uintptr_t)pt_table) | 3;
-
-//				printf("Linked PT %"PRId64" into PD %"PRId32"\n", pt, pd);
 			}
 
 			// Change count
@@ -234,8 +234,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 			// Link PD into PDP table
 			pdp_table[pd] = ((uintptr_t)pd_table) | 3;
-
-//			printf("Linked PD %"PRId32" into PDP %"PRId32"\n", pd, pdp);
 		}
 
 		// Change count
@@ -243,14 +241,12 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 		// Link PDP into PML4
 		hhdm_pml4[pdp] = ((uintptr_t)pdp_table) | 3;
-
-//		printf("Linked PDP %"PRId32" into PML4\n", pdp);
 	}
 
 	uint64_t kernel_count = ((kernel_phys_end - kernel_phys_start - kernel_elf_off) >> 12);
 
 	uint64_t *kpml1 = (uint64_t *)alloc();
-
+	uint64_t *kpml1_2 = (uint64_t *)alloc();
 
 	for (size_t i = 0; i < 512; i++) {
 		if (i <= kernel_count) {
@@ -260,13 +256,14 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		}
 
 		kpml1[i] = ((uintptr_t)alloc()) | 3;
+		kpml1_2[i] = ((uintptr_t)alloc()) | 3;
 	}
 
 	int kpml4_ei = (kernel_vaddr >> 39) & 0x1FF;
 	int kpml3_ei = (kernel_vaddr >> 30) & 0x1FF;
 	int kpml2_ei = (kernel_vaddr >> 21) & 0x1FF;
 
-	printf("%d %d %d\n", kpml4_ei, kpml3_ei, kpml2_ei);
+	printf("Mapping kernel to PML4[%d] PML3[%d] PML2[%d]\n", kpml4_ei, kpml3_ei, kpml2_ei);
 
 	uint64_t *kpml3 = (uint64_t *)alloc();
 	uint64_t *kpml2 = (uint64_t *)alloc();
@@ -274,6 +271,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	hhdm_pml4[kpml4_ei] = ((uintptr_t)kpml3) | 3;
 	kpml3[kpml3_ei] = ((uintptr_t)kpml2) | 3;
 	kpml2[kpml2_ei] = ((uintptr_t)kpml1) | 3;
+	kpml2[kpml2_ei + 1] = ((uintptr_t)kpml1_2) | 3;
 
 	printf("HHDM PML4 Located at: 0x%"PRIX64"\n", (uint64_t)hhdm_pml4);
 

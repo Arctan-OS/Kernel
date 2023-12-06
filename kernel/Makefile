@@ -8,7 +8,7 @@ OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 CPPFLAGS ?=
 CFLAGS := -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs \
 		       -nostdlib -ffreestanding -c -I src/c/include/ -masm=intel \
-		       -Wall -Wextra -mabi=sysv $(CPPFLAGS) -g
+		       -Wall -Wextra -mabi=sysv $(CPPFLAGS) -mno-sse -mno-sse2 -g
 
 LDFLAGS := -Tlinker.ld -melf_x86_64 -z max-page-size=0x1000 -o $(PRODUCT)
 

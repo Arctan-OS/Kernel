@@ -10,47 +10,47 @@ int char_y = 0;
 uint8_t *screen = NULL;
 
 void putc(char c) {
-	// if (screen == NULL) {
-	// 	screen = (uint8_t *)framebuffer_tag->common.framebuffer_addr;
-	// 	return;
-	// }
+	/* // if (screen == NULL) { */
+	/* // 	screen = (uint8_t *)framebuffer_tag->common.framebuffer_addr; */
+	/* // 	return; */
+	/* // } */
 
-	switch (c) {
-	case '\n':
-		char_y++;
-	case '\r':
-		char_x = 0;
+	/* switch (c) { */
+	/* case '\n': */
+	/* 	char_y++; */
+	/* case '\r': */
+	/* 	char_x = 0; */
 
-		break;
+	/* 	break; */
 
-	case '\t':
-		char_x += 8;
+	/* case '\t': */
+	/* 	char_x += 8; */
 
-		break;
+	/* 	break; */
 
-	default:
-		// *(screen + (char_x + (char_y * WIDTH)) * 2) = c;
-		char_x++;
+	/* default: */
+	/* 	// *(screen + (char_x + (char_y * WIDTH)) * 2) = c; */
+	/* 	char_x++; */
 
-		if (char_x >= WIDTH) {
-			char_x = 0;
-			char_y++;
-		}
+	/* 	if (char_x >= WIDTH) { */
+	/* 		char_x = 0; */
+	/* 		char_y++; */
+	/* 	} */
 
-		break;
-	}
+	/* 	break; */
+	/* } */
 
-	if (char_y >= HEIGHT) {
-		// memcpy(screen, screen + (WIDTH * 2), WIDTH * HEIGHT * 2);
-		char_y--;
-	}
+	/* if (char_y >= HEIGHT) { */
+	/* 	// memcpy(screen, screen + (WIDTH * 2), WIDTH * HEIGHT * 2); */
+	/* 	char_y--; */
+	/* } */
 
-	// Move cursor
-	uint16_t pos = char_y * WIDTH + char_x;
-	outb(0x3D4, 0x0F);
-	outb(0x3D5, (uint8_t)(pos & 0xFF));
-	outb(0x3D4, 0x0E);
-	outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
+	/* // Move cursor */
+	/* uint16_t pos = char_y * WIDTH + char_x; */
+	/* outb(0x3D4, 0x0F); */
+	/* outb(0x3D5, (uint8_t)(pos & 0xFF)); */
+	/* outb(0x3D4, 0x0E); */
+	/* outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF)); */
 
 	E9_HACK(c)
 }
