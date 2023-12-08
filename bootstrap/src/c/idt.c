@@ -34,7 +34,7 @@ extern void _install_idt();
 extern void _idt_stub_0_();
 
 void install_idt() {
-	install_idt_gate(0, (uintptr_t)_idt_stub_0_, 0x08, 0b1000110);
+	install_idt_gate(0, (uintptr_t)&_idt_stub_0_, 0x08, 0x8E);
 
 	idtr.limit = sizeof(idt_entries) * 8 - 1;
 	idtr.base = (uintptr_t)&idt_entries;
