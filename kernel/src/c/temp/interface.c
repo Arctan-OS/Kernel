@@ -52,7 +52,7 @@ void putc(char c) {
 	/* outb(0x3D4, 0x0E); */
 	/* outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF)); */
 
-	E9_HACK(c)
+	E9_HACK(c);
 }
 
 void puts(char *s) {

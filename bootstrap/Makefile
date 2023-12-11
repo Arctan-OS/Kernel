@@ -9,7 +9,7 @@ CPPFLAGS ?=
 CFLAGS := -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs \
 		       -nostdlib -ffreestanding -c -I src/c/icnlude/ -masm=intel \
 		       -Wall -Wextra -m32 $(CPPFLAGS) -fno-builtin-printf -mno-sse \
-			   -mno-sse2 -g
+			   -mno-sse2
 
 LDFLAGS := -Tlinker.ld -melf_i386 -z max-page-size=0x1000 -o $(PRODUCT)
 

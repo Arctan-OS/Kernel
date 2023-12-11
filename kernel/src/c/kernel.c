@@ -11,13 +11,13 @@ struct pool_descriptor *kernel_heap_pool;
 
 int kernel_main(uint32_t mbi_ptr) {
 //	outb(0xE9, 'A');
-//	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
+	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	const char *string = "Hello World";
+//	const char *string = "Hello World";
 
-	for (int i = 0; i < 20; i++) {
-		outb(0xE9, *(string + i));
-	}
+//	for (int i = 0; i < 20; i++) {
+//		outb(0xE9, *(string + i));
+//	}
 
 
 	for (;;);
