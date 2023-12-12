@@ -25,8 +25,8 @@ struct junction_args {
 	uint32_t edx;
 	uint32_t esi;
 	uint32_t edi;
-	uint32_t esp;
 	uint32_t ebp;
+	uint32_t esp;
 	uint32_t code;
 }__attribute__((packed));
 
@@ -74,22 +74,67 @@ void install_idt_gate(int i, uint32_t offset, uint16_t segment, uint8_t attrs) {
 	idt_entries[i].zero = 0;
 }
 
+void handle_gp(int error_code) {
+	if (error_code == 0) {
+		printf("#GP may have been caused by one of the following:\n\tAn operand of the instruction\n\tA selector from a gate which is the operand of the instruction\n\tA selector from a TSS involved in a task switch\n\t IDT vector number\n");
+		return;
+	}
+
+	printf("Error code 0x%02X\n", error_code);
+}
+
 void interrupt_junction(uint32_t esp) {
+	// Cast structure pushed to stack into args
 	struct junction_args *args = (struct junction_args *)(esp);
 
-	printf("Interrupt %d Received, %s\n", args->code, exception_names[args->code]);
+	// Pop the interrupt args->code off the stack
+	args->esp += 4;
 
-	printf("EAX: %X\n", args->eax);
-	printf("EBX: %X\n", args->ebx);
-	printf("ECX: %X\n", args->ecx);
-	printf("EDX: %X\n", args->edx);
-	printf("ESI: %X\n", args->esi);
-	printf("EDI: %X\n", args->edi);
-	printf("ESP: %X\n", args->esp); // This may be a little bit inaccurate due
-					// to where it is in the structure
-	printf("EBP: %X\n", args->ebp);
+	// Dump registers
+	printf("Received Interrupt %d, %s\n", args->code, exception_names[args->code]);
+	printf("EAX: 0x%X\n", args->eax);
+	printf("EBX: 0x%X\n", args->ebx);
+	printf("ECX: 0x%X\n", args->ecx);
+	printf("EDX: 0x%X\n", args->edx);
+	printf("ESI: 0x%X\n", args->esi);
+	printf("EDI: 0x%X\n", args->edi);
+	printf("ESP: 0x%X\n", args->esp);
+	printf("EBP: 0x%X\n", args->ebp);
 
-	args->eax = 0xABABABAB;
+	// If we enter none of the following conditions,
+	// this is the return address
+	uint32_t stack_elem = *(uint32_t *)args->esp;
+
+	// Handle error code if present
+	switch (args->code) {
+	case 21:
+	case 17:
+	case 14:
+	case 13:
+		handle_gp(stack_elem);
+		goto fall_through;
+	case 12:
+	case 11:
+	case 10:
+	case 8: {
+fall_through:;
+		// Pop the error code off the stack
+		args->esp += 4;
+		// This should now be the return address
+		stack_elem = *(uint32_t *)args->esp;
+
+		break;
+	}
+	}
+
+	printf("Return address: 0x%X\n", stack_elem);
+
+	// Send EOI
+	if (args->code >= 8) {
+		outb(0xA0, 0x20);
+	}
+
+	outb(0x20, 0x20);
 }
 
 extern void _install_idt();

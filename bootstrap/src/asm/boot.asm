@@ -43,8 +43,7 @@ _entry:				mov esp, stack_end					; Setup stack
 					push ebx							; Push boot information
 					mov dword [mbi_struct], ebx			; Save MBI Structure pointer
 					call helper							; HELP!
-					int 12
-					push eax
+					push eax							; Save PML4 address
 					mov eax, cr4						; Read CR4
 					or eax, 1 << 5						; Set PAE bit
 					mov cr4, eax						; Write CR4
@@ -85,8 +84,8 @@ _install_idt:		cli
 					ret
 
 %macro PUSH_ALL 0
-					push ebp
 					push esp
+					push ebp
 					push edi
 					push esi
 					push edx
@@ -102,8 +101,8 @@ _install_idt:		cli
 					pop edx
 					pop esi
 					pop edi
-					pop esp
 					pop ebp
+					pop esp
 %endmacro
 
 extern interrupt_junction
@@ -115,9 +114,6 @@ _idt_stub_%1_:		push %1
 					call interrupt_junction
 					pop esp
 					POP_ALL
-
-					jmp $
-
 					iret
 %endmacro
 

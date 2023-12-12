@@ -10,8 +10,8 @@
 struct pool_descriptor *kernel_heap_pool;
 
 int kernel_main(uint32_t mbi_ptr) {
-//	outb(0xE9, 'A');
-	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
+	outb(0xE9, 'A');
+//	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 //	const char *string = "Hello World";
 
