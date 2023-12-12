@@ -8,26 +8,23 @@
 #include <mm/alloc.h>
 
 struct pool_descriptor *kernel_heap_pool;
+	const char *string = "Hello World\n";
 
 int kernel_main(uint32_t mbi_ptr) {
-	outb(0xE9, 'A');
-//	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
-
-//	const char *string = "Hello World";
-
-//	for (int i = 0; i < 20; i++) {
-//		outb(0xE9, *(string + i));
-//	}
-
-
-	for (;;);
-
-	*kernel_heap_pool = init_pool((void *)&__KERNEL_END__, PAGE_SIZE, 128);
+	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	parse_mbi(mbi_ptr);
 
+//	for (;;);
+//	*kernel_heap_pool = init_pool((void *)&__KERNEL_END__, PAGE_SIZE, 128);
+
 	int t = 0;
 	uint8_t sw = 1;
+
+//	fb_current_context.width = 1280;
+//	fb_current_context.height = 800;
+//	fb_current_context.bpp = 32;
+//	fb_current_context.virtual_buffer = (uint32_t *)0xFD000000;
 
 	while (1) {
 		for (int i = 0; i < fb_current_context.height; i++) {

@@ -27,7 +27,7 @@ int parse_mbi(uint32_t ptr) {
 		}
 
 		case MULTIBOOT_TAG_TYPE_MMAP: {
-			initialize_pmm((struct multiboot_tag_mmap *)tag);
+			//initialize_pmm((struct multiboot_tag_mmap *)tag);
 
 			break;
 		}
