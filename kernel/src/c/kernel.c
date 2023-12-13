@@ -1,3 +1,23 @@
+/*
+    Arctan - Operating System Kernel
+    Copyright (C) 2023  awewsomegamer
+
+    This file is apart of Arctan.
+
+    Arctan is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; version 2
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
 #include <stdint.h>
 #include <stddef.h>
 #include <mbi_struct.h>
@@ -15,16 +35,10 @@ int kernel_main(uint32_t mbi_ptr) {
 
 	parse_mbi(mbi_ptr);
 
-//	for (;;);
-//	*kernel_heap_pool = init_pool((void *)&__KERNEL_END__, PAGE_SIZE, 128);
+	//*kernel_heap_pool = init_pool((void *)&__KERNEL_END__, PAGE_SIZE, 128);
 
 	int t = 0;
 	uint8_t sw = 1;
-
-//	fb_current_context.width = 1280;
-//	fb_current_context.height = 800;
-//	fb_current_context.bpp = 32;
-//	fb_current_context.virtual_buffer = (uint32_t *)0xFD000000;
 
 	while (1) {
 		for (int i = 0; i < fb_current_context.height; i++) {

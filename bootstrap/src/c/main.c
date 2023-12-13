@@ -1,3 +1,23 @@
+/*
+    Arctan - Operating System Kernel
+    Copyright (C) 2023  awewsomegamer
+
+    This file is apart of Arctan.
+
+    Arctan is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; version 2
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
 #include "include/multiboot2.h"
 #include "include/interface.h"
 #include "include/global.h"
@@ -185,7 +205,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	printf("%"PRId32"x%"PRId32"x%"PRId32" 0x%"PRIX64"(%d)\n", framebuffer_width, framebuffer_height, framebuffer_tag->common.framebuffer_bpp, framebuffer_tag->common.framebuffer_addr, framebuffer_tag->common.framebuffer_type);
 	printf("All is well, kernel module is located at 0x%X.\n", (uint32_t)kernel_phys_start);
 
-
 	hhdm_pml4 = (uint64_t *)alloc();
 	memset(hhdm_pml4, 0, 0x1000);
 
@@ -197,7 +216,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	printf("Need %"PRId64" page table(s), %"PRId64" page directory(s), and %"PRId64" page directory pointer(s) for the HHDM\n", hhdm_pml1_count, hhdm_pml2_count, hhdm_pml3_count);
 
 	uint64_t page_address = 0x0;
-
 	for (uint64_t pdp = 0; pdp < hhdm_pml3_count; pdp++) {
 		// Allocate table
 		uint64_t *pdp_table = (uint64_t *)alloc();
