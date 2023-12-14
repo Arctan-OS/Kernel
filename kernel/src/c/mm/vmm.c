@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "global.h"
+#include <global.h>
 #include <mm/vmm.h>
 #include <io/ctrl_reg.h>
 #include <mm/alloc.h>
@@ -35,7 +35,7 @@ void unmap_range(uint64_t virtual, size_t size) {
 }
 
 struct pml4 *init_pml4() {
-	struct pml4 *table = (struct pml4 *)alloc_pages(kernel_heap_pool, 1);
+	struct pml4 *table = (struct pml4 *)0x1000; //alloc_pages(kernel_heap_pool, 1);
 	memset(table, 0, PAGE_SIZE);
 
 	head->next = table;

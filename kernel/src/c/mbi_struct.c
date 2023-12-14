@@ -33,7 +33,8 @@ int parse_mbi(uint32_t ptr) {
 	uint32_t total_size = *(uint32_t *)(raw_ptr) - 8; // Exclude the fixed part
 	struct mbi_tag_common *tag = (struct mbi_tag_common *)((uintptr_t)(ptr + 8));
 	uint32_t bytes_parsed = 0;
-	
+
+
 	while (bytes_parsed < total_size) {
 		tag = (struct mbi_tag_common *)((uintptr_t)(ptr + 8 + bytes_parsed));
 

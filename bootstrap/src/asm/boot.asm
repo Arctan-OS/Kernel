@@ -173,6 +173,7 @@ bits 64
 extern framebuffer_width
 extern framebuffer_height
 extern kernel_vaddr
+extern hhdm_pml4_end
 
 kernel_station:		mov ax, 0x20					; Set AX to 64-bit data offset
 					mov ds, ax						; Set DS to AX
@@ -182,6 +183,7 @@ kernel_station:		mov ax, 0x20					; Set AX to 64-bit data offset
 					mov es, ax						; Set ES to AX
 
 					mov edi, dword [mbi_struct]		; Pass the pointer of MBI Structure
+					mov esi, dword [hhdm_pml4_end]  ; Pass the pointer of the HHDM_PML4's end
 					mov rax, qword [kernel_vaddr]
 					call rax						; Call to kernel
 

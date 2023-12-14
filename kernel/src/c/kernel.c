@@ -18,6 +18,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#include "global.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <mbi_struct.h>
@@ -25,20 +26,39 @@
 #include <io/port.h>
 #include <temp/interface.h>
 #include <mm/vmm.h>
-#include <mm/alloc.h>
+#include <mm/freelist.h>
 
-struct pool_descriptor *kernel_heap_pool;
-	const char *string = "Hello World\n";
+struct Arc_FreelistMeta kernel_heap;
+// TODO: The following string aligns the entire
+//       kernel. I have no idea why, but I am
+//       not satisfied with this solution.
+const char *hello = "Hello World";
 
-int kernel_main(uint32_t mbi_ptr) {
-	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
+int kernel_main(uint32_t mbi_ptr, uint32_t hhdm_pml4_end) {
+	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay %X.\n", hhdm_pml4_end);
+
+	if (Arc_InitializeFreelist((void *)(uintptr_t)hhdm_pml4_end, (void *)(uintptr_t)(hhdm_pml4_end + PAGE_SIZE * 512), PAGE_SIZE, &kernel_heap) != 0) {
+		printf("Failed to initialize kernel heap freelist\n");
+		for (;;);
+	}
+
+	void *a = Arc_ListAlloc(&kernel_heap);
+	printf("%X\n", a);
+	printf("%X\n", Arc_ListAlloc(&kernel_heap));
+	Arc_ListFree(&kernel_heap, a);
+	printf("%X\n", Arc_ListAlloc(&kernel_heap));
 
 	parse_mbi(mbi_ptr);
 
-	//*kernel_heap_pool = init_pool((void *)&__KERNEL_END__, PAGE_SIZE, 128);
-
 	int t = 0;
 	uint8_t sw = 1;
+
+	// TODO: The kernel is extremely unstable.
+	//       Sometimes it triple faults because
+	//       we print, sometimes because we access
+	//       mapped memory, or sometimes cause
+	//       why not.
+	for (;;);
 
 	while (1) {
 		for (int i = 0; i < fb_current_context.height; i++) {
