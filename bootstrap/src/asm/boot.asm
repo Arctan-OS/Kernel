@@ -186,6 +186,9 @@ kernel_station:		mov ax, 0x20					; Set AX to 64-bit data offset
 					mov esi, dword [hhdm_pml4_end]  ; Pass the pointer of the HHDM_PML4's end
 					mov rax, qword [kernel_vaddr]
 					call rax						; Call to kernel
+					; If the kernel returns, it wants
+					; to be swapped, so swap it.
+
 
 					jmp $							; Spin
 
