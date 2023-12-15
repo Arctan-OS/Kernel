@@ -46,6 +46,12 @@ void *free(void *address) {
 	return address;
 }
 
+// TODO: This will overwrite modules included
+//       after the kernel in grub.cfg. Get an
+//       argument to point the very end of modules
+//       so this function can determine a proper
+//       address to initialze the allocator
+//       at (kernel_end = module_end).
 void init_allocator(struct multiboot_mmap_entry *entries, int size, uintptr_t kernel_end) {
 	struct free_node *current = NULL;
 

@@ -37,6 +37,7 @@ const char *hello = "Hello World";
 int kernel_main(uint32_t mbi_ptr, uint32_t hhdm_pml4_end) {
 	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay %X.\n", hhdm_pml4_end);
 
+//	uint64_t base = ((uint64_t)hhdm_pml4_end) + ARC_HHDM_VADDR;
 	if (Arc_InitializeFreelist((void *)(uintptr_t)hhdm_pml4_end, (void *)(uintptr_t)(hhdm_pml4_end + PAGE_SIZE * 512), PAGE_SIZE, &kernel_heap) != 0) {
 		printf("Failed to initialize kernel heap freelist\n");
 		for (;;);
