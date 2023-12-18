@@ -22,6 +22,7 @@
 #include <multiboot2.h>
 #include <framebuffer/framebuffer.h>
 #include <mm/pmm.h>
+#include <arctan.h>
 
 struct mbi_tag_common {
 	uint32_t type;
@@ -42,7 +43,7 @@ int parse_mbi(uint32_t ptr) {
 		case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
 			struct multiboot_tag_framebuffer *info = (struct multiboot_tag_framebuffer *)tag;
 
-			init_master_framebuffer((void *)info->common.framebuffer_addr, NULL, info->common.framebuffer_width, info->common.framebuffer_height, info->common.framebuffer_bpp);
+			init_master_framebuffer((void *)(info->common.framebuffer_addr + ARC_HHDM_VADDR), NULL, info->common.framebuffer_width, info->common.framebuffer_height, info->common.framebuffer_bpp);
 
 			break;
 		}

@@ -22,7 +22,7 @@
 #define ARC_ARCTAN_H
 
 #define ARC_KERNEL_VADDR 0xFFFFFFFF80000000
-#define ARC_HHDM_VADDR 0xFFFFFFFF00000000
+#define ARC_HHDM_VADDR   0xFFFFC00000000000 // 192 TiB
 
 #include <stdint.h>
 #include <stddef.h>

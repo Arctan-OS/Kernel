@@ -215,13 +215,12 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	uint64_t hhdm_pml2_count = (uint64_t)(hhdm_pml1_count >> 9) + 1;
 	uint64_t hhdm_pml3_count = (uint64_t)(hhdm_pml2_count >> 9) + 1;
 
-	int hhdm_pml4_ei = (ARC_HHDM_VADDR >> 39) & 0x1FF;
-	int hhdm_pml3_ei = (ARC_HHDM_VADDR >> 30) & 0x1FF;
-	int hhdm_pml2_ei = (ARC_HHDM_VADDR >> 21) & 0x1FF;
-	int hhdm_pml1_ei = (ARC_HHDM_VADDR >> 12) & 0x1FF;
+	uint64_t hhdm_pml4_ei = ((ARC_HHDM_VADDR >> 39) & 0x1FF);
+	uint64_t hhdm_pml3_ei = ((ARC_HHDM_VADDR >> 30) & 0x1FF);
+	uint64_t hhdm_pml2_ei = ((ARC_HHDM_VADDR >> 21) & 0x1FF);
 
 	printf("Need %"PRId64" page table(s), %"PRId64" page directory(s), and %"PRId64" page directory pointer(s) for the HHDM\n", hhdm_pml1_count, hhdm_pml2_count, hhdm_pml3_count);
-	printf("HHDM offset 0x%"PRIX64" (PML4[%d]PML3[%d]PML2[%d]PML1[%d])\n", ARC_HHDM_VADDR, hhdm_pml4_ei, hhdm_pml3_ei, hhdm_pml2_ei, hhdm_pml1_ei);
+	printf("HHDM offset 0x%"PRIX64" (PML4[%lu]PML3[%lu]PML2[%lu])\n", ARC_HHDM_VADDR, hhdm_pml4_ei, hhdm_pml3_ei, hhdm_pml2_ei);
 
 	uint64_t page_address = 0x0;
 	for (uint64_t pdp = 0; pdp < hhdm_pml3_count; pdp++) {
@@ -252,35 +251,39 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 				}
 
 				// Link PT into PD
-				pd_table[pd > 0 ? pt : pt + hhdm_pml2_ei] = ((uintptr_t)pt_table) | 3;
+				// TODO: Account for the original offset in hhdm_pml2_ei
+				pd_table[pt] = ((uintptr_t)pt_table) | 3;
+//				printf("Hooked PT into PD[%d]\n", pt);
 			}
 
 			// Change count
 			hhdm_pml1_count -= pt_count;
 
 			// Link PD into PDP table
-			pdp_table[pdp > 0 ? pd : hhdm_pml3_ei + pd] = ((uintptr_t)pd_table) | 3;
+			// TODO: Account for the original offset in hhdm_pml3_ei
+			pdp_table[pd] = ((uintptr_t)pd_table) | 3;
+//			printf("Hooked PD into PDP[%d]\n", pd);
 		}
 
 		// Change count
 		hhdm_pml2_count -= pd_count;
 
 		// Link PDP into PML4
-		hhdm_pml4[hhdm_pml4_ei + pdp] = ((uintptr_t)pdp_table) | 3;
+		hhdm_pml4[pdp + hhdm_pml4_ei] = ((uintptr_t)pdp_table) | 3;
+//		printf("Hooked PDP into pml4[%lu]\n", pdp + hhdm_pml4_ei);
 	}
 
 	uint64_t *bpml3 = (uint64_t *)alloc();
 	uint64_t *bpml2 = (uint64_t *)alloc();
 	uint64_t *bpml1 = (uint64_t *)alloc();
 
-	*bpml3 = ((uintptr_t)bpml2) | 3;
-	*bpml2 = ((uintptr_t)bpml1) | 3;
+	hhdm_pml4[0] = ((uintptr_t)bpml3) | 3;
+	bpml3[0] = ((uintptr_t)bpml2) | 3;
+	bpml2[0] = ((uintptr_t)bpml1) | 3;
 
 	for (int i = 0; i < 512; i++) {
-		*bpml1 = (i << 12) | 3;
+		bpml1[i] = (i << 12) | 3;
 	}
-
-	hhdm_pml4[0] = ((uintptr_t)bpml3) | 3;
 
 	uint64_t kernel_count = ((kernel_phys_end - kernel_phys_start - kernel_elf_off) >> 12);
 
@@ -315,6 +318,12 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	kpml2[kpml2_ei + 1] = ((uintptr_t)kpml1_2) | 3;
 
 	printf("HHDM PML4 Located at: 0x%"PRIX64"\n", (uint64_t)hhdm_pml4);
+
+	for (int i = 0; i < framebuffer_height; i++) {
+		for (int j = 0; j < framebuffer_width; j++) {
+			*((uint32_t *)framebuffer_tag->common.framebuffer_addr + (i * framebuffer_width) + j) = 0x0043210FF;
+		}
+	}
 
 	return (uint32_t)hhdm_pml4;
 }
