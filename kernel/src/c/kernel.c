@@ -51,13 +51,40 @@ int kernel_main(uint32_t mbi_ptr, uint32_t hhdm_pml4_end) {
 	Arc_ListFree(&kernel_heap, a);
 	printf("%X\n", Arc_ListAlloc(&kernel_heap));
 
-//	parse_mbi(mbi_ptr);
+	parse_mbi(mbi_ptr);
 
 	// TODO: The kernel is extremely unstable.
 	//       Sometimes it triple faults because
 	//       we print, sometimes because we access
 	//       mapped memory, or sometimes cause
 	//       why not.
+	int t = 0;
+	uint8_t sw = 1;
+
+	while (1) {
+		for (int i = 0; i < fb_current_context.height; i++) {
+			for (int j = 0; j < fb_current_context.width; j++) {
+				int value = (i - j * t);
+
+				int x = (j + value) % fb_current_context.width;
+				int y = (i + value) % fb_current_context.height;
+
+				int xf = ((x * x) / x);
+				int yf = ((y * y) / y);
+
+				if (xf > 0 && yf > 0) {
+					*((uint32_t *)fb_current_context.virtual_buffer + (yf * fb_current_context.width) + xf) += (value + t * (-1 * sw)) * (sw + 1);
+				}
+			}
+		}
+
+		if (t < 0x400 && sw == 1) {
+			t++;
+		} else if (t >= 0x1000 || sw == 0) {
+			t--;
+			sw = (t <= 2);
+		}
+	}
 
 	for (;;);
 
