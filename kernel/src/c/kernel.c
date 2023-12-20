@@ -25,17 +25,20 @@
 #include <mbi_struct.h>
 #include <framebuffer/framebuffer.h>
 #include <io/port.h>
-#include <temp/interface.h>
 #include <mm/vmm.h>
 #include <mm/freelist.h>
+#include <framebuffer/printf.h>
+#include <arch/sse.h>
 
 struct Arc_FreelistMeta kernel_heap;
 // TODO: The following string aligns the entire
 //       kernel. I have no idea why, but I am
 //       not satisfied with this solution.
-const char *hello = "Hello World";
+//const char *hello = "Hello World";
 
 int kernel_main(uint32_t mbi_ptr, uint32_t hhdm_pml4_end) {
+	init_sse();
+
 	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	uint64_t base = ((uint64_t)hhdm_pml4_end + ARC_HHDM_VADDR);

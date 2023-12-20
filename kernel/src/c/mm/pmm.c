@@ -20,9 +20,9 @@
 
 #include <mm/pmm.h>
 #include <global.h>
-#include <temp/interface.h>
 #include <util.h>
 #include <mm/alloc.h>
+#include <framebuffer/printf.h>
 
 int initialize_pmm(struct multiboot_tag_mmap *mmap) {
 

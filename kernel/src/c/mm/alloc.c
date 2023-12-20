@@ -20,7 +20,7 @@
 
 #include <mm/alloc.h>
 #include <global.h>
-#include <temp/interface.h>
+#include <framebuffer/printf.h>
 
 void *alloc_pages(struct pool_descriptor *pool, size_t pages) {
 	if (pages == 0) {

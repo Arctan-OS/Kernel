@@ -65,6 +65,9 @@ const char *mem_types[] = {
 };
 
 void cpu_checks() {
+	// TODO: Check if CPUID is supported
+	// TODO: Check if extended functions are supported
+
 	// Preform checks
 	uint32_t __eax, __ebx, __ecx, __edx;
 

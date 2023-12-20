@@ -19,7 +19,7 @@
 */
 
 #include <framebuffer/framebuffer.h>
-#include <temp/interface.h>
+#include <framebuffer/printf.h>
 
 struct framebuffer_context fb_current_context = { 0 };
 struct framebuffer_context branches[MAX_BRANCH_FRAMEBUFFERS];
