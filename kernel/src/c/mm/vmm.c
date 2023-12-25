@@ -21,7 +21,6 @@
 #include <global.h>
 #include <mm/vmm.h>
 #include <io/ctrl_reg.h>
-#include <mm/alloc.h>
 #include <string.h>
 
 struct pml4 *head = NULL;

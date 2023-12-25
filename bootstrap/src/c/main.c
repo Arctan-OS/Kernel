@@ -55,6 +55,7 @@ uint64_t *hhdm_pml4 = NULL;
 void *hhdm_pml4_end = NULL;
 
 struct multiboot_tag_framebuffer *framebuffer_tag = NULL;
+extern struct ARC_BootMeta _boot_meta;
 
 const char *mem_types[] = {
 	[MULTIBOOT_MEMORY_AVAILABLE] = "Available",
@@ -327,6 +328,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			*((uint32_t *)framebuffer_tag->common.framebuffer_addr + (i * framebuffer_width) + j) = 0x0043210FF;
 		}
 	}
+
+	_boot_meta.mb2i = (uint32_t)boot_info;
+	_boot_meta.first_free = (uint32_t)alloc();
 
 	return (uint32_t)hhdm_pml4;
 }

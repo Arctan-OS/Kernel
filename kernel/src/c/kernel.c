@@ -29,32 +29,37 @@
 #include <mm/freelist.h>
 #include <framebuffer/printf.h>
 #include <arch/sse.h>
+#include <inttypes.h>
 
-struct Arc_FreelistMeta kernel_heap;
-// TODO: The following string aligns the entire
-//       kernel. I have no idea why, but I am
-//       not satisfied with this solution.
-//const char *hello = "Hello World";
+struct ARC_BootMeta *arc_boot_meta;
+struct ARC_KernMeta arc_kern_meta = { 0 };
 
-int kernel_main(uint32_t mbi_ptr, uint32_t hhdm_pml4_end) {
+struct ARC_FreelistMeta kernel_heap = { 0 };
+
+int kernel_main(struct ARC_BootMeta *meta) {
 	init_sse();
 
-	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
+	arc_boot_meta = meta;
 
-	uint64_t base = ((uint64_t)hhdm_pml4_end + ARC_HHDM_VADDR);
-	printf("%X\n", base);
-	if (Arc_InitializeFreelist((void *)(uintptr_t)base, (void *)(uintptr_t)(base + PAGE_SIZE * 512), PAGE_SIZE, &kernel_heap) != 0) {
+	arc_kern_meta.kernel_heap = &kernel_heap;
+	arc_kern_meta.kernel_heap_type = 0;
+
+	uint64_t base = ((uint64_t)meta->first_free + ARC_HHDM_VADDR);
+
+	if (Arc_InitializeFreelist((void *)base, (void *)(base + PAGE_SIZE * 512), PAGE_SIZE, &kernel_heap) != 0) {
 		printf("Failed to initialize kernel heap freelist\n");
 		for (;;);
 	}
 
-	void *a = Arc_ListAlloc(&kernel_heap);
-	printf("%X\n", a);
-	printf("%X\n", Arc_ListAlloc(&kernel_heap));
-	Arc_ListFree(&kernel_heap, a);
-	printf("%X\n", Arc_ListAlloc(&kernel_heap));
+	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	parse_mbi(mbi_ptr);
+	void *a = Arc_ListAlloc(&kernel_heap);
+	printf("%p\n", a);
+	printf("%p\n", Arc_ListAlloc(&kernel_heap));
+	Arc_ListFree(&kernel_heap, a);
+	printf("%p\n", Arc_ListAlloc(&kernel_heap));
+
+	parse_mbi(meta->mb2i);
 
 	// TODO: The kernel is extremely unstable.
 	//       Sometimes it triple faults because

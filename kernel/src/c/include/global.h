@@ -1,6 +1,7 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#include "arctan.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <multiboot2.h>
@@ -13,6 +14,7 @@
 
 extern uint8_t __KERNEL_END__;
 
-extern struct Arc_FreelistMeta *kernel_heap_pool;
+extern struct ARC_BootMeta *arc_boot_meta;
+extern struct ARC_KernMeta arc_kern_meta;
 
 #endif

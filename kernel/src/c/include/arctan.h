@@ -27,13 +27,14 @@
 #include <stdint.h>
 #include <stddef.h>
 
-struct Arc_KernMeta {
-
+struct ARC_KernMeta {
+	void *kernel_heap;
+	int kernel_heap_type; // 0: ARC_Freelist
 }__attribute__((packed));
 
-struct Arc_BootMeta {
+struct ARC_BootMeta {
 	uint32_t mb2i; // Physical address of MBI2 structure
-	uint32_t hhdm_table_end; // Physical address of the last page used for the HHDM table
+	uint32_t first_free; // Physical address of the last page used for the HHDM table
 	struct Arc_KernMeta *state; // State of the last kernel
 }__attribute__((packed));
 
