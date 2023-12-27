@@ -30,6 +30,7 @@
 #include <framebuffer/printf.h>
 #include <arch/sse.h>
 #include <inttypes.h>
+#include <interrupts/idt.h>
 
 struct ARC_BootMeta *arc_boot_meta;
 struct ARC_KernMeta arc_kern_meta = { 0 };
@@ -37,6 +38,12 @@ struct ARC_KernMeta arc_kern_meta = { 0 };
 struct ARC_FreelistMeta kernel_heap = { 0 };
 
 int kernel_main(struct ARC_BootMeta *meta) {
+	init_idt();
+
+	__asm__("int 3");
+
+	for (;;);
+
 	init_sse();
 
 	arc_boot_meta = meta;

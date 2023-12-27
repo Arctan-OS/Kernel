@@ -85,7 +85,6 @@ static const char *exception_names[] = {
 	"Reserved",
 };
 
-
 void install_idt_gate(int i, uint32_t offset, uint16_t segment, uint8_t attrs) {
 	idt_entries[i].offset1 = offset & 0xFFFF;
 	idt_entries[i].offset2 = (offset >> 16) & 0xFFFF;

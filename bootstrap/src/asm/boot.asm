@@ -88,8 +88,17 @@ kernel_station:		mov ax, 0x20					; Set AX to 64-bit data offset
 					mov gs, ax						; Set GS to AX
 					mov ss, ax						; Set SS to AX
 					mov es, ax						; Set ES to AX
+					; Move stack into higher half
+					push rax
+					mov rax, rbp
+	 				mov rbp, 0xFFFFC00000000000
+					or rbp, rax
+					mov rax, rsp
+	 				mov rsp, 0xFFFFC00000000000
+					or rsp, rax
+					pop rax
 
-					mov rdi, qword _boot_meta		; Pass the pointer of MBI Structure
+					mov edi, dword [_boot_meta]		; Pass the pointer of MBI Structure
 					mov rax, qword [kernel_vaddr]
 					call rax						; Call to kernel
 					; If the kernel returns, it wants
