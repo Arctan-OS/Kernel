@@ -63,7 +63,7 @@
 #include "printf_config.h"
 #endif
 
-#include <framebuffer/printf.h>
+#include <interface/printf.h>
 
 #ifdef __cplusplus
 #include <cstdint>
@@ -280,11 +280,7 @@ typedef uint64_t double_uint_t;
 #define DOUBLE_STORED_MANTISSA_BITS (DBL_MANT_DIG - 1)
 
 void putchar_(char c) {
-	for (int i = 0; i < 20; i++) {
-
-	}
-
-//	outb(0xE9, c);
+	E9_HACK(c);
 }
 
 typedef union {

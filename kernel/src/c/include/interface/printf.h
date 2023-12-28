@@ -18,8 +18,6 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#define PRINTF_DISABLE_SUPPORT_FLOAT
-
 #ifndef ARC_PRINTF_H
 #define ARC_PRINTF_H
 
@@ -28,16 +26,17 @@
 #include <stdarg.h>
 
 #ifdef E9HACK
+#include <io/port.h>
 #define E9_HACK(c) outb(0xE9, c);
 #else
 #define E9_HACK(c) ;
 #endif
 
+#define printf printf_
+
 // Configuration for printf.h
 //#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 1
 //#define PRINTF_SUPPORT_DECIMAL_SPECIFIERS 0
-
-#define printf printf_
 
 extern void outb(uint16_t port, uint8_t value);
 /**

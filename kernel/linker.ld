@@ -27,24 +27,18 @@ SECTIONS {
         *(.text .text.*)
     }
 
-    . += CONSTANT(MAXPAGESIZE);
-
     .rodata : {
         *(.rodata .rodata.*)
     }
 
-    . += CONSTANT(MAXPAGESIZE);
-
     .data : {
         *(.data .data.*)
     }
-
-    . += CONSTANT(MAXPAGESIZE);
 
     .bss : {
         *(COMMON)
         *(.bss .bss.*)
     }
 
-    __BOOTSTRAP_END__ = .;
+    __KERNEL_END__ = .;
 }

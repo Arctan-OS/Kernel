@@ -52,7 +52,6 @@ extern uint8_t __BOOTSTRAP_END__; // Address should be aligned to 0x1000
 int framebuffer_width = 0;
 int framebuffer_height = 0;
 uint64_t *hhdm_pml4 = NULL;
-void *hhdm_pml4_end = NULL;
 
 struct multiboot_tag_framebuffer *framebuffer_tag = NULL;
 extern struct ARC_BootMeta _boot_meta;
@@ -313,8 +312,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	uint64_t *kpml3 = (uint64_t *)alloc();
 	uint64_t *kpml2 = (uint64_t *)alloc();
-
-	hhdm_pml4_end = (void *)kpml2;
 
 	hhdm_pml4[kpml4_ei] = ((uintptr_t)kpml3) | 3;
 	kpml3[kpml3_ei] = ((uintptr_t)kpml2) | 3;

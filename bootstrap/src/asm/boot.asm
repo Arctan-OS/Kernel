@@ -98,14 +98,9 @@ kernel_station:		mov ax, 0x20					; Set AX to 64-bit data offset
 					or rsp, rax
 					pop rax
 
-					mov edi, dword [_boot_meta]		; Pass the pointer of MBI Structure
+					lea rdi, [rel _boot_meta] ; Pass the pointer of MBI Structure
 					mov rax, qword [kernel_vaddr]
-					call rax						; Call to kernel
-					; If the kernel returns, it wants
-					; to be swapped, so swap it.
-
-
-					jmp $							; Spin
+					jmp rax							; Jump to kernel
 
 bits 32
 section .bss

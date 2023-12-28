@@ -18,81 +18,18 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include <global.h>
-#include <arctan.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <mbi_struct.h>
-#include <framebuffer/framebuffer.h>
 #include <io/port.h>
-#include <mm/vmm.h>
-#include <mm/freelist.h>
-#include <framebuffer/printf.h>
-#include <arch/sse.h>
-#include <inttypes.h>
-#include <interrupts/idt.h>
+#include <stdint.h>
+#include <interface/printf.h>
 
-struct ARC_BootMeta *arc_boot_meta;
-struct ARC_KernMeta arc_kern_meta = { 0 };
+const char *string = "Hello World";
 
-struct ARC_FreelistMeta kernel_heap = { 0 };
-const char *string __attribute__((section(".rodata"))) = "\nWelcome to 64-bit wonderland! Please enjoy your stay.\n";
-
-int kernel_main(struct ARC_BootMeta *meta) {
-	init_sse();
-
-	printf("Data\n");
-
-	for (;;);
-
-	arc_boot_meta = meta;
-	arc_kern_meta.kernel_heap = &kernel_heap;
-	arc_kern_meta.kernel_heap_type = 0;
-
-	uint64_t base = ((uint64_t)meta->first_free + ARC_HHDM_VADDR);
-	if (Arc_InitializeFreelist((void *)base, (void *)(base + PAGE_SIZE * 512), PAGE_SIZE, &kernel_heap) != 0) {
-		printf("Failed to initialize kernel heap freelist\n");
-		for (;;);
+int kernel_main(uint64_t boot) {
+	for (int i = 0; i < 32; i++) {
+		outb(0xE9, *(char *)(string + i));
+//		outb(0xE9, *(string + i));
 	}
-
-	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
-
-	void *a = Arc_ListAlloc(&kernel_heap);
-	printf("%p\n", a);
-	printf("%p\n", Arc_ListAlloc(&kernel_heap));
-	Arc_ListFree(&kernel_heap, a);
-	printf("%p\n", Arc_ListAlloc(&kernel_heap));
-
-	parse_mbi(meta->mb2i);
-
-	int t = 0;
-	uint8_t sw = 1;
-
-	for (;;);
-	while (1) {
-		for (int i = 0; i < fb_current_context.height; i++) {
-			for (int j = 0; j < fb_current_context.width; j++) {
-				int value = (i - j * t);
-
-				int x = (j + value) % fb_current_context.width;
-				int y = (i + value) % fb_current_context.height;
-
-				int xf = ((x * x) / x);
-				int yf = ((y * y) / y);
-
-				if (xf > 0 && yf > 0) {
-					*((uint32_t *)fb_current_context.virtual_buffer + (yf * fb_current_context.width) + xf) += (value + t * (-1 * sw)) * (sw + 1);
-				}
-			}
-		}
-
-		if (t < 0x400 && sw == 1) {
-			t++;
-		} else if (t >= 0x1000 || sw == 0) {
-			t--;
-			sw = (t <= 2);
-		}
-	}
+//	printf("Hello\n");
 
 	for (;;);
 
