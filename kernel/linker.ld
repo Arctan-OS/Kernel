@@ -21,25 +21,30 @@
 ENTRY(kernel_main)
 
 SECTIONS {
-	. = 0xFFFFFFFF80000000;
+    . = 0xFFFFFFFF80000000;
 
-	.text BLOCK(0x1000) : ALIGN(0x1000) {
-		*(.text .text.*)
-	}
+    .text : {
+        *(.text .text.*)
+    }
 
-	.rodata BLOCK(0x1000) : ALIGN(0x1000) {
-		*(.rodata .rodata.*)
-	}
+    . += CONSTANT(MAXPAGESIZE);
 
-	.data BLOCK(0x1000) : ALIGN(0x1000) {
-		*(.data .data.*)
-	}
+    .rodata : {
+        *(.rodata .rodata.*)
+    }
 
-	.bss BLOCK(0x1000) : ALIGN(0x1000) {
-		*(COMMON)
-		*(.bss .bss.*)
-	}
+    . += CONSTANT(MAXPAGESIZE);
 
-	. = ALIGN(0x1000);
-	__KERNEL_END__ = .;
+    .data : {
+        *(.data .data.*)
+    }
+
+    . += CONSTANT(MAXPAGESIZE);
+
+    .bss : {
+        *(COMMON)
+        *(.bss .bss.*)
+    }
+
+    __BOOTSTRAP_END__ = .;
 }

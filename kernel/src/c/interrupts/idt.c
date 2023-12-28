@@ -1,7 +1,10 @@
+#include "io/ctrl_reg.h"
 #include <interrupts/idt.h>
 #include <global.h>
 #include <io/port.h>
 #include <framebuffer/printf.h>
+#include <inttypes.h>
+#include <stdio.h>
 
 struct idt_header {
 	uint16_t limit;
@@ -32,7 +35,7 @@ struct junction_args {
 	uint64_t code;
 }__attribute__((packed));
 
-static const char *exception_names[] = {
+static const char *exception_names[] __attribute__((section(".rodata")))= {
 	"Division Error (#DE)",
 	"Debug Exception (#DB)",
 	"NMI",
@@ -79,7 +82,6 @@ void install_idt_gate(int i, uint64_t offset, uint16_t selector, uint8_t flags) 
 }
 
 void interrupt_junction(uint64_t rsp) {
-
 	// Cast structure pushed to stack into args
 	struct junction_args *args = (struct junction_args *)(rsp);
 
@@ -98,14 +100,17 @@ void interrupt_junction(uint64_t rsp) {
 	printf("RBP: 0x%X\n", args->rbp);
 
 	// If we enter none of the following conditions,
-	// this is the return address
 	uint64_t stack_elem = *(uint64_t *)args->rsp;
+	// this is the return address
 
 	// Handle error code if present
 	switch (args->code) {
 	case 21:
 	case 17:
 	case 14:
+		read_cr2();
+		printf("CR2: %"PRIX64"\n", *(uint64_t *)&cr2_reg);
+		goto fall_through;
 	case 13:
 		//handle_gp(stack_elem);
 		goto fall_through;
@@ -115,7 +120,7 @@ void interrupt_junction(uint64_t rsp) {
 	case 8: {
 fall_through:;
 		// Pop the error code off the stack
-		args->rsp += 4;
+		args->rsp += 8;
 		// This should now be the return address
 		stack_elem = *(uint64_t *)args->rsp;
 
@@ -123,7 +128,11 @@ fall_through:;
 	}
 	}
 
-	printf("Return address: 0x%X\n", stack_elem);
+	outb(0xE9, 'A' + args->code);
+
+	for (;;);
+
+	printf("Return address: 0x%"PRIX64"\n", stack_elem);
 
 	// Send EOI
 	if (args->code >= 8) {
@@ -131,8 +140,6 @@ fall_through:;
 	}
 
 	outb(0x20, 0x20);
-
-	// ERROR: Fault when trying to return from an interrupt
 }
 
 extern void _install_idt();
@@ -205,7 +212,6 @@ void init_idt() {
 
 	idtr.limit = sizeof(idt_entries) * 16 - 1;
 	idtr.base = (uintptr_t)&idt_entries;
-
 	_install_idt();
 
 	printf("Initialized 64-bit IDT\n");

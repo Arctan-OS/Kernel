@@ -29,31 +29,31 @@
 struct ARC_FreelistMeta free_pages = { 0 };
 
 int initialize_pmm(struct multiboot_tag_mmap *mmap) {
-	int entries = (mmap->size - sizeof(struct multiboot_tag_mmap)) / mmap->entry_size;
+//	int entries = (mmap->size - sizeof(struct multiboot_tag_mmap)) / mmap->entry_size;
 
 	struct ARC_FreelistMeta a = { 0 };
 
-	for (int i = 0; i < entries; i++) {
-		struct multiboot_mmap_entry entry = mmap->entries[i];
+//	for (int i = 0; i < entries; i++) {
+//		struct multiboot_mmap_entry entry = mmap->entries[i];
 
-		if (entry.type != MULTIBOOT_MEMORY_AVAILABLE) {
-			continue;
-		}
+//		if (entry.type != MULTIBOOT_MEMORY_AVAILABLE) {
+//			continue;
+//		}
 
-		void *base = (void *)entry.addr;
-		void *ciel = (void *)(entry.addr + entry.len);
+//		void *base = (void *)entry.addr;
+//		void *ciel = (void *)(entry.addr + entry.len);
 
-		if (base <= (void *)arc_boot_meta->first_free && ciel > (void *)arc_boot_meta->first_free) {
-			base = (void *)arc_boot_meta->first_free;
-		}
+//		if (base <= (void *)arc_boot_meta->first_free && ciel > (void *)arc_boot_meta->first_free) {
+//			base = (void *)arc_boot_meta->first_free;
+//		}
 
-		if (i == 0) {
+//		if (i == 0) {
 //			Arc_InitializeFreelist(base, ciel, PAGE_SIZE, &free_pages);
-		} else {
+//		} else {
 //			Arc_InitializeFreelist(base, ciel, PAGE_SIZE, &a);
 //			Arc_ListLink(&free_pages, &a, &free_pages);
-		}
-	}
+//		}
+//	}
 
 	return 0;
 }

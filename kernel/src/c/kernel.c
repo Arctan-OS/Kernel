@@ -36,23 +36,20 @@ struct ARC_BootMeta *arc_boot_meta;
 struct ARC_KernMeta arc_kern_meta = { 0 };
 
 struct ARC_FreelistMeta kernel_heap = { 0 };
+const char *string __attribute__((section(".rodata"))) = "\nWelcome to 64-bit wonderland! Please enjoy your stay.\n";
 
 int kernel_main(struct ARC_BootMeta *meta) {
-	init_idt();
+	init_sse();
 
-	__asm__("int 3");
+	printf("Data\n");
 
 	for (;;);
 
-	init_sse();
-
 	arc_boot_meta = meta;
-
 	arc_kern_meta.kernel_heap = &kernel_heap;
 	arc_kern_meta.kernel_heap_type = 0;
 
 	uint64_t base = ((uint64_t)meta->first_free + ARC_HHDM_VADDR);
-
 	if (Arc_InitializeFreelist((void *)base, (void *)(base + PAGE_SIZE * 512), PAGE_SIZE, &kernel_heap) != 0) {
 		printf("Failed to initialize kernel heap freelist\n");
 		for (;;);
@@ -68,14 +65,10 @@ int kernel_main(struct ARC_BootMeta *meta) {
 
 	parse_mbi(meta->mb2i);
 
-	// TODO: The kernel is extremely unstable.
-	//       Sometimes it triple faults because
-	//       we print, sometimes because we access
-	//       mapped memory, or sometimes cause
-	//       why not.
 	int t = 0;
 	uint8_t sw = 1;
 
+	for (;;);
 	while (1) {
 		for (int i = 0; i < fb_current_context.height; i++) {
 			for (int j = 0; j < fb_current_context.width; j++) {

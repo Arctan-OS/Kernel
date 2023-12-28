@@ -23,12 +23,10 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-CPPFLAGS ?=
-CFLAGS := -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs \
-		       -nostdlib -ffreestanding -c -I src/c/include/ -masm=intel \
-		       -Wall -Wextra -mabi=sysv $(CPPFLAGS) -m64 -fno-builtin-printf \
-			   -g
-
+CPPFLAGS ?= -g
+CFLAGS := -m64 -Isrc/c/include -c -masm=intel -fno-stack-protector -ffreestanding \
+		  -fno-builtin-printf -nodefaultlibs -nostdlib -mabi=sysv -nostartfiles \
+		  -fno-builtin -g
 
 LDFLAGS := -Tlinker.ld -melf_x86_64 -z max-page-size=0x1000 -o $(PRODUCT)
 
@@ -38,7 +36,7 @@ all: $(OFILES)
 	ld $(LDFLAGS) $(OFILES)
 
 src/c/%.o: src/c/%.c
-	gcc $(CFLAGS) $< -o $@
+	gcc $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 src/asm/%.o: src/asm/%.asm
 	nasm $(NASMFLAGS) $< -o $@
