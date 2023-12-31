@@ -23,6 +23,6 @@
 
 #include "global.h"
 
-uint64_t *load_elf(uint32_t elf_addr);
+uint64_t load_elf(uint64_t *table, uint32_t elf_addr);
 
 #endif

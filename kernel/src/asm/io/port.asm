@@ -1,4 +1,5 @@
 bits 64
+section .text
 
 global outb
 outb:           push rdx

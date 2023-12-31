@@ -18,37 +18,9 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-ENTRY(kernel_main)
+#ifndef IDT_H
+#define IDT_H
 
-PHDRS {
-      text PT_LOAD;
-      rodata PT_LOAD;
-      data PT_LOAD;
-}
+void install_idt();
 
-SECTIONS {
-    . = 0xFFFFFFFF80000000;
-
-    .text : {
-        *(.text .text.*)
-    } :text
-
-    . = ALIGN(0x1000);
-
-    .rodata : {
-        *(.rodata .rodata.*)
-    } :rodata
-
-    . = ALIGN(0x1000);
-
-    .data : {
-        *(.data .data.*)
-    } :data
-
-    .bss : {
-        *(COMMON)
-        *(.bss .bss.*)
-    } :data
-
-    __KERNEL_END__ = .;
-}
+#endif

@@ -18,36 +18,37 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "include/idt.h"
-#include "include/global.h"
-#include "include/interface.h"
-#include <stdint.h>
+#include <arch/x86/ctrl_regs.h>
+#include <interface/printf.h>
+#include <global.h>
+#include <arch/x86/idt.h>
 
 struct idt_desc {
 	uint16_t limit;
-	uint32_t base;
+	uint64_t base;
 }__attribute__((packed));
 struct idt_desc idtr;
 
 struct idt_entry {
 	uint16_t offset1;
 	uint16_t segment;
-	uint8_t zero;
+	uint8_t ist;
 	uint8_t attrs;
 	uint16_t offset2;
+	uint32_t offset3;
+	uint32_t reserved;
 }__attribute__((packed));
 struct idt_entry idt_entries[256];
 
 struct junction_args {
-	uint32_t eax;
-	uint32_t ebx;
-	uint32_t ecx;
-	uint32_t edx;
-	uint32_t esi;
-	uint32_t edi;
-	uint32_t ebp;
-	uint32_t esp;
-	uint32_t code;
+	uint64_t rax;
+	uint64_t rbx;
+	uint64_t rcx;
+	uint64_t rdx;
+	uint64_t rsi;
+	uint64_t rdi;
+	uint64_t rbp;
+	uint64_t rsp;
 }__attribute__((packed));
 
 static const char *exception_names[] = {
@@ -85,12 +86,13 @@ static const char *exception_names[] = {
 	"Reserved",
 };
 
-void install_idt_gate(int i, uint32_t offset, uint16_t segment, uint8_t attrs) {
+void install_idt_gate(int i, uint64_t offset, uint16_t segment, uint8_t attrs) {
 	idt_entries[i].offset1 = offset & 0xFFFF;
 	idt_entries[i].offset2 = (offset >> 16) & 0xFFFF;
+	idt_entries[i].offset3 = (offset >> 32) & 0xFFFFFFFF;
 	idt_entries[i].segment = segment;
 	idt_entries[i].attrs = attrs;
-	idt_entries[i].zero = 0;
+	idt_entries[i].reserved = 0;
 }
 
 void handle_gp(int error_code) {
@@ -102,35 +104,35 @@ void handle_gp(int error_code) {
 	printf("Error code 0x%02X\n", error_code);
 }
 
-void interrupt_junction(uint32_t esp) {
-	// Cast structure pushed to stack into args
-	struct junction_args *args = (struct junction_args *)(esp);
-
-	// Pop the interrupt args->code off the stack
-	args->esp += 4;
-
+void interrupt_junction(struct junction_args *args, int code) {
 	// Dump registers
-	printf("Received Interrupt %d, %s\n", args->code, exception_names[args->code]);
-	printf("EAX: 0x%X\n", args->eax);
-	printf("EBX: 0x%X\n", args->ebx);
-	printf("ECX: 0x%X\n", args->ecx);
-	printf("EDX: 0x%X\n", args->edx);
-	printf("ESI: 0x%X\n", args->esi);
-	printf("EDI: 0x%X\n", args->edi);
-	printf("ESP: 0x%X\n", args->esp);
-	printf("EBP: 0x%X\n", args->ebp);
+
+	// ERROR: The following print statement causes
+	//        weird alignment errors, triple faults
+	//        when int 3 is received
+//	printf("Received Interrupt %d, %s\n", code, exception_names[code]);
+	printf("RAX: 0x%"PRIX64"\n", args->rax);
+	printf("RBX: 0x%"PRIX64"\n", args->rbx);
+	printf("RCX: 0x%"PRIX64"\n", args->rcx);
+	printf("RDX: 0x%"PRIX64"\n", args->rdx);
+	printf("RSI: 0x%"PRIX64"\n", args->rsi);
+	printf("RDI: 0x%"PRIX64"\n", args->rdi);
+	printf("RSP: 0x%"PRIX64"\n", args->rsp);
+	printf("RBP: 0x%"PRIX64"\n", args->rbp);
 
 	// If we enter none of the following conditions,
 	// this is the return address
-	uint32_t stack_elem = *(uint32_t *)args->esp;
+	uint64_t stack_elem = *(uint64_t *)args->rsp;
 
 	// Handle error code if present
-	switch (args->code) {
+	switch (code) {
 	case 21:
 		goto fall_through;
 	case 17:
 		goto fall_through;
 	case 14:
+		_x86_getCR2();
+		printf("CR2: 0x%"PRIX64"\n", _x86_CR2);
 		goto fall_through;
 	case 13:
 		handle_gp(stack_elem);
@@ -144,18 +146,20 @@ void interrupt_junction(uint32_t esp) {
 	case 8: {
 fall_through:;
 		// Pop the error code off the stack
-		args->esp += 4;
+		args->rsp += 8;
 		// This should now be the return address
-		stack_elem = *(uint32_t *)args->esp;
+		stack_elem = *(uint64_t *)args->rsp;
 
 		break;
 	}
 	}
 
-	printf("Return address: 0x%X\n", stack_elem);
+	printf("Return address: 0x%"PRIX64"\n", stack_elem);
+
+	for (;;);
 
 	// Send EOI
-	if (args->code >= 8) {
+	if (code >= 8) {
 		outb(0xA0, 0x20);
 	}
 
@@ -197,68 +201,43 @@ extern void _idt_stub_30_();
 extern void _idt_stub_31_();
 
 void install_idt() {
-	install_idt_gate(0, (uintptr_t)&_idt_stub_0_, 0x08, 0x8E);
-	install_idt_gate(1, (uintptr_t)&_idt_stub_1_, 0x08, 0x8E);
-	install_idt_gate(2, (uintptr_t)&_idt_stub_2_, 0x08, 0x8E);
-	install_idt_gate(3, (uintptr_t)&_idt_stub_3_, 0x08, 0x8E);
-	install_idt_gate(4, (uintptr_t)&_idt_stub_4_, 0x08, 0x8E);
-	install_idt_gate(5, (uintptr_t)&_idt_stub_5_, 0x08, 0x8E);
-	install_idt_gate(6, (uintptr_t)&_idt_stub_6_, 0x08, 0x8E);
-	install_idt_gate(7, (uintptr_t)&_idt_stub_7_, 0x08, 0x8E);
-	install_idt_gate(8, (uintptr_t)&_idt_stub_8_, 0x08, 0x8E);
-	install_idt_gate(9, (uintptr_t)&_idt_stub_9_, 0x08, 0x8E);
-	install_idt_gate(10, (uintptr_t)&_idt_stub_10_, 0x08, 0x8E);
-	install_idt_gate(11, (uintptr_t)&_idt_stub_11_, 0x08, 0x8E);
-	install_idt_gate(12, (uintptr_t)&_idt_stub_12_, 0x08, 0x8E);
-	install_idt_gate(13, (uintptr_t)&_idt_stub_13_, 0x08, 0x8E);
-	install_idt_gate(14, (uintptr_t)&_idt_stub_14_, 0x08, 0x8E);
-	install_idt_gate(15, (uintptr_t)&_idt_stub_15_, 0x08, 0x8E);
-	install_idt_gate(16, (uintptr_t)&_idt_stub_16_, 0x08, 0x8E);
-	install_idt_gate(17, (uintptr_t)&_idt_stub_17_, 0x08, 0x8E);
-	install_idt_gate(18, (uintptr_t)&_idt_stub_18_, 0x08, 0x8E);
-	install_idt_gate(19, (uintptr_t)&_idt_stub_19_, 0x08, 0x8E);
-	install_idt_gate(20, (uintptr_t)&_idt_stub_20_, 0x08, 0x8E);
-	install_idt_gate(21, (uintptr_t)&_idt_stub_21_, 0x08, 0x8E);
-	install_idt_gate(22, (uintptr_t)&_idt_stub_22_, 0x08, 0x8E);
-	install_idt_gate(23, (uintptr_t)&_idt_stub_23_, 0x08, 0x8E);
-	install_idt_gate(24, (uintptr_t)&_idt_stub_24_, 0x08, 0x8E);
-	install_idt_gate(25, (uintptr_t)&_idt_stub_25_, 0x08, 0x8E);
-	install_idt_gate(26, (uintptr_t)&_idt_stub_26_, 0x08, 0x8E);
-	install_idt_gate(27, (uintptr_t)&_idt_stub_27_, 0x08, 0x8E);
-	install_idt_gate(28, (uintptr_t)&_idt_stub_28_, 0x08, 0x8E);
-	install_idt_gate(29, (uintptr_t)&_idt_stub_29_, 0x08, 0x8E);
-	install_idt_gate(30, (uintptr_t)&_idt_stub_30_, 0x08, 0x8E);
-	install_idt_gate(31, (uintptr_t)&_idt_stub_31_, 0x08, 0x8E);
+	install_idt_gate(0, (uintptr_t)&_idt_stub_0_, 0x18, 0x8E);
+	install_idt_gate(1, (uintptr_t)&_idt_stub_1_, 0x18, 0x8E);
+	install_idt_gate(2, (uintptr_t)&_idt_stub_2_, 0x18, 0x8E);
+	install_idt_gate(3, (uintptr_t)&_idt_stub_3_, 0x18, 0x8E);
+	install_idt_gate(4, (uintptr_t)&_idt_stub_4_, 0x18, 0x8E);
+	install_idt_gate(5, (uintptr_t)&_idt_stub_5_, 0x18, 0x8E);
+	install_idt_gate(6, (uintptr_t)&_idt_stub_6_, 0x18, 0x8E);
+	install_idt_gate(7, (uintptr_t)&_idt_stub_7_, 0x18, 0x8E);
+	install_idt_gate(8, (uintptr_t)&_idt_stub_8_, 0x18, 0x8E);
+	install_idt_gate(9, (uintptr_t)&_idt_stub_9_, 0x18, 0x8E);
+	install_idt_gate(10, (uintptr_t)&_idt_stub_10_, 0x18, 0x8E);
+	install_idt_gate(11, (uintptr_t)&_idt_stub_11_, 0x18, 0x8E);
+	install_idt_gate(12, (uintptr_t)&_idt_stub_12_, 0x18, 0x8E);
+	install_idt_gate(13, (uintptr_t)&_idt_stub_13_, 0x18, 0x8E);
+	install_idt_gate(14, (uintptr_t)&_idt_stub_14_, 0x18, 0x8E);
+	install_idt_gate(15, (uintptr_t)&_idt_stub_15_, 0x18, 0x8E);
+	install_idt_gate(16, (uintptr_t)&_idt_stub_16_, 0x18, 0x8E);
+	install_idt_gate(17, (uintptr_t)&_idt_stub_17_, 0x18, 0x8E);
+	install_idt_gate(18, (uintptr_t)&_idt_stub_18_, 0x18, 0x8E);
+	install_idt_gate(19, (uintptr_t)&_idt_stub_19_, 0x18, 0x8E);
+	install_idt_gate(20, (uintptr_t)&_idt_stub_20_, 0x18, 0x8E);
+	install_idt_gate(21, (uintptr_t)&_idt_stub_21_, 0x18, 0x8E);
+	install_idt_gate(22, (uintptr_t)&_idt_stub_22_, 0x18, 0x8E);
+	install_idt_gate(23, (uintptr_t)&_idt_stub_23_, 0x18, 0x8E);
+	install_idt_gate(24, (uintptr_t)&_idt_stub_24_, 0x18, 0x8E);
+	install_idt_gate(25, (uintptr_t)&_idt_stub_25_, 0x18, 0x8E);
+	install_idt_gate(26, (uintptr_t)&_idt_stub_26_, 0x18, 0x8E);
+	install_idt_gate(27, (uintptr_t)&_idt_stub_27_, 0x18, 0x8E);
+	install_idt_gate(28, (uintptr_t)&_idt_stub_28_, 0x18, 0x8E);
+	install_idt_gate(29, (uintptr_t)&_idt_stub_29_, 0x18, 0x8E);
+	install_idt_gate(30, (uintptr_t)&_idt_stub_30_, 0x18, 0x8E);
+	install_idt_gate(31, (uintptr_t)&_idt_stub_31_, 0x18, 0x8E);
 
 	idtr.limit = sizeof(idt_entries) * 8 - 1;
 	idtr.base = (uintptr_t)&idt_entries;
 
-	// Initialize the PIC
-	outb(0x20, 0x11);
-	outb(0x80, 0x00);
-	outb(0xA0, 0x11);
-	outb(0x80, 0x00);
-
-	outb(0x21, 0x20);
-	outb(0x80, 0x00);
-	outb(0xA1, 0x28);
-	outb(0x80, 0x00);
-
-	outb(0x21, 0x04);
-	outb(0x80, 0x00);
-	outb(0xA1, 0x02);
-	outb(0x80, 0x00);
-
-	outb(0x21, 0x01);
-	outb(0x80, 0x00);
-	outb(0xA1, 0x01);
-	outb(0x80, 0x00);
-
-	// Mask all IRQs
-	outb(0x21, 0xFF);
-	outb(0xA1, 0xFF);
-
 	_install_idt();
 
-	printf("Installed IDT\n");
+	printf("Ported IDT to 64-bits\n");
 }

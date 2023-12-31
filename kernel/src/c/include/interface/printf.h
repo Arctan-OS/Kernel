@@ -18,15 +18,15 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef ARC_PRINTF_H
-#define ARC_PRINTF_H
+#ifndef ARC_INTERFACE_PRINTF_H
+#define ARC_INTERFACE_PRINTF_H
 
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
 
 #ifdef E9HACK
-#include <io/port.h>
+#include <arch/x86/io/port.h>
 #define E9_HACK(c) outb(0xE9, c);
 #else
 #define E9_HACK(c) ;

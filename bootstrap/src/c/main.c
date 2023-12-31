@@ -37,10 +37,9 @@ uint32_t cur_tag_sz = 0;
 
 const char *kernel_module_name = "arctan-module.kernel.efi";
 
-uint32_t kernel_phys_start = 0x0;
-uint32_t kernel_phys_end = 0x0;
 uint64_t kernel_vaddr = 0x0;
-uint64_t kernel_elf_off = 0x0;
+uint64_t kernel_phys_start = 0x0;
+uint32_t kernel_phys_end = 0x0;
 
 uint64_t mem_phys_first_free = 0x0;
 uint64_t size_phys_first_free = 0x0;
@@ -125,12 +124,6 @@ void read_tags(uint8_t *boot_info) {
 
 				kernel_phys_start = info->mod_start;
 				kernel_phys_end = info->mod_end;
-
-				uint64_t *kernel_info = load_elf(info->mod_start);
-				kernel_elf_off = kernel_info[0];
-				kernel_vaddr = kernel_info[1];
-
-				printf("%s offset is %"PRIX64"\n", ((kernel_info[0] != 0) ? "Parsed Kernel ELF!" : "Failed to parse Kernel ELF"), kernel_info[0]);
 			}
 
 			break;
@@ -195,9 +188,8 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	install_idt();
 	read_tags(boot_info);
 
-	// Assert the kernel exists (should not be located at 0x0000)
+	// Assert kernel was found
 	ASSERT(kernel_phys_start != 0)
-	ASSERT((kernel_phys_start & 0xFFF) == 0) // Ensure kernel is page aligned
 	ASSERT(kernel_phys_end != 0)
 
 	// Assert we have some free memory to map
@@ -210,9 +202,9 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	printf("%"PRId32"x%"PRId32"x%"PRId32" 0x%"PRIX64"(%d)\n", framebuffer_width, framebuffer_height, framebuffer_tag->common.framebuffer_bpp, framebuffer_tag->common.framebuffer_addr, framebuffer_tag->common.framebuffer_type);
 	printf("All is well, kernel module is located at 0x%X.\n", (uint32_t)kernel_phys_start);
 
-	hhdm_pml4 = (uint64_t *)alloc();
 	memset(hhdm_pml4, 0, 0x1000);
 
+	hhdm_pml4 = (uint64_t *)alloc();
 	uint64_t page_count = (uint64_t)(memsize >> 12) + 1;
 	uint64_t hhdm_pml1_count = (uint64_t)(page_count >> 9) + 1;
 	uint64_t hhdm_pml2_count = (uint64_t)(hhdm_pml1_count >> 9) + 1;
@@ -256,7 +248,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 				// Link PT into PD
 				// TODO: Account for the original offset in hhdm_pml2_ei
 				pd_table[pt] = ((uintptr_t)pt_table) | 3;
-//				printf("Hooked PT into PD[%d]\n", pt);
 			}
 
 			// Change count
@@ -265,7 +256,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 			// Link PD into PDP table
 			// TODO: Account for the original offset in hhdm_pml3_ei
 			pdp_table[pd] = ((uintptr_t)pd_table) | 3;
-//			printf("Hooked PD into PDP[%d]\n", pd);
 		}
 
 		// Change count
@@ -273,7 +263,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 		// Link PDP into PML4
 		hhdm_pml4[pdp + hhdm_pml4_ei] = ((uintptr_t)pdp_table) | 3;
-//		printf("Hooked PDP into pml4[%lu]\n", pdp + hhdm_pml4_ei);
 	}
 
 	uint64_t *bpml3 = (uint64_t *)alloc();
@@ -288,35 +277,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 		bpml1[i] = (i << 12) | 3;
 	}
 
-	uint64_t kernel_count = ((kernel_phys_end - kernel_phys_start - kernel_elf_off) >> 12);
-
-	uint64_t *kpml1 = (uint64_t *)alloc();
-	uint64_t *kpml1_2 = (uint64_t *)alloc();
-
-	for (size_t i = 0; i < 512; i++) {
-		if (i <= kernel_count) {
-			kpml1[i] = (kernel_phys_start + kernel_elf_off + (i << 12)) | 3;
-
-			continue;
-		}
-
-		kpml1[i] = ((uintptr_t)alloc()) | 3;
-		kpml1_2[i] = ((uintptr_t)alloc()) | 3;
-	}
-
-	int kpml4_ei = (kernel_vaddr >> 39) & 0x1FF;
-	int kpml3_ei = (kernel_vaddr >> 30) & 0x1FF;
-	int kpml2_ei = (kernel_vaddr >> 21) & 0x1FF;
-
-	printf("Mapping kernel to PML4[%d] PML3[%d] PML2[%d]\n", kpml4_ei, kpml3_ei, kpml2_ei);
-
-	uint64_t *kpml3 = (uint64_t *)alloc();
-	uint64_t *kpml2 = (uint64_t *)alloc();
-
-	hhdm_pml4[kpml4_ei] = ((uintptr_t)kpml3) | 3;
-	kpml3[kpml3_ei] = ((uintptr_t)kpml2) | 3;
-	kpml2[kpml2_ei] = ((uintptr_t)kpml1) | 3;
-	kpml2[kpml2_ei + 1] = ((uintptr_t)kpml1_2) | 3;
+	kernel_vaddr = load_elf(hhdm_pml4, kernel_phys_start);
 
 	printf("HHDM PML4 Located at: 0x%"PRIX64"\n", (uint64_t)hhdm_pml4);
 
@@ -328,6 +289,8 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	_boot_meta.mb2i = (uint32_t)boot_info;
 	_boot_meta.first_free = (uint32_t)alloc();
+
+	for (;;);
 
 	return (uint32_t)hhdm_pml4;
 }

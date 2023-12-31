@@ -20,26 +20,36 @@
 
 ENTRY(_entry)
 
+PHDRS {
+      text PT_LOAD;
+      rodata PT_LOAD;
+      data PT_LOAD;
+}
+
 SECTIONS {
 	. = 1M;
 
-	.text BLOCK(0x1000) : ALIGN(0x1000) {
+	.text : {
 		*(.mb2header)
 		*(.text .text.*)
-	}
+	} :text
 
-	.rodata BLOCK(0x1000) : ALIGN(0x1000) {
+    . = ALIGN(0x1000);
+
+	.rodata : {
 		*(.rodata .rodata.*)
-	}
+	} :rodata
 
-	.data BLOCK(0x1000) : ALIGN(0x1000) {
+    . = ALIGN(0x1000);
+
+	.data : {
 		*(.data .data.*)
-	}
+	} :data
 
-	.bss BLOCK(0x1000) : ALIGN(0x1000) {
+	.bss : {
 		*(COMMON)
 		*(.bss .bss.*)
-	}
+	} :data
 
 	__BOOTSTRAP_END__ = .;
 }

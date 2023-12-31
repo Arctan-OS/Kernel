@@ -21,6 +21,7 @@
 #include "include/elf.h"
 #include "include/interface.h"
 #include "include/global.h"
+#include "include/pml4.h"
 
 struct elf_header {
 	uint8_t  e_ident[16]; /* ELF identification */
@@ -67,20 +68,19 @@ static const char *pt_names[] = {
 	[PT_PHDR] = "PHDR",
 };
 
-uint64_t info[2];
-
-uint64_t *load_elf(uint32_t elf_addr) {
+// Load ELF into virtual memory
+// Return 0: success
+uint64_t load_elf(uint64_t *table, uint32_t elf_addr) {
 	struct elf_header *elf_header = (struct elf_header *)((uintptr_t)elf_addr);
 	struct program_header *prog_header = (struct program_header *)((uintptr_t)(elf_addr + elf_header->e_phoff));
 
-	info[0] = prog_header->p_offset;
-	info[1] = elf_header->e_entry;
-
 	printf("Entry: %"PRIX64"\n", (elf_header->e_entry));
 
-	for (int i = 0; i < elf_header->e_phnum; i += elf_header->e_phentsize) {
-		printf("Program Header %d, Type \"%s\", P:%"PRIX64", V:%"PRIX64", Offset: %"PRIX64"\n", i, pt_names[prog_header->p_type], prog_header->p_paddr, prog_header->p_vaddr, prog_header->p_offset);
+	for (int i = 0; i < elf_header->e_phnum; i++) {
+		printf("Program Header %d, %s, 0x%"PRIX32"%"PRIX32"\n", i, pt_names[prog_header[i].p_type], prog_header[i].p_offset >> 32, prog_header[i].p_offset);
+
+//		map(table, elf_addr + prog_header[i].p_offset, prog_header[i].p_vaddr, 1, 3);
 	}
 
-	return info;
+	return elf_header->e_entry;
 }

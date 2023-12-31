@@ -24,7 +24,7 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
 CPPFLAGS ?= -g
-CFLAGS := -m64 -Isrc/c/include -c -masm=intel -fno-stack-protector -nostdlib
+CFLAGS := -m64 -Isrc/c/include -c -masm=intel -fno-stack-protector -nostdlib -g -Wall -Wextra
 
 LDFLAGS := -Tlinker.ld -melf_x86_64 -z max-page-size=0x1000 -o $(PRODUCT)
 

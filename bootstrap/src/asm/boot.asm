@@ -93,10 +93,8 @@ kernel_station:		mov ax, 0x20					; Set AX to 64-bit data offset
 					mov rax, rbp
 	 				mov rbp, 0xFFFFC00000000000
 					or rbp, rax
-					mov rax, rsp
-	 				mov rsp, 0xFFFFC00000000000
-					or rsp, rax
 					pop rax
+					mov rsp, rbp
 
 					lea rdi, [rel _boot_meta] ; Pass the pointer of MBI Structure
 					mov rax, qword [kernel_vaddr]

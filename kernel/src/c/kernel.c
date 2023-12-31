@@ -18,18 +18,33 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include <io/port.h>
+#include <arctan.h>
+#include <global.h>
+#include <arch/x86/io/port.h>
 #include <stdint.h>
 #include <interface/printf.h>
+#include <arch/x86/ctrl_regs.h>
+#include <multiboot/mbparse.h>
 
-const char *string = "Hello World";
+#include <arch/x86/idt.h>
 
-int kernel_main(uint64_t boot) {
-	for (int i = 0; i < 32; i++) {
-		outb(0xE9, *(char *)(string + i));
-//		outb(0xE9, *(string + i));
+struct ARC_BootMeta *Arc_BootMeta = NULL;
+
+int kernel_main(struct ARC_BootMeta *boot_meta) {
+	if (boot_meta == NULL) {
+		printf("Pointer to boot information was not passed correctly, cannot continue\n");
+		ARC_HANG
 	}
-//	printf("Hello\n");
+
+	Arc_BootMeta = boot_meta;
+
+	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
+
+	install_idt();
+
+	parse_mbi();
+
+	printf("Data\n");
 
 	for (;;);
 

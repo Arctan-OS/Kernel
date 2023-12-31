@@ -1,4 +1,4 @@
-bits 32
+bits 64
 
 global _install_idt
 extern idtr
@@ -8,35 +8,34 @@ _install_idt:       cli
                     ret
 
 %macro PUSH_ALL 0
-                    push esp
-                    push ebp
-                    push edi
-                    push esi
-                    push edx
-                    push ecx
-                    push ebx
-                    push eax
+                    push rsp
+                    push rbp
+                    push rdi
+                    push rsi
+                    push rdx
+                    push rcx
+                    push rbx
+                    push rax
 %endmacro
 
 %macro POP_ALL 0
-                    pop eax
-                    pop ebx
-                    pop ecx
-                    pop edx
-                    pop esi
-                    pop edi
-                    pop ebp
-                    pop esp
+                    pop rax
+                    pop rbx
+                    pop rcx
+                    pop rdx
+                    pop rsi
+                    pop rdi
+                    pop rbp
+                    pop rsp
 %endmacro
 
 extern interrupt_junction
 %macro common_idt_stub 1
 global _idt_stub_%1_
-_idt_stub_%1_:      push %1
-                    PUSH_ALL
-                    push esp
+_idt_stub_%1_:      PUSH_ALL
+                    mov rdi, rsp
+                    mov rsi, %1
                     call interrupt_junction
-                    pop esp
                     POP_ALL
                     iret
 %endmacro
