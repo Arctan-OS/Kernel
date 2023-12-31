@@ -88,92 +88,29 @@ void cpu_checks() {
 }
 
 void read_tags(uint8_t *boot_info) {
+	struct multiboot_tag *current_tag = (struct multiboot_tag *)(boot_info);
+	struct multiboot_tag *end = (struct multiboot_tag *)(current_tag + current_tag->type);
 	struct multiboot_tag_mmap *mmap = NULL;
 
-	uint32_t total_size = *(uint32_t *)(boot_info);
-	tags_end = boot_info + total_size;
-	tags = boot_info + 8;
+	current_tag += 8;
 
-	int tag = 0;
-	do {
-		tag = *(uint32_t*)(tags);
-		cur_tag_sz = ALIGN(*(uint32_t *)(tags + 4), 8);
-
-		switch (tag) {
-		case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME: {
-			printf("Bootloader: %s\n", tags + 8);
-
-			break;
-		}
-
-		case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO: {
-			struct multiboot_tag_basic_meminfo *info = (struct multiboot_tag_basic_meminfo *)tags;
-
-			printf("Basic Memory Info:\n	Lower: 0x%X KB\n	Upper: 0x%X KB\n", info->mem_lower, info->mem_upper);
-
-			break;
-		}
-
-		case MULTIBOOT_TAG_TYPE_MODULE: {
-			struct multiboot_tag_module *info = (struct multiboot_tag_module *)tags;
-
-			printf("Module: \"%s\" (0x%X -> 0x%X)\n", info->cmdline, info->mod_start, info->mod_end);
-
-			if (strcmp(info->cmdline, kernel_module_name) == 0) {
-				printf("! FOUND KERNEL !\n");
-
-				kernel_phys_start = info->mod_start;
-				kernel_phys_end = info->mod_end;
-			}
-
-			break;
-		}
-
-		// SAVE THIS STRUCTURE
-		// PASS IT TO 64-BIT KERNEL
-		case MULTIBOOT_TAG_TYPE_MMAP: {
-			mmap = (struct multiboot_tag_mmap *)tags;
-
-			printf("Detailed Memory Map (Version: %d):\n", mmap->entry_version);
-
-			int i = 1;
-			for (uint8_t *entry_base = tags + 16; entry_base < tags + cur_tag_sz; entry_base += mmap->entry_size, i++) {
-				struct multiboot_mmap_entry *entry = (struct multiboot_mmap_entry *)entry_base;
-
-				if (entry->type == MULTIBOOT_MEMORY_AVAILABLE && entry->len > size_phys_first_free) {
-					mem_phys_first_free = entry->addr;
-					size_phys_first_free = entry->len;
-				}
-
-				printf("\tEntry %d: @ 0x%16"PRIX64", 0x%16"PRIX64" B, Type: %s (%d)\n", i, entry->addr, entry->len, mem_types[entry->type], entry->type);
-				memsize += entry->len;
-			}
-
-			break;
-		}
-
-		case MULTIBOOT_TAG_TYPE_LOAD_BASE_ADDR: {
-			struct multiboot_tag_load_base_addr *info = (struct multiboot_tag_load_base_addr *)tags;
-
-			bootstrap_start = info->load_base_addr;
-
-			printf("Entry: 0x%X, 0x%X\n", info->load_base_addr , &__BOOTSTRAP_END__);
-
-			break;
-		}
-
+	while (current_tag < end && current_tag->type != 0) {
+		switch (current_tag->type) {
 		case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
-			//if (framebuffer_tag == NULL) {
-				framebuffer_tag = (struct multiboot_tag_framebuffer *)tags;
-			//	tags = boot_info + 8;
-			//
-			//	continue;
-			//}
+			printf("Framebuffer\n");
+			break;
+		}
+
+		case MULTIBOOT_TAG_TYPE_MMAP: {
+			struct multiboot_tag_mmap *data = (struct multiboot_tag_mmap *)current_tag;
+			mmap = data;
+
+			break;
 		}
 		}
 
-		tags += cur_tag_sz;
-	} while (tag);
+		current_tag = (struct multiboot_tag *)((uintptr_t)current_tag + ALIGN(current_tag->size, 8));
+	}
 
 	init_allocator(mmap->entries, (mmap->size - 16) / mmap->entry_size, kernel_phys_end);
 }
@@ -182,6 +119,7 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 	if (magic != 0x36D76289) {
 		return 1;
 	}
+
 
 	cpu_checks();
 	install_gdt();
@@ -289,8 +227,6 @@ int helper(uint8_t *boot_info, uint32_t magic) {
 
 	_boot_meta.mb2i = (uint32_t)boot_info;
 	_boot_meta.first_free = (uint32_t)alloc();
-
-	for (;;);
 
 	return (uint32_t)hhdm_pml4;
 }

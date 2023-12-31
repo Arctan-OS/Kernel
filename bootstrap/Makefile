@@ -24,10 +24,7 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
 CPPFLAGS ?=
-CFLAGS := -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs \
-		       -nostdlib -ffreestanding -c -I src/c/icnlude/ -masm=intel \
-		       -Wall -Wextra -m32 $(CPPFLAGS) -fno-builtin-printf -mno-sse \
-			   -mno-sse2
+CFLAGS := -m32 -I src/c/include -c -fno-stack-protector -mno-sse -mno-sse2
 
 LDFLAGS := -Tlinker.ld -melf_i386 -z max-page-size=0x1000 -o $(PRODUCT)
 

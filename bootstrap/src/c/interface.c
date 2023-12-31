@@ -280,7 +280,7 @@ typedef uint64_t double_uint_t;
 #define DOUBLE_STORED_MANTISSA_BITS (DBL_MANT_DIG - 1)
 
 void putchar_(char c) {
-	E9_HACK(c);
+	outb(0xE9, c);
 }
 
 typedef union {

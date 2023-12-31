@@ -35,7 +35,7 @@
 //#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 1
 //#define PRINTF_SUPPORT_DECIMAL_SPECIFIERS 0
 
-
+//#define PRINTF_INTEGER_BUFFER_SIZE 128
 
 extern void outb(uint16_t port, uint8_t value);
 /**

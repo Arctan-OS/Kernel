@@ -77,9 +77,9 @@ uint64_t load_elf(uint64_t *table, uint32_t elf_addr) {
 	printf("Entry: %"PRIX64"\n", (elf_header->e_entry));
 
 	for (int i = 0; i < elf_header->e_phnum; i++) {
-		printf("Program Header %d, %s, 0x%"PRIX32"%"PRIX32"\n", i, pt_names[prog_header[i].p_type], prog_header[i].p_offset >> 32, prog_header[i].p_offset);
+		printf("Program Header %d, %s %"PRIX64"\n", i, pt_names[prog_header[i].p_type], prog_header[i].p_offset);
 
-//		map(table, elf_addr + prog_header[i].p_offset, prog_header[i].p_vaddr, 1, 3);
+		map(table, elf_addr + prog_header[i].p_offset, prog_header[i].p_vaddr, 1, 3);
 	}
 
 	return elf_header->e_entry;

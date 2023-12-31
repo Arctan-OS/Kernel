@@ -81,7 +81,6 @@ extern framebuffer_width
 extern framebuffer_height
 extern kernel_vaddr
 extern hhdm_pml4_end
-
 kernel_station:		mov ax, 0x20					; Set AX to 64-bit data offset
 					mov ds, ax						; Set DS to AX
 					mov fs, ax						; Set FS to AX
