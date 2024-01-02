@@ -1,10 +1,15 @@
 PRODUCT := Arctan
-CPPFLAGS =
+
+CPPFLAG_E9HACK :=
+export CPPFLAG_E9HACK
+CPPFLAG_DEBUG :=
+export CPPFLAG_DEBUG
+
 QEMUFLAGS := -M q35,smm=off -m 4G -cdrom $(PRODUCT).iso -debugcon stdio
 
 all: clean
-	make -C bootstrap CPPFLAGS=$(CPPFLAGS)
-	make -C kernel CPPFLAGS=$(CPPFLAGS)
+	make -C bootstrap
+	make -C kernel
 
 	mkdir -p iso/boot/grub
 
@@ -24,8 +29,10 @@ clean:
 	find . -type f -name "*.iso" -delete
 	rm -rf iso
 
-debug: CPPFLAGS += -DDEBUG
-debug: all
+nothing:
 
-e9hack: CPPFLAGS += -DE9HACK
+debug: CPPFLAG_DEBUG = -DARC_DEBUG_ENABLE
+debug: e9hack
+
+e9hack: CPPFLAG_E9HACK = -DARC_E9HACK_ENABLE
 e9hack: all

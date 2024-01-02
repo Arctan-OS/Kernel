@@ -23,7 +23,7 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-CPPFLAGS ?= -g
+CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK)
 CFLAGS := -m64 -I src/c/include -c -masm=intel -fno-stack-protector -nostdlib -Wall -Wextra
 
 LDFLAGS := -Tlinker.ld -melf_x86_64 -z max-page-size=0x1000 -o $(PRODUCT)

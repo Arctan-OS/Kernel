@@ -62,6 +62,6 @@ void install_gdt() {
 
 	_install_gdt();
 
-	printf("Installed GDT\n");
+	ARC_DEBUG(INFO, "Installed GDT\n");
 
 }

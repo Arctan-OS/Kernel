@@ -20,7 +20,7 @@
 
 #include "../../include/arch/x86/idt.h"
 #include "../../include/interface/printf.h"
-#include <stdint.h>
+#include "../../include/global.h"
 
 struct idt_desc {
 	uint16_t limit;
@@ -259,5 +259,5 @@ void install_idt() {
 
 	_install_idt();
 
-	printf("Installed IDT\n");
+	ARC_DEBUG(INFO, "Installed IDT\n");
 }
