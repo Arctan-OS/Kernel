@@ -1,6 +1,6 @@
 PRODUCT := Arctan
 CPPFLAGS =
-QEMUFLAGS = 
+QEMUFLAGS := -M q35,smm=off -m 4G -cdrom $(PRODUCT).iso -debugcon stdio
 
 all: clean
 	make -C bootstrap CPPFLAGS=$(CPPFLAGS)
@@ -16,7 +16,7 @@ all: clean
 
 
 run: all
-	qemu-system-x86_64 -cdrom $(PRODUCT).iso -debugcon stdio $(QEMUFLAGS) -d cpu_reset -cpu qemu64,+xsave,+avx,level=13 -m 4G -s
+	qemu-system-x86_64 -enable-kvm -cpu host -d cpu_reset $(QEMUFLAGS)
 
 clean:
 	find . -type f -name "*.o" -delete

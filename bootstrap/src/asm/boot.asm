@@ -60,44 +60,7 @@ _entry:				mov esp, stack_end					; Setup stack
 					push eax							; Push multiboot2 loader signature
 					push ebx							; Push boot information
 					call helper							; HELP!
-					push eax							; Save PML4 address
-					mov eax, cr4						; Read CR4
-					or eax, 1 << 5						; Set PAE bit
-					mov cr4, eax						; Write CR4
-					pop eax								; Point EAX to PML4[0]
-					mov cr3, eax						; Point CR3
-					mov ecx, 0xC0000080					; Code for EFER MSR
-					rdmsr								; Read EFER
-					or eax, 1 << 8						; Set LME
-					wrmsr								; Write EFER
-					mov eax, cr0						; Read CR0
-					or eax, 1 << 31						; Set PG bit
-					mov cr0, eax						; Set CR0
-					jmp 0x18:kernel_station				; Goto to station, set CS to 64-bit code offset
-
-bits 64
-
-extern framebuffer_width
-extern framebuffer_height
-extern kernel_vaddr
-extern hhdm_pml4_end
-kernel_station:		mov ax, 0x20					; Set AX to 64-bit data offset
-					mov ds, ax						; Set DS to AX
-					mov fs, ax						; Set FS to AX
-					mov gs, ax						; Set GS to AX
-					mov ss, ax						; Set SS to AX
-					mov es, ax						; Set ES to AX
-					; Move stack into higher half
-					push rax
-					mov rax, rbp
-	 				mov rbp, 0xFFFFC00000000000
-					or rbp, rax
-					pop rax
-					mov rsp, rbp
-
-					lea rdi, [rel _boot_meta] ; Pass the pointer of MBI Structure
-					mov rax, qword [kernel_vaddr]
-					jmp rax							; Jump to kernel
+					jmp $
 
 bits 32
 section .bss

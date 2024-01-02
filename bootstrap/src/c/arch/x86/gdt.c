@@ -18,9 +18,9 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "include/gdt.h"
-#include "include/global.h"
-#include "include/interface.h"
+#include "../../include/arch/x86/gdt.h"
+#include "../../include/global.h"
+#include "../../include/interface/printf.h"
 
 struct gdt_header {
 	uint16_t size;
@@ -45,7 +45,7 @@ void set_gdt_gate(int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t 
 	gdt_entries[i].base3 = (base >> 24) & 0xFF;
 
 	gdt_entries[i].access = access;
-	
+
 	gdt_entries[i].limit = (limit) & 0xFFFF;
 	gdt_entries[i].flags_limit = (flags & 0x0F) << 4 | ((limit >> 16) & 0x0F);
 }
@@ -53,10 +53,9 @@ void set_gdt_gate(int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t 
 extern void _install_gdt();
 void install_gdt() {
 	set_gdt_gate(0, 0, 0, 0, 0);
-	set_gdt_gate(1, 0, 0xFFFFFFFF, 0b10011010, 0b00001100); // Kernel Code 32
-	set_gdt_gate(2, 0, 0xFFFFFFFF, 0b10010110, 0b00001100); // Kernel Data 32
-	set_gdt_gate(3, 0, 0xFFFFFFFF, 0b10011010, 0b00001010); // Kernel Code 64
-	set_gdt_gate(4, 0, 0xFFFFFFFF, 0b10010110, 0b00001100); // Kernel Data 64
+	set_gdt_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xC); // Kernel Code 32
+	set_gdt_gate(2, 0, 0xFFFFFFFF, 0x92, 0xC); // Kernel Data 32 / 64
+	set_gdt_gate(3, 0, 0xFFFFFFFF, 0x9A, 0xA); // Kernel Code 64
 
 	gdtr.size = sizeof(gdt_entries) * 8 - 1;
 	gdtr.base = (uintptr_t)&gdt_entries;
@@ -64,4 +63,5 @@ void install_gdt() {
 	_install_gdt();
 
 	printf("Installed GDT\n");
+
 }

@@ -18,9 +18,8 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "include/idt.h"
-#include "include/global.h"
-#include "include/interface.h"
+#include "../../include/arch/x86/idt.h"
+#include "../../include/interface/printf.h"
 #include <stdint.h>
 
 struct idt_desc {

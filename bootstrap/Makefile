@@ -24,18 +24,17 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
 CPPFLAGS ?=
-CFLAGS := -m32 -I src/c/include -c -fno-stack-protector -mno-sse -mno-sse2
+CFLAGS := -m32 -I src/c/include -c -fno-stack-protector -mno-sse -mno-sse2 -masm=intel
 
 LDFLAGS := -Tlinker.ld -melf_i386 -z max-page-size=0x1000 -o $(PRODUCT)
 
 NASMFLAGS := -f elf32
 
-
 all: $(OFILES)
 	ld $(LDFLAGS) $(OFILES)
 
 src/c/%.o: src/c/%.c
-	gcc $(CFLAGS) $< -o $@
+	gcc $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 src/asm/%.o: src/asm/%.asm
 	nasm $(NASMFLAGS) $< -o $@

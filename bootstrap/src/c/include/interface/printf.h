@@ -18,24 +18,25 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef INTERFACE_H
-#define INTERFACE_H
+#ifndef ARC_INTERFACE_PRINTF_H
+#define ARC_INTERFACE_PRINTF_H
 
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
 
 #ifdef E9HACK
+#include "../arch/x86/io/port.h"
 #define E9_HACK(c) outb(0xE9, c);
 #else
 #define E9_HACK(c) ;
 #endif
 
+#define printf printf_
+
 // Configuration for printf.h
 //#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 1
 //#define PRINTF_SUPPORT_DECIMAL_SPECIFIERS 0
-
-//#define PRINTF_INTEGER_BUFFER_SIZE 128
 
 extern void outb(uint16_t port, uint8_t value);
 /**
