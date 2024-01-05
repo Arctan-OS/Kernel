@@ -1,6 +1,8 @@
 #include "../include/multiboot/mbparse.h"
 #include "../include/multiboot/multiboot2.h"
 #include "../include/global.h"
+#include "../include/mm/freelist.h"
+#include "../include/mm/pmm.h"
 
 int read_mb2i(void *mb2i) {
 	ARC_DEBUG(INFO, "Reading multiboot information structure\n")
@@ -24,10 +26,18 @@ int read_mb2i(void *mb2i) {
 
 			int entries = (mmap->size - sizeof(struct multiboot_tag_mmap)) / mmap->entry_size;
 
+			const char *names[] = {
+				[MULTIBOOT_MEMORY_AVAILABLE] = "Available",
+				[MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "ACPI Reclaimable",
+				[MULTIBOOT_MEMORY_BADRAM] = "Bad",
+				[MULTIBOOT_MEMORY_NVS] = "NVS",
+				[MULTIBOOT_MEMORY_RESERVED] = "Reserved"
+			};
+
 			for (int i = 0; i < entries; i++) {
 				struct multiboot_mmap_entry entry = mmap->entries[i];
 
-				ARC_DEBUG(INFO, "%4d : 0x%16"PRIX64", 0x%16"PRIX64" B\n", i, entry.addr, entry.len)
+				ARC_DEBUG(INFO, "%4d : 0x%16"PRIX64", 0x%16"PRIX64" B (%s)\n", i, entry.addr, entry.len, names[entry.type])
 			}
 
 			break;
@@ -95,6 +105,9 @@ int read_mb2i(void *mb2i) {
 
 	ARC_DEBUG(INFO, "Finished reading multiboot information structure\n");
 	ARC_DEBUG(INFO, "End of bootstrap 0x%"PRIX32"\n", bootstrap_end)
+
+	struct ARC_FreelistMeta physical_mem = { 0};
+	init_pmm(mmap, (uintptr_t)bootstrap_end, &physical_mem);
 
 	return 0;
 }
