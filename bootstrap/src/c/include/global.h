@@ -2,6 +2,7 @@
 #define ARC_GLOBAL_H
 
 #include "arctan.h"
+#include "mm/freelist.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <inttypes.h>
@@ -44,5 +45,8 @@
         ({ __typeof__ (a) _a = (a); \
         __typeof__ (b) _b = (b); \
         _a < _b ? _a : _b; })
+
+
+extern struct ARC_FreelistMeta physical_mem;
 
 #endif

@@ -106,8 +106,7 @@ int read_mb2i(void *mb2i) {
 	ARC_DEBUG(INFO, "Finished reading multiboot information structure\n");
 	ARC_DEBUG(INFO, "End of bootstrap 0x%"PRIX32"\n", bootstrap_end)
 
-	struct ARC_FreelistMeta physical_mem = { 0};
-	init_pmm(mmap, (uintptr_t)bootstrap_end, &physical_mem);
+	init_pmm(mmap, (uintptr_t)bootstrap_end);
 
 	return 0;
 }

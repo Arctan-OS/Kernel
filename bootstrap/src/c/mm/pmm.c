@@ -2,12 +2,10 @@
 #include "../include/global.h"
 
 // Return 0: success
-int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end, struct ARC_FreelistMeta *physical_mem) {
+int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end) {
 	ARC_DEBUG(INFO, "Initializing PMM\n")
 
 	int entries = (mmap->size - sizeof(struct multiboot_tag_mmap)) / mmap->entry_size;
-
-	struct ARC_FreelistMeta a = { 0 };
 
 	for (int i = 0; i < entries; i++) {
 		struct multiboot_mmap_entry entry = mmap->entries[i];
@@ -33,15 +31,15 @@ int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end, struct AR
 			base = (void *)ALIGN(bootstrap_end, 0x1000);
 		}
 
-		ARC_DEBUG(INFO, "Initializing freelist %p -> %p\n", base, ciel)
+		ARC_DEBUG(INFO, "Initializing freelist 0x%"PRIXPTR" -> 0x%"PRIXPTR"\n", (uintptr_t)base, (uintptr_t)ciel)
 
-		if (a.base == 0) {
-			Arc_InitializeFreelist(base, ciel, 0x1000, &a);
+		if (physical_mem.base == 0) {
+			Arc_InitializeFreelist(base, ciel, 0x1000, &physical_mem);
 		} else {
 			struct ARC_FreelistMeta b = { 0 };
 			struct ARC_FreelistMeta c = { 0 };
-			Arc_InitializeFreelist(base, ciel, 0x1000, &a);
-			int err = Arc_ListLink(&a, &b, &c);
+			Arc_InitializeFreelist(base, ciel, 0x1000, &physical_mem);
+			int err = Arc_ListLink(&physical_mem, &b, &c);
 
 			if (err != 0) {
 				ARC_DEBUG(ERR, "Failed to link lists A and B\n")
@@ -52,15 +50,6 @@ int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end, struct AR
 	}
 
 	ARC_DEBUG(INFO, "Initialized PMM\n")
-
-	void *allocation = (void *)Arc_ListAlloc(&a);
-	ARC_DEBUG(INFO, "%p\n", allocation);
-	Arc_ListAlloc(&a);
-	void *allocation_b = (void *)Arc_ListAlloc(&a);
-	ARC_DEBUG(INFO, "%p\n", allocation_b);
-	Arc_ListFree(&a, allocation);
-	void *allocation_c = (void *)Arc_ListAlloc(&a);
-	ARC_DEBUG(INFO, "%p\n", allocation_c);
 
 	return 0;
 }
