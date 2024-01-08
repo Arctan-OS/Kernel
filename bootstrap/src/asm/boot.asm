@@ -54,13 +54,37 @@ boot_header_end:
 section .text
 
 extern helper
+extern pml4
 global _entry
 _entry:				mov esp, stack_end					; Setup stack
 					mov ebp, esp						; Make sure base gets the memo
 					push eax							; Push multiboot2 loader signature
 					push ebx							; Push boot information
 					call helper							; HELP!
+
+					mov eax, cr4
+					or eax, 1 << 5
+					mov cr4, eax
+
+					mov eax, dword [pml4]
+					mov cr3, eax
+
+					mov ecx, 0xC0000080
+					rdmsr
+					or eax, 1 << 8
+					wrmsr
+
+					mov eax, cr0
+					or eax, 1 << 31
+					mov cr0, eax
+
+					jmp 0x18:kernel_station 			; #GP
+
+bits 64
+
+kernel_station:
 					jmp $
+
 
 bits 32
 section .bss

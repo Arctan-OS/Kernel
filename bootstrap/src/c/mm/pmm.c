@@ -19,7 +19,7 @@ int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end) {
 		ARC_DEBUG(INFO, "Entry %d suitable for freelist\n", i)
 
 		if ((uint32_t)(entry.addr >> 32) > 0) {
-			ARC_DEBUG(INFO, "Entry %d is above 32-bit address range, ignoring\n")
+			ARC_DEBUG(INFO, "\tEntry %d is above 32-bit address range, ignoring\n")
 			continue;
 		}
 
@@ -31,7 +31,7 @@ int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end) {
 			base = (void *)ALIGN(bootstrap_end, 0x1000);
 		}
 
-		ARC_DEBUG(INFO, "Initializing freelist 0x%"PRIXPTR" -> 0x%"PRIXPTR"\n", (uintptr_t)base, (uintptr_t)ciel)
+		ARC_DEBUG(INFO, "\tInitializing freelist 0x%"PRIXPTR" -> 0x%"PRIXPTR"\n", (uintptr_t)base, (uintptr_t)ciel)
 
 		if (physical_mem.base == 0) {
 			Arc_InitializeFreelist(base, ciel, 0x1000, &physical_mem);

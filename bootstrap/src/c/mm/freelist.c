@@ -32,8 +32,6 @@ void *Arc_ListAlloc(struct ARC_FreelistMeta *meta) {
 	void *address = (void *)meta->head;
 	meta->head = meta->head->next;
 
-	ARC_DEBUG(INFO, "Allocated %p\n", address)
-
 	return address;
 }
 

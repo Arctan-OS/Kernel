@@ -4,6 +4,18 @@
 #include "../include/mm/freelist.h"
 #include "../include/mm/pmm.h"
 
+int strcmp(char *a, char *b) {
+	int sum = 0;
+	while (*a != 0) {
+		sum += *a - *b;
+
+		a++;
+		b++;
+	}
+
+	return sum;
+}
+
 int read_mb2i(void *mb2i) {
 	ARC_DEBUG(INFO, "Reading multiboot information structure\n")
 
@@ -34,11 +46,17 @@ int read_mb2i(void *mb2i) {
 				[MULTIBOOT_MEMORY_RESERVED] = "Reserved"
 			};
 
+			uint64_t total_memory = 0;
+
 			for (int i = 0; i < entries; i++) {
 				struct multiboot_mmap_entry entry = mmap->entries[i];
 
-				ARC_DEBUG(INFO, "%4d : 0x%16"PRIX64", 0x%16"PRIX64" B (%s)\n", i, entry.addr, entry.len, names[entry.type])
+				total_memory += entry.len;
+
+				ARC_DEBUG(INFO, "\t%4d : 0x%16"PRIX64", 0x%16"PRIX64" B (%s)\n", i, entry.addr, entry.len, names[entry.type])
 			}
+
+			page_count = total_memory / 0x1000;
 
 			break;
 		}
@@ -48,7 +66,13 @@ int read_mb2i(void *mb2i) {
 
 			ARC_DEBUG(INFO, "----------------\n")
 			ARC_DEBUG(INFO, "Found module: %s\n", info->cmdline);
-			ARC_DEBUG(INFO, "0x%"PRIX32" -> 0x%"PRIX32" (%d B)\n", info->mod_start, info->mod_end, (info->mod_end - info->mod_start))
+			ARC_DEBUG(INFO, "\t0x%"PRIX32" -> 0x%"PRIX32" (%d B)\n", info->mod_start, info->mod_end, (info->mod_end - info->mod_start))
+
+			if (strcmp(info->cmdline, "arctan-module.kernel.efi") == 0) {
+				ARC_DEBUG(INFO, "\tFound kernel\n")
+				kernel_elf = (void *)info->mod_start;
+			}
+
 			ARC_DEBUG(INFO, "----------------\n")
 
 			if (info->mod_end > bootstrap_end) {
@@ -85,8 +109,8 @@ int read_mb2i(void *mb2i) {
 
 			ARC_DEBUG(INFO, "------------\n")
 			ARC_DEBUG(INFO, "Basic Memory\n")
-			ARC_DEBUG(INFO, "Low Mem: %d KB\n", info->mem_lower)
-			ARC_DEBUG(INFO, "High Mem: %d KB\n", info->mem_upper)
+			ARC_DEBUG(INFO, "\tLow Mem: %d KB\n", info->mem_lower)
+			ARC_DEBUG(INFO, "\tHigh Mem: %d KB\n", info->mem_upper)
 			ARC_DEBUG(INFO, "------------\n")
 
 			break;

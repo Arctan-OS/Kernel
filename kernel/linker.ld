@@ -18,7 +18,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-ENTRY(kernel_main)
+ENTRY(_kernel_entry)
 
 PHDRS {
       text PT_LOAD;
