@@ -41,6 +41,11 @@ uint64_t *map_page(uint64_t *pml4, uint64_t vaddr, uint64_t paddr, int overwrite
 		memset(pml4, 0, 0x1000);
 	}
 
+	// TODO: Check that the sign extension is correct
+
+	paddr &= 0x0000FFFFFFFFF000;
+	vaddr &= 0x0000FFFFFFFFF000;
+
 	int err = 0;
 
 	uint64_t *pml3;

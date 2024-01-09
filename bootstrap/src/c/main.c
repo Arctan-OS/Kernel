@@ -31,6 +31,13 @@ int helper(void *mbi, uint32_t signature) {
 
 	read_mb2i(mbi);
 
+	// Map kernel
+	// ERROR: The kernel has to be mapped into memory here otherwise it
+	//        will overwrite the first entry of the given PML4, causing a
+	//        fault when doing the long jump. This error is happening inside
+	//        of the VMM for reasons unknown right now.
+	load_elf(pml4, kernel_elf);
+
 	// Identity map first MB
 	for (int i = 0; i < 512; i++) {
 		pml4 = map_page(pml4, i << 12, i << 12, 1);
@@ -40,7 +47,6 @@ int helper(void *mbi, uint32_t signature) {
 			ARC_HANG
 		}
 	}
-
 
 	// Create HHDM
 	for (uint64_t i = 0; i < page_count; i++) {
@@ -52,9 +58,7 @@ int helper(void *mbi, uint32_t signature) {
 		}
 	}
 
-	// Map kernel
-	// ERROR: Causes crash when doing a long jump to long mode
-	// load_elf(pml4, kernel_elf);
+	for (;;);
 
 	return 0;
 }

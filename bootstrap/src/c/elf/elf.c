@@ -113,9 +113,9 @@ int load_elf(uint64_t *pml4, void *file) {
 		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIX64" Size: 0x%"PRIX64" (0x%"PRIX64":0x%"PRIX64")\n", prog_header.p_offset, prog_header.p_memsz, paddr, vaddr)
 
 		for (uint64_t j = 0; j < page_count; j++) {
-			pml4 = map_page(pml4, vaddr + (j << 12), paddr + (j << 12), 1);
+			pml4 = map_page(pml4, vaddr + (j << 12), paddr + (j << 12), 0);
 
-			if (pml4 == NULL || pml4 != old_pml4) {
+			if (pml4 == NULL || (pml4 != old_pml4 && old_pml4 != NULL)) {
 				ARC_DEBUG(ERR, "Mapping failed\n")
 				return 2;
 			}
