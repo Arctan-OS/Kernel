@@ -91,6 +91,7 @@ struct Elf64_Phdr {
 // Return 1: not ELF
 // Return 2: mapping failed
 int load_elf(uint64_t *pml4, void *file) {
+	uint64_t *old_pml4 = pml4;
 	struct Elf64_Ehdr *header = (struct Elf64_Ehdr *)file;
 
 	if (header->e_ident[0] != 0x7F || header->e_ident[1] != 'E' ||
@@ -114,7 +115,7 @@ int load_elf(uint64_t *pml4, void *file) {
 		for (uint64_t j = 0; j < page_count; j++) {
 			pml4 = map_page(pml4, vaddr + (j << 12), paddr + (j << 12), 1);
 
-			if (pml4 == NULL) {
+			if (pml4 == NULL || pml4 != old_pml4) {
 				ARC_DEBUG(ERR, "Mapping failed\n")
 				return 2;
 			}

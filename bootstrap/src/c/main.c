@@ -32,7 +32,7 @@ int helper(void *mbi, uint32_t signature) {
 	read_mb2i(mbi);
 
 	// Identity map first MB
-	for (int i = 0; i < 1024; i++) {
+	for (int i = 0; i < 512; i++) {
 		pml4 = map_page(pml4, i << 12, i << 12, 1);
 
 		if (pml4 == NULL) {
@@ -40,6 +40,7 @@ int helper(void *mbi, uint32_t signature) {
 			ARC_HANG
 		}
 	}
+
 
 	// Create HHDM
 	for (uint64_t i = 0; i < page_count; i++) {
@@ -52,7 +53,8 @@ int helper(void *mbi, uint32_t signature) {
 	}
 
 	// Map kernel
-	load_elf(pml4, kernel_elf);
+	// ERROR: Causes crash when doing a long jump to long mode
+	// load_elf(pml4, kernel_elf);
 
 	return 0;
 }
