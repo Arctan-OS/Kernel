@@ -29,7 +29,7 @@ uint64_t *create_table(uint64_t *parent, uint64_t vaddr, int level) {
 
 	memset(table, 0, 0x1000);
 
-	parent[(vaddr >> 21) & 0x1FF] = (uintptr_t)table | 3;
+	parent[(vaddr >> shift) & 0x1FF] = (uintptr_t)table | 3;
 	return table;
 }
 
