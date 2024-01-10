@@ -82,7 +82,12 @@ _entry:				mov esp, stack_end					; Setup stack
 
 bits 64
 
-kernel_station:
+kernel_station:		mov rax, 0xFFFFFFFF80000000
+					lea rdi, [rel _boot_meta]
+					mov rbp, stack
+					mov rsp, rbp
+
+					jmp rax
 					jmp $
 
 

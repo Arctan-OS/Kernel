@@ -37,7 +37,7 @@ _idt_stub_%1_:      PUSH_ALL
                     mov rsi, %1
                     call interrupt_junction
                     POP_ALL
-                    iret
+                    iretq
 %endmacro
 
 common_idt_stub 0

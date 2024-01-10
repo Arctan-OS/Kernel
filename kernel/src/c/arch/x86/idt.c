@@ -19,7 +19,7 @@
 */
 
 #include <arch/x86/ctrl_regs.h>
-#include <interface/printf.h>
+#include <arch/x86/io/port.h>
 #include <global.h>
 #include <arch/x86/idt.h>
 
@@ -97,28 +97,29 @@ void install_idt_gate(int i, uint64_t offset, uint16_t segment, uint8_t attrs) {
 
 void handle_gp(int error_code) {
 	if (error_code == 0) {
-		printf("#GP may have been caused by one of the following:\n\tAn operand of the instruction\n\tA selector from a gate which is the operand of the instruction\n\tA selector from a TSS involved in a task switch\n\t IDT vector number\n");
+		ARC_DEBUG(ERR, "#GP may have been caused by one of the following:\n")
+		ARC_DEBUG(ERR, "\tAn operand of the instruction\n")
+		ARC_DEBUG(ERR, "\tA selector from a gate which is the operand of the instruction\n")
+		ARC_DEBUG(ERR, "\tA selector from a TSS involved in a task switch\n")
+		ARC_DEBUG(ERR, "\tIDT vector number\n");
+
 		return;
 	}
 
-	printf("Error code 0x%02X\n", error_code);
+	ARC_DEBUG(ERR, "Error code 0x%02X\n", error_code);
 }
 
 void interrupt_junction(struct junction_args *args, int code) {
 	// Dump registers
-
-	// ERROR: The following print statement causes
-	//        weird alignment errors, triple faults
-	//        when int 3 is received
-//	printf("Received Interrupt %d, %s\n", code, exception_names[code]);
-	printf("RAX: 0x%"PRIX64"\n", args->rax);
-	printf("RBX: 0x%"PRIX64"\n", args->rbx);
-	printf("RCX: 0x%"PRIX64"\n", args->rcx);
-	printf("RDX: 0x%"PRIX64"\n", args->rdx);
-	printf("RSI: 0x%"PRIX64"\n", args->rsi);
-	printf("RDI: 0x%"PRIX64"\n", args->rdi);
-	printf("RSP: 0x%"PRIX64"\n", args->rsp);
-	printf("RBP: 0x%"PRIX64"\n", args->rbp);
+	ARC_DEBUG(ERR, "Received Interrupt %d, %s\n", code, exception_names[code]);
+	ARC_DEBUG(ERR, "RAX: 0x%"PRIX64"\n", args->rax);
+	ARC_DEBUG(ERR, "RBX: 0x%"PRIX64"\n", args->rbx);
+	ARC_DEBUG(ERR, "RCX: 0x%"PRIX64"\n", args->rcx);
+	ARC_DEBUG(ERR, "RDX: 0x%"PRIX64"\n", args->rdx);
+	ARC_DEBUG(ERR, "RSI: 0x%"PRIX64"\n", args->rsi);
+	ARC_DEBUG(ERR, "RDI: 0x%"PRIX64"\n", args->rdi);
+	ARC_DEBUG(ERR, "RSP: 0x%"PRIX64"\n", args->rsp);
+	ARC_DEBUG(ERR, "RBP: 0x%"PRIX64"\n", args->rbp);
 
 	// If we enter none of the following conditions,
 	// this is the return address
@@ -132,7 +133,7 @@ void interrupt_junction(struct junction_args *args, int code) {
 		goto fall_through;
 	case 14:
 		_x86_getCR2();
-		printf("CR2: 0x%"PRIX64"\n", _x86_CR2);
+		ARC_DEBUG(ERR, "CR2: 0x%"PRIX64"\n", _x86_CR2);
 		goto fall_through;
 	case 13:
 		handle_gp(stack_elem);
@@ -154,7 +155,7 @@ fall_through:;
 	}
 	}
 
-	printf("Return address: 0x%"PRIX64"\n", stack_elem);
+	ARC_DEBUG(ERR, "Return address: 0x%"PRIX64"\n", stack_elem);
 
 	for (;;);
 
@@ -234,10 +235,10 @@ void install_idt() {
 	install_idt_gate(30, (uintptr_t)&_idt_stub_30_, 0x18, 0x8E);
 	install_idt_gate(31, (uintptr_t)&_idt_stub_31_, 0x18, 0x8E);
 
-	idtr.limit = sizeof(idt_entries) * 8 - 1;
+	idtr.limit = sizeof(idt_entries) * 16 - 1;
 	idtr.base = (uintptr_t)&idt_entries;
 
 	_install_idt();
 
-	printf("Ported IDT to 64-bits\n");
+	ARC_DEBUG(INFO, "Ported IDT to 64-bits\n");
 }

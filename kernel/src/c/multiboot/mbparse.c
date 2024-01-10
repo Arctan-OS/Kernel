@@ -21,8 +21,6 @@ int parse_mbi() {
 		}
 		}
 
-		//printf("%d\n", current_tag->type);
-
 		current_tag = (struct multiboot_tag *)((uintptr_t)current_tag + ALIGN(current_tag->size, 8));
 	}
 

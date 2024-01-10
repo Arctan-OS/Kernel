@@ -32,19 +32,17 @@ struct ARC_BootMeta *Arc_BootMeta = NULL;
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	if (boot_meta == NULL) {
-		printf("Pointer to boot information was not passed correctly, cannot continue\n");
+		ARC_DEBUG(ERR, "Pointer to boot information was not passed correctly, cannot continue\n");
 		ARC_HANG
 	}
 
 	Arc_BootMeta = boot_meta;
 
-	printf("\nWelcome to 64-bit wonderland! Please enjoy your stay.\n");
+	ARC_DEBUG(INFO, "Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	install_idt();
 
 	parse_mbi();
-
-	printf("Data\n");
 
 	for (;;);
 

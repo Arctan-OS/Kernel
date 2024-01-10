@@ -24,6 +24,8 @@ int helper(void *mbi, uint32_t signature) {
 		ARC_HANG
 	}
 
+	_boot_meta.mb2i = (uintptr_t)mbi;
+
 	check_features();
 
 	install_gdt();
@@ -53,6 +55,8 @@ int helper(void *mbi, uint32_t signature) {
 
 	// Map kernel
 	load_elf(pml4, kernel_elf);
+
+	_boot_meta.first_free = (uintptr_t)Arc_ListAlloc(&physical_mem);
 
 	return 0;
 }
