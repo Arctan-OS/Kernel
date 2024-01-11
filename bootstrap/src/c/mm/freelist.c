@@ -18,12 +18,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "../include/arctan.h"
-#include "../include/global.h"
-#include "../include/mm/freelist.h"
+#include <global.h>
+#include <mm/freelist.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "../include/interface/printf.h"
 
 // Allocate one object in given list
 // Return: non-NULL = success

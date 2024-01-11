@@ -1,5 +1,5 @@
-#include "../include/elf/elf.h"
-#include "../include/mm/vmm.h"
+#include <elf/elf.h>
+#include <mm/vmm.h>
 
 #define PT_NULL 0
 #define PT_LOAD 1
@@ -87,20 +87,22 @@ struct Elf64_Phdr {
 	Elf64_Xword p_align; /* Alignment of segment */
 }__attribute__((packed));
 
-// Return 0: success
-// Return 1: not ELF
-// Return 2: mapping failed
-int load_elf(uint64_t *pml4, void *file) {
+// Return e_entry: success
+// Return 0: not ELF
+// Return 1: mapping failed
+uint64_t load_elf(uint64_t *pml4, void *file) {
 	uint64_t *old_pml4 = pml4;
 	struct Elf64_Ehdr *header = (struct Elf64_Ehdr *)file;
 
 	if (header->e_ident[0] != 0x7F || header->e_ident[1] != 'E' ||
 	    header->e_ident[2] != 'L' || header->e_ident[3] != 'F') {
-		return 1;
+		return 0;
 	}
 
 	ARC_DEBUG(INFO, "-----------\n")
 	ARC_DEBUG(INFO, "Loading ELF\n")
+
+	ARC_DEBUG(INFO, "Entry at: 0x%"PRIX64"\n", header->e_entry)
 
 	for (int i = 0; i < header->e_phnum; i++) {
 		struct Elf64_Phdr prog_header = ((struct Elf64_Phdr *)((uintptr_t)file + header->e_phoff))[i];
@@ -117,12 +119,12 @@ int load_elf(uint64_t *pml4, void *file) {
 
 			if (pml4 == NULL || (pml4 != old_pml4 && old_pml4 != NULL)) {
 				ARC_DEBUG(ERR, "Mapping failed\n")
-				return 2;
+				return 1;
 			}
 		}
 	}
 
 	ARC_DEBUG(INFO, "-----------\n")
 
-	return 0;
+	return header->e_entry;
 }

@@ -1,8 +1,8 @@
-#include "../include/multiboot/mbparse.h"
-#include "../include/multiboot/multiboot2.h"
-#include "../include/global.h"
-#include "../include/mm/freelist.h"
-#include "../include/mm/pmm.h"
+#include <multiboot/mbparse.h>
+#include <multiboot/multiboot2.h>
+#include <global.h>
+#include <mm/freelist.h>
+#include <mm/pmm.h>
 
 int strcmp(char *a, char *b) {
 	int sum = 0;

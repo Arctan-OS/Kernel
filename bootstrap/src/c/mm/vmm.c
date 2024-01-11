@@ -1,5 +1,5 @@
-#include "../include/mm/vmm.h"
-#include "../include/mm/freelist.h"
+#include <mm/vmm.h>
+#include <mm/freelist.h>
 
 void memset(void *mem, uint8_t value, size_t size) {
 	for (size_t i = 0; i < size; i++) {

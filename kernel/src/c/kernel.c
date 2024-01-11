@@ -44,6 +44,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	parse_mbi();
 
+	__asm__("int 3");
+
 	for (;;);
 
 	return 0;

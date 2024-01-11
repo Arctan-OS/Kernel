@@ -1,6 +1,6 @@
 #include <cpuid.h>
-#include "../../include/arch/x86/cpuid.h"
-#include "../../include/global.h"
+#include <arch/x86/cpuid.h>
+#include <global.h>
 
 int check_features() {
 	register uint32_t eax;

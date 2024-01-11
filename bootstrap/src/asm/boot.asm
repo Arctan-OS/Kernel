@@ -55,8 +55,9 @@ section .text
 
 extern helper
 extern pml4
+extern _kernel_station
 global _entry
-_entry:				mov esp, stack_end					; Setup stack
+_entry:				mov esp, _stack_end					; Setup stack
 					mov ebp, esp						; Make sure base gets the memo
 					push eax							; Push multiboot2 loader signature
 					push ebx							; Push boot information
@@ -78,20 +79,8 @@ _entry:				mov esp, stack_end					; Setup stack
 					or eax, 1 << 31
 					mov cr0, eax
 
-					jmp 0x18:kernel_station 			; #GP
+					jmp 0x18:_kernel_station
 
-bits 64
-
-kernel_station:		mov rax, 0xFFFFFFFF80000000
-					lea rdi, [rel _boot_meta]
-					mov rbp, stack
-					mov rsp, rbp
-
-					jmp rax
-					jmp $
-
-
-bits 32
 section .bss
 
 global _boot_meta
@@ -100,7 +89,7 @@ _boot_meta:
 .first_free:			resb 4								; Pointer to the the first free address after HHDM (Physical)
 .state:					resb 8								; Pointer to previous kernel state (Virtual)
 
-global stack
-global stack_end
-stack:				resb STACK_SZ						; Reserve stack space
-stack_end:
+global _stack
+global _stack_end
+_stack:				resb STACK_SZ						; Reserve stack space
+_stack_end:

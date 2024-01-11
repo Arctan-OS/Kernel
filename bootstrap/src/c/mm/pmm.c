@@ -1,5 +1,5 @@
-#include "../include/mm/pmm.h"
-#include "../include/global.h"
+#include <mm/pmm.h>
+#include <global.h>
 
 // Return 0: success
 int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end) {

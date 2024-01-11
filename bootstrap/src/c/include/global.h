@@ -1,8 +1,8 @@
 #ifndef ARC_GLOBAL_H
 #define ARC_GLOBAL_H
 
-#include "arctan.h"
-#include "mm/freelist.h"
+#include <arctan.h>
+#include <mm/freelist.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <inttypes.h>
@@ -11,7 +11,7 @@
 
 #ifdef ARC_DEBUG_ENABLE
 
-#include "interface/printf.h"
+#include <interface/printf.h>
 
 #define ARC_DEBUG_NAME_STR "[BOOTSTRAP "__FILE__"]"
 #define ARC_DEBUG_NAME_SEP_STR " : "

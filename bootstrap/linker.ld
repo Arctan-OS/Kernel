@@ -51,5 +51,7 @@ SECTIONS {
 		*(.bss .bss.*)
 	} :data
 
+    . = ALIGN(0x1000);
+
 	__BOOTSTRAP_END__ = .;
 }

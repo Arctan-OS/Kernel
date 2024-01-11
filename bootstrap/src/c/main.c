@@ -1,20 +1,21 @@
 #include <stdint.h>
-#include "include/global.h"
-#include "include/interface/printf.h"
-#include "include/arch/x86/idt.h"
-#include "include/arch/x86/gdt.h"
-#include "include/arctan.h"
-#include "include/multiboot/mbparse.h"
-#include "include/mm/freelist.h"
-#include "include/mm/vmm.h"
-#include "include/multiboot/multiboot2.h"
-#include "include/arch/x86/cpuid.h"
-#include "include/elf/elf.h"
+#include <global.h>
+#include <interface/printf.h>
+#include <arch/x86/idt.h>
+#include <arch/x86/gdt.h>
+#include <arctan.h>
+#include <multiboot/mbparse.h>
+#include <mm/freelist.h>
+#include <mm/vmm.h>
+#include <multiboot/multiboot2.h>
+#include <arch/x86/cpuid.h>
+#include <elf/elf.h>
 
 struct ARC_FreelistMeta physical_mem = { 0 };
 uint64_t page_count = 0;
 void *kernel_elf = NULL;
 uint64_t *pml4 = NULL;
+uint64_t kernel_entry = 0;
 
 int helper(void *mbi, uint32_t signature) {
 	ARC_DEBUG(INFO, "Loaded\n");
@@ -54,7 +55,7 @@ int helper(void *mbi, uint32_t signature) {
 	}
 
 	// Map kernel
-	load_elf(pml4, kernel_elf);
+	kernel_entry = load_elf(pml4, kernel_elf);
 
 	_boot_meta.first_free = (uintptr_t)Arc_ListAlloc(&physical_mem);
 

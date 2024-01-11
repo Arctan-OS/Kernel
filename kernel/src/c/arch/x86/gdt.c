@@ -18,12 +18,11 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include <arch/x86/gdt.h>
 #include <global.h>
 
 struct gdt_header {
 	uint16_t size;
-	uint32_t base;
+	uint64_t base;
 }__attribute__((packed));
 
 struct gdt_entry {
@@ -36,17 +35,18 @@ struct gdt_entry {
 }__attribute__((packed));
 
 struct gdt_header gdtr;
-struct gdt_entry gdt_entries[16];
+//struct gdt_entry gdt_entries[16]; // ERROR: When an interrupt is called and this line uncommented,
+				  //        a triple fault occurs.
 
 void set_gdt_gate(int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
-	gdt_entries[i].base1 = (base      ) & 0xFFFF;
-	gdt_entries[i].base2 = (base >> 16) & 0xFF;
-	gdt_entries[i].base3 = (base >> 24) & 0xFF;
+//	gdt_entries[i].base1 = (base      ) & 0xFFFF;
+//	gdt_entries[i].base2 = (base >> 16) & 0xFF;
+//	gdt_entries[i].base3 = (base >> 24) & 0xFF;
 
-	gdt_entries[i].access = access;
+//	gdt_entries[i].access = access;
 
-	gdt_entries[i].limit = (limit) & 0xFFFF;
-	gdt_entries[i].flags_limit = (flags & 0x0F) << 4 | ((limit >> 16) & 0x0F);
+//	gdt_entries[i].limit = (limit) & 0xFFFF;
+//	gdt_entries[i].flags_limit = (flags & 0x0F) << 4 | ((limit >> 16) & 0x0F);
 }
 
 extern void _install_gdt();
@@ -56,11 +56,10 @@ void install_gdt() {
 	set_gdt_gate(2, 0, 0xFFFFFFFF, 0x92, 0xC); // Kernel Data 32 / 64
 	set_gdt_gate(3, 0, 0xFFFFFFFF, 0x9A, 0xA); // Kernel Code 64
 
-	gdtr.size = sizeof(gdt_entries) * 8 - 1;
-	gdtr.base = (uintptr_t)&gdt_entries;
+//	gdtr.size = sizeof(gdt_entries) * 8 - 1;
+//	gdtr.base = (uintptr_t)&gdt_entries;
 
 	_install_gdt();
 
 	ARC_DEBUG(INFO, "Installed GDT\n");
-
 }

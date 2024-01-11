@@ -3,7 +3,10 @@ bits 64
 global _install_idt
 extern idtr
 _install_idt:       cli
-                    lidt [idtr]
+                    push rax
+                    lea rax, idtr
+                    lidt [rax]
+                    pop rax
                     sti
                     ret
 

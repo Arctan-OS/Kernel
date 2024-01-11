@@ -63,7 +63,7 @@
 #include "printf_config.h"
 #endif
 
-#include "../include/interface/printf.h"
+#include <interface/printf.h>
 
 #ifdef __cplusplus
 #include <cstdint>
