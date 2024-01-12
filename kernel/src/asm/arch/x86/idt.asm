@@ -4,7 +4,7 @@ global _install_idt
 extern idtr
 _install_idt:       cli
                     push rax
-                    lea rax, idtr
+                    lea rax, [rel idtr]
                     lidt [rax]
                     pop rax
                     sti

@@ -27,6 +27,7 @@
 #include <multiboot/mbparse.h>
 
 #include <arch/x86/idt.h>
+#include <arch/x86/gdt.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 
@@ -40,6 +41,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	ARC_DEBUG(INFO, "Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
+	install_gdt();
 	install_idt();
 
 	parse_mbi();

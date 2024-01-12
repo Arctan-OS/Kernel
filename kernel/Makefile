@@ -23,10 +23,12 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK)
-CFLAGS := -m64 -I src/c/include -c -masm=intel -fno-stack-protector -nostdlib -Wall -Wextra
+CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include
+CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
+		  -fno-lto -fPIE -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
+		  -Wextra -ffreestanding
 
-LDFLAGS := -Tlinker.ld -melf_x86_64 -z max-page-size=0x1000 -o $(PRODUCT)
+LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -pie -static -nostdlib -o $(PRODUCT)
 
 NASMFLAGS := -f elf64
 
