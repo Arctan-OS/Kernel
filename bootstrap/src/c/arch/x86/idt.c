@@ -93,11 +93,16 @@ void install_idt_gate(int i, uint32_t offset, uint16_t segment, uint8_t attrs) {
 
 void handle_gp(int error_code) {
 	if (error_code == 0) {
-		printf("#GP may have been caused by one of the following:\n\tAn operand of the instruction\n\tA selector from a gate which is the operand of the instruction\n\tA selector from a TSS involved in a task switch\n\t IDT vector number\n");
+		ARC_DEBUG(ERR, "#GP may have been caused by one of the following:\n")
+		ARC_DEBUG(ERR, "\tAn operand of the instruction\n")
+		ARC_DEBUG(ERR, "\tA selector from a gate which is the operand of the instruction\n")
+		ARC_DEBUG(ERR, "\tA selector from a TSS involved in a task switch\n")
+		ARC_DEBUG(ERR, "\tIDT vector number\n");
+
 		return;
 	}
 
-	printf("Error code 0x%02X\n", error_code);
+	ARC_DEBUG(ERR, "Error code 0x%02X\n", error_code);
 }
 
 void interrupt_junction(uint32_t esp) {
@@ -108,15 +113,15 @@ void interrupt_junction(uint32_t esp) {
 	args->esp += 4;
 
 	// Dump registers
-	printf("Received Interrupt %d, %s\n", args->code, exception_names[args->code]);
-	printf("EAX: 0x%X\n", args->eax);
-	printf("EBX: 0x%X\n", args->ebx);
-	printf("ECX: 0x%X\n", args->ecx);
-	printf("EDX: 0x%X\n", args->edx);
-	printf("ESI: 0x%X\n", args->esi);
-	printf("EDI: 0x%X\n", args->edi);
-	printf("ESP: 0x%X\n", args->esp);
-	printf("EBP: 0x%X\n", args->ebp);
+	ARC_DEBUG(ERR, "Received Interrupt %d, %s\n", args->code, exception_names[args->code]);
+	ARC_DEBUG(ERR, "EAX: 0x%X\n", args->eax);
+	ARC_DEBUG(ERR, "EBX: 0x%X\n", args->ebx);
+	ARC_DEBUG(ERR, "ECX: 0x%X\n", args->ecx);
+	ARC_DEBUG(ERR, "EDX: 0x%X\n", args->edx);
+	ARC_DEBUG(ERR, "ESI: 0x%X\n", args->esi);
+	ARC_DEBUG(ERR, "EDI: 0x%X\n", args->edi);
+	ARC_DEBUG(ERR, "ESP: 0x%X\n", args->esp);
+	ARC_DEBUG(ERR, "EBP: 0x%X\n", args->ebp);
 
 	// If we enter none of the following conditions,
 	// this is the return address
@@ -150,7 +155,7 @@ fall_through:;
 	}
 	}
 
-	printf("Return address: 0x%X\n", stack_elem);
+	ARC_DEBUG(ERR, "Return address: 0x%X\n", stack_elem);
 
 	// Send EOI
 	if (args->code >= 8) {

@@ -16,6 +16,8 @@ uint64_t page_count = 0;
 void *kernel_elf = NULL;
 uint64_t *pml4 = NULL;
 uint64_t kernel_entry = 0;
+struct multiboot_tag_framebuffer *global_framebuffer = NULL;
+uint8_t *global_kernel_font = NULL;
 
 int helper(void *mbi, uint32_t signature) {
 	ARC_DEBUG(INFO, "Loaded\n");

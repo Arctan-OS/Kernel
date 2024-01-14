@@ -14,6 +14,7 @@ all: clean
 	mkdir -p iso/boot/grub
 
 	cp kernel/kernel.elf iso/boot
+	cp FONT.bin iso/boot
 	cp bootstrap/bootstrap.elf iso/boot
 	cp grub.cfg iso/boot/grub
 

@@ -59,11 +59,14 @@
 
 // Define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H=1 ...) to include the
 // printf_config.h header file
+#include "arch/x86/io/port.h"
+#include <sys/types.h>
 #if PRINTF_INCLUDE_CONFIG_H
 #include "printf_config.h"
 #endif
 
 #include <interface/printf.h>
+#include <global.h>
 
 #ifdef __cplusplus
 #include <cstdint>
@@ -204,8 +207,8 @@
 #elif (LLONG_MAX  == 2147483647LL)
 #define FLAGS_INT32       FLAGS_LONG_LONG
 #else
-#error "No basic integer type has a size of 32 bits exactly"
 #endif
+#error "No basic integer type has a size of 32 bits exactly"
 
 #if   (SHRT_MAX   == 9223372036854775807LL)
 #define FLAGS_INT64       FLAGS_SHORT
@@ -279,8 +282,46 @@ typedef uint64_t double_uint_t;
 #endif
 #define DOUBLE_STORED_MANTISSA_BITS (DBL_MANT_DIG - 1)
 
+static int terminal_x __attribute__((section(".data"))) = 0;
+static int terminal_y __attribute__((section(".data"))) = 0;
+
 void putchar_(char c) {
 	E9_HACK(c);
+
+	if (global_framebuffer != NULL && global_kernel_font != NULL) {
+		switch (c) {
+		case '\n': {
+			terminal_y += ARC_TERM_CHARH;
+			terminal_x = 0;
+
+			break;
+		}
+
+		default: {
+			uint8_t *data = global_kernel_font + (c * ARC_TERM_CHARH);
+
+			int screen_width = global_framebuffer->common.framebuffer_width;
+
+			for (int i = 0; i < ARC_TERM_CHARH; i++) {
+				for (int j = ARC_TERM_CHARW - 1; j >= 0; j--) {
+					if (((data[i] >> j) & 1) == 1) {
+						*((uint32_t *)(global_framebuffer->common.framebuffer_addr + ARC_HHDM_VADDR) + (i + terminal_y) * screen_width + (j + terminal_x)) = 0x00FFFFFF;
+					}
+				}
+			}
+
+			terminal_x += ARC_TERM_CHARW;
+
+			if (terminal_x >= screen_width) {
+				terminal_y += ARC_TERM_CHARH;
+				terminal_x = 0;
+			}
+
+			break;
+		}
+		}
+	}
+
 }
 
 typedef union {

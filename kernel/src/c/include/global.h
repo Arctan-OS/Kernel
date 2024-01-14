@@ -4,8 +4,13 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <arctan.h>
-
+#include <multiboot/multiboot2.h>
 #define ARC_HANG for (;;) __asm__("hlt");
+
+#define ARC_TERM_WIDTH 80
+#define ARC_TERM_HEIGHT 25
+#define ARC_TERM_CHARW 8
+#define ARC_TERM_CHARH 8
 
 #ifdef ARC_DEBUG_ENABLE
 
@@ -45,5 +50,7 @@
         _a < _b ? _a : _b; })
 
 extern struct ARC_BootMeta *Arc_BootMeta;
+extern struct multiboot_tag_framebuffer *global_framebuffer __attribute__((section(".data")));
+extern uint8_t *global_kernel_font __attribute__((section(".data")));
 
 #endif

@@ -59,6 +59,8 @@
 
 // Define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H=1 ...) to include the
 // printf_config.h header file
+#include "arctan.h"
+#include "global.h"
 #if PRINTF_INCLUDE_CONFIG_H
 #include "printf_config.h"
 #endif
@@ -279,7 +281,45 @@ typedef uint64_t double_uint_t;
 #endif
 #define DOUBLE_STORED_MANTISSA_BITS (DBL_MANT_DIG - 1)
 
+static int terminal_x = 0;
+static int terminal_y = 0;
+
 void putchar_(char c) {
+	if (global_framebuffer != NULL && global_kernel_font != NULL) {
+		switch (c) {
+		case '\n': {
+			terminal_y += ARC_TERM_CHARH;
+			terminal_x = 0;
+
+			break;
+		}
+
+		default: {
+			uint8_t *data = global_kernel_font + (c * ARC_TERM_CHARH);
+
+			int screen_width = global_framebuffer->common.framebuffer_width;
+
+			for (int i = 0; i < ARC_TERM_CHARH; i++) {
+				int rx = 0;
+				for (int j = ARC_TERM_CHARW - 1; j >= 0; j--) {
+					if (((data[i] >> j) & 1) == 1) {
+						*((uint32_t *)global_framebuffer->common.framebuffer_addr + (i + terminal_y) * screen_width + (j + terminal_x)) = 0x00FFFFFF;
+					}
+				}
+			}
+
+			terminal_x += ARC_TERM_CHARW;
+
+			if (terminal_x >= screen_width) {
+				terminal_y += ARC_TERM_CHARH;
+				terminal_x = 0;
+			}
+
+			break;
+		}
+		}
+	}
+
 	E9_HACK(c);
 }
 

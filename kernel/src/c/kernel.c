@@ -30,6 +30,8 @@
 #include <arch/x86/gdt.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
+struct multiboot_tag_framebuffer *global_framebuffer = NULL;
+uint8_t *global_kernel_font = NULL;
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	if (boot_meta == NULL) {
@@ -39,14 +41,14 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	Arc_BootMeta = boot_meta;
 
-	ARC_DEBUG(INFO, "Welcome to 64-bit wonderland! Please enjoy your stay.\n");
+	ARC_DEBUG(INFO, "Sucessfully entered long mode\n")
 
 	install_gdt();
 	install_idt();
 
 	parse_mbi();
 
-	__asm__("int 3");
+	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	for (;;);
 

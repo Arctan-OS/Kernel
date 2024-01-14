@@ -71,6 +71,10 @@ int read_mb2i(void *mb2i) {
 			if (strcmp(info->cmdline, "arctan-module.kernel.efi") == 0) {
 				ARC_DEBUG(INFO, "\tFound kernel\n")
 				kernel_elf = (void *)info->mod_start;
+			} else if (strcmp(info->cmdline, "arctan-module.kernel.font.bin") == 0) {
+				ARC_DEBUG(INFO, "\tFound kerne.font\n")
+				global_kernel_font = (uint8_t *)info->mod_start;
+
 			}
 
 			ARC_DEBUG(INFO, "----------------\n")
@@ -93,6 +97,8 @@ int read_mb2i(void *mb2i) {
 					*((uint32_t *)common.framebuffer_addr + (i * common.framebuffer_width) + j) = 0x0043210FF;
 				}
 			}
+
+			global_framebuffer = info;
 
 			break;
 		}
