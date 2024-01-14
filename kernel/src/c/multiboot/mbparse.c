@@ -19,12 +19,11 @@ int parse_mbi() {
 	struct multiboot_tag *tag = (struct multiboot_tag *)(Arc_BootMeta->mb2i + ARC_HHDM_VADDR);
 	struct multiboot_tag *end = (struct multiboot_tag *)(tag + tag->type);
 
-	tag += 8;
+	tag = (struct multiboot_tag *)((uintptr_t)tag + 8);
 
 	while (tag < end && tag->type != 0) {
 		switch (tag->type) {
 		case MULTIBOOT_TAG_TYPE_MMAP: {
-			printf("MMAP\n");
 			break;
 		}
 
@@ -35,9 +34,13 @@ int parse_mbi() {
 			ARC_DEBUG(INFO, "Found module: %s\n", info->cmdline);
 			ARC_DEBUG(INFO, "\t0x%"PRIX32" -> 0x%"PRIX32" (%d B)\n", info->mod_start, info->mod_end, (info->mod_end - info->mod_start))
 
-			if (strcmp(info->cmdline, "arctan-module.kernel.font.bin") == 0) {
-				ARC_DEBUG(INFO, "\tFound kerne.font\n")
-				global_kernel_font = (uint8_t *)(info->mod_start + ARC_HHDM_VADDR);
+			if (strcmp(info->cmdline, "arctan-module.kernel.efi") == 0) {
+				ARC_DEBUG(INFO, "\tFound kernel\n")
+			} else if (strcmp(info->cmdline, "arctan-module.kernel.font.bin") == 0) {
+				ARC_DEBUG(INFO, "\tFound kernel.font\n")
+				main_terminal.font_bmp = (uint8_t *)(info->mod_start + ARC_HHDM_VADDR);
+				main_terminal.font_width = 8;
+				main_terminal.font_height = 8;
 			}
 
 			ARC_DEBUG(INFO, "----------------\n")
@@ -57,7 +60,11 @@ int parse_mbi() {
 				}
 			}
 
-			global_framebuffer = info;
+			main_terminal.framebuffer = (void *)(common.framebuffer_addr + ARC_HHDM_VADDR);
+			main_terminal.fb_width = common.framebuffer_width;
+			main_terminal.fb_height = common.framebuffer_height;
+			main_terminal.fb_bpp = common.framebuffer_bpp;
+			main_terminal.fb_pitch = common.framebuffer_pitch;
 
 			break;
 		}

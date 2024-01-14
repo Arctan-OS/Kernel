@@ -72,9 +72,8 @@ int read_mb2i(void *mb2i) {
 				ARC_DEBUG(INFO, "\tFound kernel\n")
 				kernel_elf = (void *)info->mod_start;
 			} else if (strcmp(info->cmdline, "arctan-module.kernel.font.bin") == 0) {
-				ARC_DEBUG(INFO, "\tFound kerne.font\n")
+				ARC_DEBUG(INFO, "\tFound kernel.font\n")
 				global_kernel_font = (uint8_t *)info->mod_start;
-
 			}
 
 			ARC_DEBUG(INFO, "----------------\n")

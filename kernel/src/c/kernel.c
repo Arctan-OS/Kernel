@@ -29,9 +29,11 @@
 #include <arch/x86/idt.h>
 #include <arch/x86/gdt.h>
 
+#include <interface/terminal.h>
+
 struct ARC_BootMeta *Arc_BootMeta = NULL;
-struct multiboot_tag_framebuffer *global_framebuffer = NULL;
-uint8_t *global_kernel_font = NULL;
+struct ARC_TermMeta main_terminal = { 0 };
+char main_terminal_mem[120 * 120] __attribute__((section(".data")))= { 0 };
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	if (boot_meta == NULL) {
@@ -41,6 +43,13 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	Arc_BootMeta = boot_meta;
 
+	main_terminal.term_width = 120;
+	main_terminal.term_height = 120;
+	main_terminal.term_mem = main_terminal_mem;
+
+	main_terminal.cx = 0;
+	main_terminal.cy = 0;
+
 	ARC_DEBUG(INFO, "Sucessfully entered long mode\n")
 
 	install_gdt();
@@ -49,6 +58,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	parse_mbi();
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
+
+	Arc_TermDraw(&main_terminal);
 
 	for (;;);
 
