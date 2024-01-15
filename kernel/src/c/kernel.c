@@ -59,9 +59,17 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	Arc_TermDraw(&main_terminal);
+	for (int i = 0; i < 600; i++) {
+		for (int y = 0; y < main_terminal.fb_height; y++) {
+			for (int x = 0; x < main_terminal.fb_width; x++) {
+				*((uint32_t *)main_terminal.framebuffer + (y * main_terminal.fb_width) + x) = x * y * i / 300;
+			}
+		}
+	}
 
-	for (;;);
+	for (;;) {
+		Arc_TermDraw(&main_terminal);
+	}
 
 	return 0;
 }

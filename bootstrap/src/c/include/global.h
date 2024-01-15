@@ -8,11 +8,6 @@
 #include <stddef.h>
 #include <inttypes.h>
 
-#define ARC_TERM_WIDTH 80
-#define ARC_TERM_HEIGHT 25
-#define ARC_TERM_CHARW 8
-#define ARC_TERM_CHARH 8
-
 #define ARC_HANG for (;;) __asm__("hlt");
 
 #ifdef ARC_DEBUG_ENABLE
@@ -57,7 +52,5 @@ extern struct ARC_FreelistMeta physical_mem;
 extern uint64_t page_count;
 extern void *kernel_elf;
 extern struct ARC_BootMeta _boot_meta;
-extern struct multiboot_tag_framebuffer *global_framebuffer;
-extern uint8_t *global_kernel_font;
 
 #endif

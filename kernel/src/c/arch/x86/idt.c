@@ -109,7 +109,42 @@ void handle_gp(int error_code) {
 	ARC_DEBUG(ERR, "Error code 0x%02X\n", error_code);
 }
 
+// TEMP
+char *alpha_numeric __attribute__((section(".data"))) = "  1234567890-=\b\tqwertyuiop[]\n asdfghjkl;'` \\zxcvbnm,./ *   ";
+char *ALPHA_NUMERIC __attribute__((section(".data"))) = "  !@#$%^&*()_+\b\tQWERTYUIOP{}\n ASDFGHJKL:\"~ |ZXCVBNM<>? *   ";
+uint8_t caps __attribute__((section(".data"))) = 0;
+
+// TEMP
+void handle_keyboard() {
+        uint8_t scancode = inb(0x60);
+
+        if (scancode == 0xAA) // Shift release
+                caps = 0;
+
+        if (scancode < 0x81) {
+                switch (scancode) {
+                // Implement handling for function keys (arrows, caps, shift, f keys, etc...)
+                case 0x2A: // Shift
+                        caps = 1;
+                        break;
+
+                case 0x3A: // Caps lock
+                        caps = !caps;
+                        break;
+
+                default:
+                        printf("%c", *((caps ? ALPHA_NUMERIC : alpha_numeric) + scancode));
+                }
+	}
+}
+
 void interrupt_junction(struct junction_args *args, int code) {
+	// TEMP
+	if (code == 33) {
+		handle_keyboard();
+		goto EOI;
+	}
+
 	// Dump registers
 	ARC_DEBUG(ERR, "Received Interrupt %d, %s\n", code, exception_names[code]);
 	ARC_DEBUG(ERR, "RAX: 0x%"PRIX64"\n", args->rax);
@@ -159,6 +194,7 @@ fall_through:;
 
 	for (;;);
 
+EOI:
 	// Send EOI
 	if (code >= 8) {
 		outb(0xA0, 0x20);
@@ -201,6 +237,8 @@ extern void _idt_stub_29_();
 extern void _idt_stub_30_();
 extern void _idt_stub_31_();
 
+extern void _idt_stub_33_();
+
 void install_idt() {
 	install_idt_gate(0, (uintptr_t)&_idt_stub_0_, 0x18, 0x8E);
 	install_idt_gate(1, (uintptr_t)&_idt_stub_1_, 0x18, 0x8E);
@@ -235,10 +273,15 @@ void install_idt() {
 	install_idt_gate(30, (uintptr_t)&_idt_stub_30_, 0x18, 0x8E);
 	install_idt_gate(31, (uintptr_t)&_idt_stub_31_, 0x18, 0x8E);
 
+	install_idt_gate(33, (uintptr_t)&_idt_stub_33_, 0x18, 0x8E);
+
 	idtr.limit = sizeof(idt_entries) * 16 - 1;
 	idtr.base = (uintptr_t)&idt_entries;
 
 	_install_idt();
+
+	outb(0x21, 0b11111101);
+	outb(0xA1, 0b11111101);
 
 	ARC_DEBUG(INFO, "Ported IDT to 64-bits\n");
 }

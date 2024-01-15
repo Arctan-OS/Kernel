@@ -10,3 +10,10 @@ outb:           push rdx
                 pop rax
                 pop rdx
                 ret
+
+global inb
+inb:            push rdx
+                mov dx, di
+                in al, dx
+                pop rdx
+                ret

@@ -73,7 +73,6 @@ int read_mb2i(void *mb2i) {
 				kernel_elf = (void *)info->mod_start;
 			} else if (strcmp(info->cmdline, "arctan-module.kernel.font.bin") == 0) {
 				ARC_DEBUG(INFO, "\tFound kernel.font\n")
-				global_kernel_font = (uint8_t *)info->mod_start;
 			}
 
 			ARC_DEBUG(INFO, "----------------\n")
@@ -90,14 +89,6 @@ int read_mb2i(void *mb2i) {
 			struct multiboot_tag_framebuffer_common common = (struct multiboot_tag_framebuffer_common)info->common;
 
 			ARC_DEBUG(INFO, "Framebuffer 0x%"PRIX64"(%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp)
-
-			for (int i = 0; i < common.framebuffer_height; i++) {
-				for (int j = 0; j < common.framebuffer_width; j++) {
-					*((uint32_t *)common.framebuffer_addr + (i * common.framebuffer_width) + j) = 0x0043210FF;
-				}
-			}
-
-			global_framebuffer = info;
 
 			break;
 		}

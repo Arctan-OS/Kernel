@@ -75,3 +75,6 @@ common_idt_stub 28
 common_idt_stub 29
 common_idt_stub 30
 common_idt_stub 31
+
+;;TEMP
+common_idt_stub 33
