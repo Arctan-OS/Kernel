@@ -180,6 +180,9 @@ void interrupt_junction(struct junction_args *args, int code) {
 	case 10:
 		goto fall_through;
 	case 8: {
+		// There is nothing we can do
+		for (;;);
+
 fall_through:;
 		// Pop the error code off the stack
 		args->rsp += 8;
@@ -191,8 +194,6 @@ fall_through:;
 	}
 
 	ARC_DEBUG(ERR, "Return address: 0x%"PRIX64"\n", stack_elem);
-
-	for (;;);
 
 EOI:
 	// Send EOI
