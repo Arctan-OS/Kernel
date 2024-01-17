@@ -28,6 +28,7 @@ clean:
 	find . -type f -name "*.o" -delete
 	find . -type f -name "*.elf" -delete
 	find . -type f -name "*.iso" -delete
+	find . -type f -name "*.src.*" -delete
 	rm -rf iso
 
 nothing:
