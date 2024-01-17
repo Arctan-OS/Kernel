@@ -1,21 +1,32 @@
 #include <elf/elf.h>
 #include <mm/vmm.h>
 
-#define PT_NULL 0
-#define PT_LOAD 1
-#define PT_DYNAMIC 2
-#define PT_INTERP 3
-#define PT_NOTE 4
-#define PT_SHLIB 5
-#define PT_PHDR 6
+#define SHT_NULL 0
+#define SHT_PROGBITS 1
+#define SHT_SYMTAB 2
+#define SHT_STRTAB 3
+#define SHT_RELA 4
+#define SHT_HASH 5
+#define SHT_DYNAMIC 6
+#define SHT_NOTE 7
+#define SHT_NOBITS 8
+#define SHT_REL 9
+#define SHT_SHLIB 10
+#define SHT_DYNSYM 11
 
-static const char *pt_names[] = {
-	[PT_NULL] = "NULL",
-	[PT_LOAD] = "LOAD",
-	[PT_DYNAMIC] = "DYNAMIC",
-	[PT_INTERP] = "INTERP",
-	[PT_SHLIB] = "SHLIB",
-	[PT_PHDR] = "PHDR",
+static const char *section_types[] = {
+	[SHT_NULL] = "NULL",
+	[SHT_PROGBITS] = "PROGBITS",
+	[SHT_SYMTAB] = "SYMTAB",
+	[SHT_STRTAB] = "STRTAB",
+	[SHT_RELA] = "RELA",
+	[SHT_HASH] = "HASH",
+	[SHT_DYNAMIC] = "DYNAMIC",
+	[SHT_NOTE] = "NOTE",
+	[SHT_NOBITS] = "NOBITS",
+	[SHT_REL] = "REL",
+	[SHT_SHLIB] = "SHLIB",
+	[SHT_DYNSYM] = "DYNSYM",
 };
 
 typedef uint64_t Elf64_Addr;
@@ -102,8 +113,18 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 	ARC_DEBUG(INFO, "-----------\n")
 	ARC_DEBUG(INFO, "Loading ELF\n")
 
-	ARC_DEBUG(INFO, "Entry at: 0x%"PRIX64"\n", header->e_entry)
+	ARC_DEBUG(INFO, "Entry at: 0x%"PRIX64"\n", header->e_entry);
 
+	for (int i = 0; i < header->e_shnum; i++) {
+		struct Elf64_Shdr section = ((struct Elf64_Shdr *)((uintptr_t)file + header->e_shoff))[i];
+
+		ARC_DEBUG(INFO, "Section %d \"%s\" of type %s\n", i, section.sh_name, section_types[section.sh_type]);
+		ARC_DEBUG(INFO, "\tOffset: %"PRIX64" Size: %"PRId64" B, 0x%"PRIX64":0x%"PRIX64"\n", section.sh_offset, section.sh_size, (uint64_t)((uintptr_t)file + section.sh_offset), (uint64_t)section.sh_addr);
+	}
+
+	for (;;);
+
+/*
 	for (int i = 0; i < header->e_phnum; i++) {
 		struct Elf64_Phdr prog_header = ((struct Elf64_Phdr *)((uintptr_t)file + header->e_phoff))[i];
 
@@ -115,7 +136,7 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIX64" Size: 0x%"PRIX64" (0x%"PRIX64":0x%"PRIX64")\n", prog_header.p_offset, prog_header.p_memsz, paddr, vaddr)
 
 		for (uint64_t j = 0; j < page_count; j++) {
-			pml4 = map_page(pml4, vaddr + (j << 12), paddr + (j << 12), 0);
+			pml4 = map_page(pml4, vaddr + (j << 12), paddr + (j << 12), 1);
 
 			if (pml4 == NULL || (pml4 != old_pml4 && old_pml4 != NULL)) {
 				ARC_DEBUG(ERR, "Mapping failed\n")
@@ -123,7 +144,7 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 			}
 		}
 	}
-
+*/
 	ARC_DEBUG(INFO, "-----------\n")
 
 	return header->e_entry;

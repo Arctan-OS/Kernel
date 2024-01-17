@@ -14,7 +14,7 @@ all: clean
 	mkdir -p iso/boot/grub
 
 	cp kernel/kernel.elf iso/boot
-	cp FONT.bin iso/boot
+	cp FONT.fnt iso/boot
 	cp bootstrap/bootstrap.elf iso/boot
 	cp grub.cfg iso/boot/grub
 
@@ -22,7 +22,7 @@ all: clean
 
 
 run: all
-	qemu-system-x86_64 -enable-kvm -cpu host -d cpu_reset $(QEMUFLAGS) -s
+	qemu-system-x86_64 -enable-kvm -cpu host -d cpu_reset $(QEMUFLAGS)
 
 clean:
 	find . -type f -name "*.o" -delete
