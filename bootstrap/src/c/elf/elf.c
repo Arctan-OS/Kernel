@@ -1,6 +1,8 @@
 #include "global.h"
+#include "mm/freelist.h"
 #include <elf/elf.h>
 #include <mm/vmm.h>
+#include <string.h>
 
 #define SHT_NULL 0
 #define SHT_PROGBITS 1
@@ -121,35 +123,44 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 	for (int i = 0; i < header->e_shnum; i++) {
 		struct Elf64_Shdr section = section_headers[i];
 
+		if (section.sh_type == SHT_NULL) {
+			continue;
+		}
+
 		char *str_table_base = (char *)((uintptr_t)file + section_headers[header->e_shstrndx].sh_offset);
 
+		uint64_t paddr_file = (uintptr_t)file + section.sh_offset;
+		uint64_t vaddr = section.sh_addr;
+		int page_count = (section.sh_size >= 0x1000) ? ALIGN(section.sh_size, 0x1000) / 0x1000 : 0;
+
 		ARC_DEBUG(INFO, "Section %d \"%s\" of type %s\n", i, (str_table_base + section.sh_name), section_types[section.sh_type]);
-		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIX64" Size: %"PRId64" B, 0x%"PRIX64":0x%"PRIX64"\n", section.sh_offset, section.sh_size, (uint64_t)((uintptr_t)file + section.sh_offset), (uint64_t)section.sh_addr);
-	}
+		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIX64" Size: 0x%"PRIX64" B, 0x%"PRIX64":0x%"PRIX64"\n", section.sh_offset, section.sh_size, paddr_file, vaddr);
 
-	for (;;);
+		if (section.sh_type != SHT_PROGBITS && section.sh_type != SHT_NOBITS) {
+			continue;
+		}
 
-/*
-	for (int i = 0; i < header->e_phnum; i++) {
-		struct Elf64_Phdr prog_header = ((struct Elf64_Phdr *)((uintptr_t)file + header->e_phoff))[i];
+		page_count = ALIGN(section.sh_size, 0x1000) / 0x1000;
 
-		uint64_t paddr = (uintptr_t)file + prog_header.p_offset;
-		uint64_t vaddr = prog_header.p_vaddr;
-		uint64_t page_count = ALIGN(prog_header.p_memsz, 0x1000) / 0x1000;
+		ARC_DEBUG(INFO, "\tNeed to map %d page(s)\n", page_count);
 
-		ARC_DEBUG(INFO, "Header %d of type %s (%d)\n", i, pt_names[prog_header.p_type], prog_header.p_flags)
-		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIX64" Size: 0x%"PRIX64" (0x%"PRIX64":0x%"PRIX64")\n", prog_header.p_offset, prog_header.p_memsz, paddr, vaddr)
+		for (int j = 0; j < page_count; j++) {
+			uint64_t paddr = paddr_file + (j << 12);
 
-		for (uint64_t j = 0; j < page_count; j++) {
-			pml4 = map_page(pml4, vaddr + (j << 12), paddr + (j << 12), 1);
+			if (section.sh_type == SHT_NOBITS) {
+				paddr = (uintptr_t)Arc_ListAlloc(&physical_mem);
+				memset((void *)paddr, 0, 0x1000);
+			}
+
+			pml4 = map_page(pml4, vaddr + (j << 12), paddr, 0);
 
 			if (pml4 == NULL || (pml4 != old_pml4 && old_pml4 != NULL)) {
-				ARC_DEBUG(ERR, "Mapping failed\n")
+				ARC_DEBUG(ERR, "Mapping failed\n");
 				return 1;
 			}
 		}
 	}
-*/
+
 	ARC_DEBUG(INFO, "-----------\n")
 
 	return header->e_entry;

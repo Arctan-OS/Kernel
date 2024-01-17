@@ -45,6 +45,8 @@ SECTIONS {
         *(.data .data.*)
     } :data
 
+    . = ALIGN(0x1000);
+
     .bss : {
         *(COMMON)
         *(.bss .bss.*)
@@ -53,4 +55,9 @@ SECTIONS {
     . = ALIGN(0x1000);
 
     __KERNEL_END__ = .;
+
+    /DISCARD/ : {
+        *(.eh_frame)
+        *(.comment)
+    }
 }

@@ -16,21 +16,6 @@ struct ARC_TermMeta main_terminal = { 0 };
 char main_terminal_mem[120 * 120] = { 0 };
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
-	ARC_DEBUG(INFO, "%p\n", main_terminal_mem);
-
-	for (int i = 0; i < 120 * 120; i++) {
-		if (main_terminal_mem[i] != 0) {
-			ARC_DEBUG(INFO, "NON ZERO @ %d, VALUE %02X\n", i, (uint8_t)main_terminal_mem[i]);
-		}
-	}
-
-	if (boot_meta == NULL) {
-		ARC_DEBUG(ERR, "Pointer to boot information was not passed correctly, cannot continue\n");
-		ARC_HANG
-	}
-
-	for (;;);
-
 	Arc_BootMeta = boot_meta;
 
 	main_terminal.term_width = 120;
