@@ -1,3 +1,4 @@
+#include "global.h"
 #include <elf/elf.h>
 #include <mm/vmm.h>
 
@@ -115,11 +116,15 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 
 	ARC_DEBUG(INFO, "Entry at: 0x%"PRIX64"\n", header->e_entry);
 
-	for (int i = 0; i < header->e_shnum; i++) {
-		struct Elf64_Shdr section = ((struct Elf64_Shdr *)((uintptr_t)file + header->e_shoff))[i];
+	struct Elf64_Shdr *section_headers = ((struct Elf64_Shdr *)((uintptr_t)file + header->e_shoff));
 
-		ARC_DEBUG(INFO, "Section %d \"%s\" of type %s\n", i, section.sh_name, section_types[section.sh_type]);
-		ARC_DEBUG(INFO, "\tOffset: %"PRIX64" Size: %"PRId64" B, 0x%"PRIX64":0x%"PRIX64"\n", section.sh_offset, section.sh_size, (uint64_t)((uintptr_t)file + section.sh_offset), (uint64_t)section.sh_addr);
+	for (int i = 0; i < header->e_shnum; i++) {
+		struct Elf64_Shdr section = section_headers[i];
+
+		char *str_table_base = (char *)((uintptr_t)file + section_headers[header->e_shstrndx].sh_offset);
+
+		ARC_DEBUG(INFO, "Section %d \"%s\" of type %s\n", i, (str_table_base + section.sh_name), section_types[section.sh_type]);
+		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIX64" Size: %"PRId64" B, 0x%"PRIX64":0x%"PRIX64"\n", section.sh_offset, section.sh_size, (uint64_t)((uintptr_t)file + section.sh_offset), (uint64_t)section.sh_addr);
 	}
 
 	for (;;);
