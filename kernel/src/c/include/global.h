@@ -46,6 +46,6 @@
         _a < _b ? _a : _b; })
 
 extern struct ARC_BootMeta *Arc_BootMeta;
-extern struct ARC_TermMeta main_terminal __attribute__((section(".data")));
+extern struct ARC_TermMeta main_terminal;
 
 #endif

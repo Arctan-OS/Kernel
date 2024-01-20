@@ -1,7 +1,7 @@
 #ifndef ARC_GLOBAL_H
 #define ARC_GLOBAL_H
 
-#include "multiboot/multiboot2.h"
+#include <multiboot/multiboot2.h>
 #include <arctan.h>
 #include <mm/freelist.h>
 #include <stdint.h>

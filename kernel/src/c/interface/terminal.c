@@ -1,3 +1,4 @@
+#include "global.h"
 #include <interface/terminal.h>
 #include <arctan.h>
 

@@ -25,10 +25,10 @@ OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
 CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include
 CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
-		  -fno-lto -fPIE -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
+		  -fno-lto -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
 		  -Wextra -ffreestanding -fzero-initialized-in-bss
 
-LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -pie -static -nostdlib -o $(PRODUCT)
+LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -static -nostdlib -o $(PRODUCT)
 
 NASMFLAGS := -f elf64
 

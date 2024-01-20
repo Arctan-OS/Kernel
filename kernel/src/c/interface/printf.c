@@ -266,7 +266,7 @@ typedef uint64_t double_uint_t;
 void putchar_(char c) {
 	E9_HACK(c);
 
-//	Arc_TermPutChar(&main_terminal, c);
+	Arc_TermPutChar(&main_terminal, c);
 }
 
 typedef union {

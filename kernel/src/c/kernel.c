@@ -13,7 +13,7 @@
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta main_terminal = { 0 };
-char main_terminal_mem[120 * 120] = { 0 };
+static char main_terminal_mem[120 * 120] = { 0 };
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;

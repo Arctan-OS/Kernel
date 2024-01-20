@@ -7,7 +7,7 @@ struct idt_desc {
 	uint16_t limit;
 	uint64_t base;
 }__attribute__((packed));
-struct idt_desc idtr __attribute__((section(".data")));
+struct idt_desc idtr;
 
 struct idt_entry {
 	uint16_t offset1;
@@ -18,7 +18,7 @@ struct idt_entry {
 	uint32_t offset3;
 	uint32_t reserved;
 }__attribute__((packed));
-static struct idt_entry idt_entries[256] __attribute__((section(".data")));
+static struct idt_entry idt_entries[256];
 
 struct junction_args {
 	uint64_t rax;

@@ -50,7 +50,7 @@ int parse_mbi() {
 
 		case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
 			struct multiboot_tag_framebuffer *info = (struct multiboot_tag_framebuffer *)tag;
-			struct multiboot_tag_framebuffer_common common = (struct multiboot_tag_framebuffer_common)info->common;
+			struct multiboot_tag_framebuffer_common common = (struct multiboot_tag_framebuffer_common)(info->common);
 
 			ARC_DEBUG(INFO, "Framebuffer 0x%"PRIX64"(%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp)
 

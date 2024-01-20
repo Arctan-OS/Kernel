@@ -4,7 +4,7 @@ struct gdt_header {
 	uint16_t size;
 	uint64_t base;
 }__attribute__((packed));
-struct gdt_header gdtr __attribute__((section(".data")));
+struct gdt_header gdtr;
 
 struct gdt_entry {
 	uint16_t limit;
@@ -14,7 +14,7 @@ struct gdt_entry {
 	uint8_t flags_limit;
 	uint8_t base3;
 }__attribute__((packed));
-static struct gdt_entry gdt_entries[16] __attribute__((section(".data")));
+static struct gdt_entry gdt_entries[16];
 
 void set_gdt_gate(int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
 	gdt_entries[i].base1 = (base      ) & 0xFFFF;

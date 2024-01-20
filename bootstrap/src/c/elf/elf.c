@@ -101,6 +101,7 @@ struct Elf64_Phdr {
 	Elf64_Xword p_align; /* Alignment of segment */
 }__attribute__((packed));
 
+// TODO: Support PIE objects
 // Return e_entry: success
 // Return 0: not ELF
 // Return 1: mapping failed
@@ -110,6 +111,7 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 
 	if (header->e_ident[0] != 0x7F || header->e_ident[1] != 'E' ||
 	    header->e_ident[2] != 'L' || header->e_ident[3] != 'F') {
+		// Memory is not of type ELF, error
 		return 0;
 	}
 
@@ -119,37 +121,49 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 	ARC_DEBUG(INFO, "Entry at: 0x%"PRIX64"\n", header->e_entry);
 
 	struct Elf64_Shdr *section_headers = ((struct Elf64_Shdr *)((uintptr_t)file + header->e_shoff));
+	char *str_table_base = (char *)((uintptr_t)file + section_headers[header->e_shstrndx].sh_offset);
 
 	for (int i = 0; i < header->e_shnum; i++) {
 		struct Elf64_Shdr section = section_headers[i];
 
 		if (section.sh_type == SHT_NULL) {
+			// Section is NULL, just ignore
 			continue;
 		}
 
-		char *str_table_base = (char *)((uintptr_t)file + section_headers[header->e_shstrndx].sh_offset);
-
+		// Get the physical address of the section in the file
 		uint64_t paddr_file = (uintptr_t)file + section.sh_offset;
+		// Get the virtual address at which the section wants to be loaded
 		uint64_t vaddr = section.sh_addr;
+		// Calculate the number of pages used by the section
+		// If the section size is less than < 0x1000, don't bother rounding up
 		int page_count = (section.sh_size >= 0x1000) ? ALIGN(section.sh_size, 0x1000) / 0x1000 : 0;
 
 		ARC_DEBUG(INFO, "Section %d \"%s\" of type %s\n", i, (str_table_base + section.sh_name), section_types[section.sh_type]);
 		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIX64" Size: 0x%"PRIX64" B, 0x%"PRIX64":0x%"PRIX64"\n", section.sh_offset, section.sh_size, paddr_file, vaddr);
 
 		if (section.sh_type != SHT_PROGBITS && section.sh_type != SHT_NOBITS) {
+			// If the section isn't needed by the program, ignore it
 			continue;
 		}
 
+		// Page count == 0, but it is a section we need?
+		// Re-calculate without the check if the size < 0
 		page_count = ALIGN(section.sh_size, 0x1000) / 0x1000;
 
 		ARC_DEBUG(INFO, "\tNeed to map %d page(s)\n", page_count);
 
+		// Map into memory
 		for (int j = 0; j < page_count; j++) {
 			uint64_t paddr = paddr_file + (j << 12);
 
 			if (section.sh_type == SHT_NOBITS) {
+				// Section is not present in file, allocate
+				// memory for it
 				paddr = (uintptr_t)Arc_ListAlloc(&physical_mem);
 				memset((void *)paddr, 0, 0x1000);
+
+				ARC_DEBUG(INFO, "\tSection is of type NOBITS, allocated 0x%"PRIX64" for it\n", paddr);
 			}
 
 			pml4 = map_page(pml4, vaddr + (j << 12), paddr, 0);
