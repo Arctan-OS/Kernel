@@ -12,7 +12,7 @@ struct ARC_KernMeta {
 
 struct ARC_BootMeta {
 	uint32_t mb2i; // Physical address of MBI2 structure
-	uint32_t first_free; // Physical address of the first free page after HHDM
+	uint32_t pmm_state; // Physical pointer to the state of the bootstrapper's PMM (of type struct ARC_FreelsitMeta)
 	struct Arc_KernMeta *state; // State of the last kernel
 }__attribute__((packed));
 

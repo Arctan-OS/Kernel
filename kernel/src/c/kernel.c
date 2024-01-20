@@ -1,3 +1,4 @@
+#include "mm/pmm.h"
 #include <arctan.h>
 #include <global.h>
 #include <arch/x86/io/port.h>
@@ -32,6 +33,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	parse_mbi();
 
+	Arc_InitPMM(boot_meta->pmm_state);
+
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	for (int i = 0; i < 600; i++) {
@@ -42,8 +45,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
-	float a = 1.6 / 0.2;
-	ARC_DEBUG(INFO, "%f\n", a);
+	// TODO: Get SIMD working one day
+	// float a = 1.6 / 0.2;
+	// ARC_DEBUG(INFO, "%f\n", a);
 
 	for (;;) {
 		Arc_TermDraw(&main_terminal);

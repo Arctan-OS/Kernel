@@ -57,7 +57,7 @@ int helper(void *mbi, uint32_t signature) {
 	// Map kernel
 	kernel_entry = load_elf(pml4, kernel_elf);
 
-	_boot_meta.first_free = (uintptr_t)Arc_ListAlloc(&physical_mem);
+	_boot_meta.pmm_state = (uintptr_t)&physical_mem;
 
 	return 0;
 }

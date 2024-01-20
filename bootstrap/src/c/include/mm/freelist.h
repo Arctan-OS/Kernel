@@ -13,7 +13,7 @@ struct ARC_FreelistMeta {
 	struct ARC_FreelistNode *base;
 	struct ARC_FreelistNode *ciel;
 	int object_size;
-};
+}__attribute__((packed));
 
 // Allocate one object in given list
 // Return: non-NULL = success
