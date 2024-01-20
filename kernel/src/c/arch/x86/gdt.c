@@ -36,7 +36,7 @@ void install_gdt() {
 	gdtr.size = sizeof(gdt_entries) * 8 - 1;
 	gdtr.base = (uintptr_t)&gdt_entries;
 
-//	_install_gdt();
+	_install_gdt();
 
 	ARC_DEBUG(INFO, "Installed GDT\n");
 }
