@@ -22,7 +22,7 @@ all: clean
 
 
 run: all
-	qemu-system-x86_64 -enable-kvm -cpu host -d cpu_reset $(QEMUFLAGS)
+	qemu-system-x86_64 -enable-kvm -cpu qemu64 -d cpu_reset $(QEMUFLAGS)
 
 clean:
 	find . -type f -name "*.o" -delete

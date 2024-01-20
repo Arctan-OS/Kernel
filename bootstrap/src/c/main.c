@@ -34,8 +34,8 @@ int helper(void *mbi, uint32_t signature) {
 
 	read_mb2i(mbi);
 
-	// Identity map first MB
-	for (int i = 0; i < 512; i++) {
+	// Identity map first 4MB
+	for (int i = 0; i < 4 * 512; i++) {
 		pml4 = map_page(pml4, i << 12, i << 12, 1);
 
 		if (pml4 == NULL) {

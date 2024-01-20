@@ -1,3 +1,4 @@
+#include <arch/x86/sse.h>
 #include <cpuid.h>
 #include <arch/x86/cpuid.h>
 #include <global.h>
@@ -26,6 +27,8 @@ int check_features() {
 		ARC_DEBUG(INFO, "APIC On Chip\n")
 	}
 
+	init_sse(ecx, edx);
+
 	__cpuid(0x80000000, eax, ebx, ecx, edx);
 
 	uint32_t max_extended_value = eax;
@@ -37,7 +40,6 @@ int check_features() {
 	}
 
 	__cpuid(0x80000001, eax, ebx, ecx, edx);
-
 
 	if (((edx >> 29) & 1) == 0) {
 		// No LM support, for booting Arctan, cannot continue

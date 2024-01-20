@@ -33,7 +33,7 @@ int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end) {
 
 		ARC_DEBUG(INFO, "\tInitializing freelist 0x%"PRIXPTR" -> 0x%"PRIXPTR"\n", (uintptr_t)base, (uintptr_t)ciel)
 
-		if (physical_mem.base == 0) {
+		if (physical_mem.base == NULL) {
 			Arc_InitializeFreelist(base, ciel, 0x1000, &physical_mem);
 		} else {
 			struct ARC_FreelistMeta b = { 0 };

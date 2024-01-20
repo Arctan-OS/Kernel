@@ -23,10 +23,7 @@ int read_mb2i(void *mb2i) {
 	struct multiboot_tag *end = (struct multiboot_tag *)(tag + tag->type);
 	struct multiboot_tag_mmap *mmap = NULL;
 
-	// We the memory map follows something along the lines of:
-	// FREE / UNUSABLE, BOOTSTRAP, MODULES, FREE
-	// In which case, this variable points ^ here
-	uint64_t bootstrap_end = 0;
+	uint64_t bootstrap_end = (uintptr_t)&__BOOTSTRAP_END__;
 
 	tag = (struct multiboot_tag *)((uintptr_t)tag + 8);
 

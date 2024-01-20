@@ -27,7 +27,7 @@ PHDRS {
 }
 
 SECTIONS {
-	. = 1M;
+	. = 2M;
 
 	.text : {
 		*(.mb2header)
@@ -45,6 +45,8 @@ SECTIONS {
 	.data : {
 		*(.data .data.*)
 	} :data
+
+    . = ALIGN(0x1000);
 
 	.bss : {
 		*(COMMON)

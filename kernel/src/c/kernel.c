@@ -42,6 +42,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
+	float a = 1.6 / 0.2;
+	ARC_DEBUG(INFO, "%f\n", a);
+
 	for (;;) {
 		Arc_TermDraw(&main_terminal);
 	}
