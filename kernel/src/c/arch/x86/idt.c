@@ -150,7 +150,7 @@ void interrupt_junction(struct junction_args *args, int code) {
 		_x86_getCR2();
 		ARC_DEBUG(ERR, "CR2: 0x%"PRIX64"\n", _x86_CR2);
 		_x86_getCR3();
-		ARC_DEBUG(ERR, "CR3: 0x"%PRIX64"\n", _x86_CR3);
+		ARC_DEBUG(ERR, "CR3: 0x%"PRIX64"\n", _x86_CR3);
 
 		goto fall_through;
 	case 13:
