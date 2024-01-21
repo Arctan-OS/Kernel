@@ -2,6 +2,7 @@
 #include <multiboot/mbparse.h>
 #include <multiboot/multiboot2.h>
 #include <interface/printf.h>
+#include <mm/pmm.h>
 
 int strcmp(char *a, char *b) {
 	int sum = 0;
@@ -24,6 +25,10 @@ int parse_mbi() {
 	while (tag < end && tag->type != 0) {
 		switch (tag->type) {
 		case MULTIBOOT_TAG_TYPE_MMAP: {
+			struct multiboot_tag_mmap *info = (struct multiboot_tag_mmap *)tag;
+
+			Arc_InitPMM(info, Arc_BootMeta->pmm_state);
+
 			break;
 		}
 

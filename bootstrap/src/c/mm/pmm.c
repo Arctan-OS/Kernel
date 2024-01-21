@@ -24,7 +24,7 @@ int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end) {
 		}
 
 		void *base = (void *)(entry.addr);
-		void *ciel = (void *)(entry.addr + entry.len);
+		void *ciel = (void *)(entry.addr + entry.len - 0x1000);
 
 		if (entry.addr < bootstrap_end && entry.addr + entry.len > bootstrap_end) {
 			// bootstrap_end contained is in this entry

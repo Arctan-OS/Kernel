@@ -5,14 +5,14 @@
 #include <stddef.h>
 
 struct ARC_FreelistNode {
-	struct ARC_FreelistNode *next;
+	struct ARC_FreelistNode *next __attribute__((aligned(8)));
 };
 
 struct ARC_FreelistMeta {
-	struct ARC_FreelistNode *head;
-	struct ARC_FreelistNode *base;
-	struct ARC_FreelistNode *ciel;
-	int object_size;
+	struct ARC_FreelistNode *head __attribute__((aligned(8)));
+	struct ARC_FreelistNode *base __attribute__((aligned(8)));
+	struct ARC_FreelistNode *ciel __attribute__((aligned(8)));
+	uint64_t object_size __attribute__((aligned(8)));
 }__attribute__((packed));
 
 // Allocate one object in given list
