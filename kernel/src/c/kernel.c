@@ -1,3 +1,29 @@
+/**
+ * @file kernel.c
+ *
+ * @author awewsomegamer <awewsomegamer@gmail.com>
+ *
+ * @LICENSE
+ * Arctan - Operating System Kernel
+ * Copyright (C) 2023-2024 awewsomegamer
+ *
+ * This file is apart of Arctan.
+ *
+ * Arctan is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; version 2
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ * @DESCRIPTION
+*/
 #include "mm/pmm.h"
 #include <arctan.h>
 #include <global.h>
@@ -15,13 +41,13 @@
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta main_terminal = { 0 };
-static char main_terminal_mem[120 * 120] = { 0 };
+static char main_terminal_mem[0x1000] = { 0 };
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;
 
 	main_terminal.term_width = 120;
-	main_terminal.term_height = 120;
+	main_terminal.term_height = 25;
 	main_terminal.term_mem = main_terminal_mem;
 
 	main_terminal.cx = 0;
@@ -43,10 +69,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
-
-        // TODO: Get SIMD working one day
-	double a =  1.6 / 0.2;
-	ARC_DEBUG(INFO, "%f\n", a);
 
 	for (;;) {
 		Arc_TermDraw(&main_terminal);

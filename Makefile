@@ -31,7 +31,8 @@ clean:
 	find . -type f -name "*.src.*" -delete
 	rm -rf iso
 
-nothing:
+documentation:
+	doxygen Doxyfile
 
 debug: CPPFLAG_DEBUG = -DARC_DEBUG_ENABLE
 debug: e9hack
