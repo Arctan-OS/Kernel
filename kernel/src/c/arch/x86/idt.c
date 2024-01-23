@@ -2,6 +2,7 @@
 #include <arch/x86/io/port.h>
 #include <global.h>
 #include <arch/x86/idt.h>
+#include <interface/printf.h>
 
 struct idt_desc {
 	uint16_t limit;
@@ -151,7 +152,7 @@ void interrupt_junction(struct junction_args *args, int code) {
 		ARC_DEBUG(ERR, "CR2: 0x%"PRIX64"\n", _x86_CR2);
 		_x86_getCR3();
 		ARC_DEBUG(ERR, "CR3: 0x%"PRIX64"\n", _x86_CR3);
-
+		for (;;);
 		goto fall_through;
 	case 13:
 		handle_gp(stack_elem);

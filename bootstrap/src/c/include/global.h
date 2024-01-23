@@ -49,7 +49,7 @@
 
 
 extern struct ARC_FreelistMeta physical_mem;
-extern uint64_t page_count;
+extern uint64_t highest_address;
 extern void *kernel_elf;
 extern struct ARC_BootMeta _boot_meta;
 extern uint8_t __BOOTSTRAP_END__;

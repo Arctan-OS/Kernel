@@ -39,8 +39,10 @@ void *Arc_ListFree(struct ARC_FreelistMeta *meta, void *address) {
 //    combined nicely. If they were to be combined, data within
 //    the higher list would be lost
 int Arc_ListLink(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B, struct ARC_FreelistMeta *combined) {
-	if (A->head != A->base || B->head != B->base) {
-		// Lists are dirty, cannot link lists
+	if (A->head != A->base && B->head != B->base) {
+		// Both lists are dirty, cannot link lists
+		// If only a single list is dirty, linking
+		// should be fine
 		return -2;
 	}
 
@@ -51,7 +53,7 @@ int Arc_ListLink(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B, struct 
 
 	combined->object_size = A->object_size;
 
-	if ((uintptr_t)A < (uintptr_t)B) {
+	if ((uintptr_t)A->base < (uintptr_t)B->base) {
 		// A is lower than B, link with A as base
 		combined->base = A->base;
 		combined->ciel = B->ciel;

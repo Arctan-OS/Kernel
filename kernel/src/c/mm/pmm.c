@@ -6,6 +6,8 @@
 #include <stdint.h>
 
 static struct ARC_FreelistMeta *arc_physical_mem = NULL;
+struct ARC_FreelistMeta new_list = { 0 };
+struct ARC_FreelistMeta combined = { 0 };
 
 void *Arc_AllocPMM() {
 	if (arc_physical_mem == NULL) {
@@ -26,7 +28,7 @@ void *Arc_FreePMM(void *address) {
 void Arc_InitPMM(struct multiboot_tag_mmap *mmap, uint32_t boot_state) {
 	arc_physical_mem = (struct ARC_FreelistMeta *)(boot_state + ARC_HHDM_VADDR);
 
-	ARC_DEBUG(INFO, "Bootstrap allocator: { B:%p C:%p H:%p SZ:%d }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
+	ARC_DEBUG(INFO, "Bootstrap allocator: { B:%"PRIXPTR" C:%"PRIXPTR" H:%"PRIXPTR" SZ:%d }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
 
 	// Revise old PMM meta to use HHDM addresses
 	arc_physical_mem->base = (struct ARC_FreelistNode *)((uintptr_t)arc_physical_mem->base + ARC_HHDM_VADDR);
@@ -48,4 +50,43 @@ void Arc_InitPMM(struct multiboot_tag_mmap *mmap, uint32_t boot_state) {
 	}
 
 	int entry_count = (mmap->size - sizeof(struct multiboot_tag)) / mmap->entry_size;
+
+	for (int i = 0; i < entry_count; i++) {
+		struct multiboot_mmap_entry entry = mmap->entries[i];
+
+		uintptr_t entry_base = (uintptr_t)(entry.addr + ARC_HHDM_VADDR);
+		uintptr_t entry_ciel = (uintptr_t)(entry.addr + entry.len + ARC_HHDM_VADDR);
+
+		if (i == 0) {
+			// We want to keep this entry intact, for now
+			continue;
+		}
+
+		if (entry.type != MULTIBOOT_MEMORY_AVAILABLE) {
+			// Memory is not available, we are not interested
+			continue;
+		}
+
+		if (entry_base >= (uintptr_t)arc_physical_mem->base && entry_ciel <= (uintptr_t)arc_physical_mem->ciel) {
+			// Entry is already apart of freelist
+			continue;
+		}
+
+		if (entry_base <= (uintptr_t)arc_physical_mem->base && (uintptr_t)arc_physical_mem->base < entry_ciel) {
+			// Entry contains the beginning of the freelist
+			continue;
+		}
+
+		ARC_DEBUG(INFO, "MMAP entry %d is not apart of the freelist\n", i);
+
+		Arc_InitializeFreelist((void *)entry_base, (void *)entry_ciel, 0x1000, &new_list);
+		int code = Arc_ListLink(arc_physical_mem, &new_list, &combined);
+
+		if (code != 0) {
+			ARC_DEBUG(INFO, "Failed to link lists (%d)\n", code);
+			continue;
+		}
+
+		arc_physical_mem = &combined;
+	}
 }

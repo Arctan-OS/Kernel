@@ -12,7 +12,7 @@
 #include <elf/elf.h>
 
 struct ARC_FreelistMeta physical_mem = { 0 };
-uint64_t page_count = 0;
+uint64_t highest_address = 0;
 void *kernel_elf = NULL;
 uint64_t *pml4 = NULL;
 uint64_t kernel_entry = 0;
@@ -45,8 +45,8 @@ int helper(void *mbi, uint32_t signature) {
 	}
 
 	// Create HHDM
-	for (uint64_t i = 0; i < page_count; i++) {
-		pml4 = map_page(pml4, (i << 12) + ARC_HHDM_VADDR, i << 12, 1);
+	for (uint64_t i = 0; i <= highest_address; i += 0x1000) {
+		pml4 = map_page(pml4, i + ARC_HHDM_VADDR, i, 1);
 
 		if (pml4 == NULL) {
 			ARC_DEBUG(ERR, "Mapping failed\n")

@@ -1,5 +1,6 @@
 #include <cpuid.h>
 #include <arch/x86/cpuid.h>
+#include <arch/x86/sse.h>
 #include <global.h>
 
 int check_features() {
@@ -25,6 +26,8 @@ int check_features() {
 		// Commands to be submitted somewhere between 0xFFFE0000 and 0xFFFE0FFF
 		ARC_DEBUG(INFO, "APIC On Chip\n")
 	}
+
+	init_sse(ecx, edx);
 
 	__cpuid(0x80000000, eax, ebx, ecx, edx);
 

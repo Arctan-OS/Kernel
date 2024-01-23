@@ -137,7 +137,7 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 		uint64_t vaddr = section.sh_addr;
 		// Calculate the number of pages used by the section
 		// If the section size is less than < 0x1000, don't bother rounding up
-		int page_count = (section.sh_size >= 0x1000) ? ALIGN(section.sh_size, 0x1000) / 0x1000 : 0;
+		int highest_address = (section.sh_size >= 0x1000) ? ALIGN(section.sh_size, 0x1000) / 0x1000 : 0;
 
 		ARC_DEBUG(INFO, "Section %d \"%s\" of type %s\n", i, (str_table_base + section.sh_name), section_types[section.sh_type]);
 		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIX64" Size: 0x%"PRIX64" B, 0x%"PRIX64":0x%"PRIX64"\n", section.sh_offset, section.sh_size, paddr_file, vaddr);
@@ -149,12 +149,12 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 
 		// Page count == 0, but it is a section we need?
 		// Re-calculate without the check if the size < 0
-		page_count = ALIGN(section.sh_size, 0x1000) / 0x1000;
+		highest_address = ALIGN(section.sh_size, 0x1000) / 0x1000;
 
-		ARC_DEBUG(INFO, "\tNeed to map %d page(s)\n", page_count);
+		ARC_DEBUG(INFO, "\tNeed to map %d page(s)\n", highest_address);
 
 		// Map into memory
-		for (int j = 0; j < page_count; j++) {
+		for (int j = 0; j < highest_address; j++) {
 			uint64_t paddr = paddr_file + (j << 12);
 
 			if (section.sh_type == SHT_NOBITS) {

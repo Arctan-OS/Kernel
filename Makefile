@@ -5,7 +5,7 @@ export CPPFLAG_E9HACK
 CPPFLAG_DEBUG :=
 export CPPFLAG_DEBUG
 
-QEMUFLAGS := -M q35,smm=off -m 4G -cdrom $(PRODUCT).iso -debugcon stdio
+QEMUFLAGS := -M q35,smm=off -m 8G -cdrom $(PRODUCT).iso -debugcon stdio
 
 all: clean
 	make -C bootstrap
@@ -22,7 +22,7 @@ all: clean
 
 
 run: all
-	qemu-system-x86_64 -enable-kvm -cpu qemu64 -d cpu_reset $(QEMUFLAGS)
+	qemu-system-x86_64 -enable-kvm -cpu host -d cpu_reset $(QEMUFLAGS)
 
 clean:
 	find . -type f -name "*.o" -delete

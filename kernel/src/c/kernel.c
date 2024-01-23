@@ -44,21 +44,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
-	char *a = (char *)Arc_AllocPMM();
-	a[0] = 'H';
-	a[1] = 'e';
-	a[2] = 'l';
-	a[3] = 'l';
-	a[4] = 'o';
-	a[5] = 0;
-
-	ARC_DEBUG(INFO, "[A] Message at %p: %s\n", a, a);
-	ARC_DEBUG(INFO, "Allocated: %p\n", Arc_AllocPMM());
-	ARC_DEBUG(INFO, "[A] Freed: %p\n", Arc_FreePMM(a));
-
-	// TODO: Get SIMD working one day
-	// float a = 1.6 / 0.2;
-	// ARC_DEBUG(INFO, "%f\n", a);
+        // TODO: Get SIMD working one day
+	double a =  1.6 / 0.2;
+	ARC_DEBUG(INFO, "%f\n", a);
 
 	for (;;) {
 		Arc_TermDraw(&main_terminal);

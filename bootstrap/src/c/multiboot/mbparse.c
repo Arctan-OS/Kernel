@@ -43,17 +43,17 @@ int read_mb2i(void *mb2i) {
 				[MULTIBOOT_MEMORY_RESERVED] = "Reserved"
 			};
 
-			uint64_t total_memory = 0;
-
 			for (int i = 0; i < entries; i++) {
 				struct multiboot_mmap_entry entry = mmap->entries[i];
 
-				total_memory += entry.len;
+				if (highest_address < (uint64_t)(entry.addr + entry.len)) {
+					highest_address = (uint64_t)(entry.addr + entry.len);
+				}
 
 				ARC_DEBUG(INFO, "\t%4d : 0x%16"PRIX64", 0x%16"PRIX64" B (%s)\n", i, entry.addr, entry.len, names[entry.type])
 			}
 
-			page_count = total_memory / 0x1000;
+			ARC_DEBUG(INFO, "Highest physical address: 0x%"PRIX64"\n", highest_address);
 
 			break;
 		}
@@ -85,7 +85,7 @@ int read_mb2i(void *mb2i) {
 			struct multiboot_tag_framebuffer *info = (struct multiboot_tag_framebuffer *)tag;
 			struct multiboot_tag_framebuffer_common common = (struct multiboot_tag_framebuffer_common)info->common;
 
-			ARC_DEBUG(INFO, "Framebuffer 0x%"PRIX64"(%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp)
+			ARC_DEBUG(INFO, "Framebuffer 0x%"PRIX64"(%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp);
 
 			break;
 		}
