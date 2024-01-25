@@ -30,17 +30,7 @@
 #include <mm/freelist.h>
 #include <mm/pmm.h>
 
-int strcmp(char *a, char *b) {
-	int sum = 0;
-	while (*a != 0) {
-		sum += *a - *b;
 
-		a++;
-		b++;
-	}
-
-	return sum;
-}
 
 int read_mb2i(void *mb2i) {
 	ARC_DEBUG(INFO, "Reading multiboot information structure\n")
@@ -91,11 +81,10 @@ int read_mb2i(void *mb2i) {
 			ARC_DEBUG(INFO, "Found module: %s\n", info->cmdline);
 			ARC_DEBUG(INFO, "\t0x%"PRIX32" -> 0x%"PRIX32" (%d B)\n", info->mod_start, info->mod_end, (info->mod_end - info->mod_start))
 
-			if (strcmp(info->cmdline, "arctan-module.kernel.efi") == 0) {
-				ARC_DEBUG(INFO, "\tFound kernel\n")
-				kernel_elf = (void *)info->mod_start;
-			} else if (strcmp(info->cmdline, "arctan-module.kernel.font.bin") == 0) {
-				ARC_DEBUG(INFO, "\tFound kernel.font\n")
+			if (strcmp(info->cmdline, "arctan-module.initramfs.cpio") == 0) {
+				ARC_DEBUG(INFO, "\tFound initramfs\n")
+				initramfs = (void *)info->mod_start;
+				initramfs_size = info->mod_end - info->mod_start;
 			}
 
 			ARC_DEBUG(INFO, "----------------\n")

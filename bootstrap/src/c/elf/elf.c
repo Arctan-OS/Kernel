@@ -28,7 +28,6 @@
 #include "mm/freelist.h"
 #include <elf/elf.h>
 #include <mm/vmm.h>
-#include <string.h>
 
 #define SHT_NULL 0
 #define SHT_PROGBITS 1

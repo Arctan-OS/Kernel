@@ -36,12 +36,27 @@
 #include <multiboot/multiboot2.h>
 #include <arch/x86/cpuid.h>
 #include <elf/elf.h>
+#include <fs/initramfs.h>
 
 struct ARC_FreelistMeta physical_mem = { 0 };
 uint64_t highest_address = 0;
 void *kernel_elf = NULL;
 uint64_t *pml4 = NULL;
 uint64_t kernel_entry = 0;
+void *initramfs = NULL;
+uint32_t initramfs_size = 0;
+
+int strcmp(char *a, char *b) {
+	int sum = 0;
+	while (*a != 0) {
+		sum += *a - *b;
+
+		a++;
+		b++;
+	}
+
+	return sum;
+}
 
 int helper(void *mbi, uint32_t signature) {
 	ARC_DEBUG(INFO, "Loaded\n");
@@ -81,9 +96,12 @@ int helper(void *mbi, uint32_t signature) {
 	}
 
 	// Map kernel
+	load_file(initramfs, initramfs_size, "initramfs/kernel/kernel.elf", 0);
 	kernel_entry = load_elf(pml4, kernel_elf);
 
 	_boot_meta.pmm_state = (uintptr_t)&physical_mem;
+
+	for (;;);
 
 	return 0;
 }

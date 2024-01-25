@@ -33,28 +33,31 @@ export CPPFLAG_DEBUG
 
 QEMUFLAGS := -M q35,smm=off -m 8G -cdrom $(PRODUCT).iso -debugcon stdio
 
+DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
+
 all: clean
 	make -C bootstrap
 	make -C kernel
 
 	mkdir -p iso/boot/grub
 
-	cp kernel/kernel.elf iso/boot
-	cp FONT.fnt iso/boot
+	# Put initramfs together
+	cp -u kernel/kernel.elf initramfs/kernel/
+	find ./initramfs -type f | cpio -o > iso/boot/initramfs.cpio
+
+	# Copy various important things to grub directory
 	cp bootstrap/bootstrap.elf iso/boot
 	cp grub.cfg iso/boot/grub
 
+	# Create ISO
 	grub-mkrescue -o $(PRODUCT).iso iso
-
 
 run: all
 	qemu-system-x86_64 -enable-kvm -cpu qemu64 -d cpu_reset $(QEMUFLAGS)
 
 clean:
-	find . -type f -name "*.o" -delete
-	find . -type f -name "*.elf" -delete
-	find . -type f -name "*.iso" -delete
-	find . -type f -name "*.src.*" -delete
+	find . -type f $(DISCARDABLE) -delete
+
 	rm -rf iso
 
 documentation:

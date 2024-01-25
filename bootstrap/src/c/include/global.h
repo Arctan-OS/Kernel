@@ -74,10 +74,14 @@
         _a < _b ? _a : _b; })
 
 
+int strcmp(char *a, char *b);
+
 extern struct ARC_FreelistMeta physical_mem;
 extern uint64_t highest_address;
 extern void *kernel_elf;
 extern struct ARC_BootMeta _boot_meta;
 extern uint8_t __BOOTSTRAP_END__;
+extern void *initramfs;
+extern uint32_t initramfs_size;
 
 #endif
