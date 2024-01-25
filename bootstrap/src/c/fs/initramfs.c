@@ -1,3 +1,30 @@
+/**
+ * @file initramfs.c
+ *
+ * @author awewsomegamer <awewsomegamer@gmail.com>
+ *
+ * @LICENSE
+ * Arctan - Operating System Kernel
+ * Copyright (C) 2023-2024 awewsomegamer
+ *
+ * This file is apart of Arctan.
+ *
+ * Arctan is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; version 2
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ * @DESCRIPTION
+*/
+
 #include <fs/initramfs.h>
 #include <global.h>
 
@@ -36,12 +63,6 @@ int load_file(void *image, uint32_t size, char *path, uint64_t vaddr) {
 
 		char *name_base = (char *)(image + offset + sizeof(struct ARC_CPIOHeader));
 		uint8_t *file_data = (uint8_t *)(name_base + name_size);
-
-		if (header->namesize % 2 != 0) {
-			// Namesize is odd, add one byte
-			// to align it
-			file_data += 1;
-		}
 
 		if (strcmp(name_base, path) != 0) {
 			// Not the file we are looking for, go to next file
