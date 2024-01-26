@@ -81,8 +81,11 @@ int read_mb2i(void *mb2i) {
 			ARC_DEBUG(INFO, "Found module: %s\n", info->cmdline);
 			ARC_DEBUG(INFO, "\t0x%"PRIX32" -> 0x%"PRIX32" (%d B)\n", info->mod_start, info->mod_end, (info->mod_end - info->mod_start))
 
-			if (strcmp(info->cmdline, "arctan-module.initramfs.cpio") == 0) {
-				ARC_DEBUG(INFO, "\tFound initramfs\n")
+			if (strcmp(info->cmdline, "arctan-module.kernel.elf") == 0) {
+				ARC_DEBUG(INFO, "\tFound kernel\n");
+				kernel_elf = (void *)info->mod_start;
+			} else if (strcmp(info->cmdline, "arctan-module.initramfs.cpio") == 0) {
+				ARC_DEBUG(INFO, "\tFound initramfs\n");
 				initramfs = (void *)info->mod_start;
 				initramfs_size = info->mod_end - info->mod_start;
 			}

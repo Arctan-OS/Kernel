@@ -42,10 +42,10 @@ all: clean
 	mkdir -p iso/boot/grub
 
 	# Put initramfs together
-	cp -u kernel/kernel.elf initramfs/kernel/
 	find ./initramfs -type f | cpio -o > iso/boot/initramfs.cpio
 
 	# Copy various important things to grub directory
+	cp -u kernel/kernel.elf iso/boot
 	cp bootstrap/bootstrap.elf iso/boot
 	cp grub.cfg iso/boot/grub
 

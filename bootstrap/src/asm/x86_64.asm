@@ -37,6 +37,6 @@ _kernel_station:    mov rax, [kernel_entry]
 
                     mov rbp, _stack_end                 ; Add HHDM address
                     mov rsp, rbp
-                    jmp $
 
                     jmp rax
+                    jmp $

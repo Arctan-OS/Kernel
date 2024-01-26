@@ -137,6 +137,7 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 	if (header->e_ident[0] != 0x7F || header->e_ident[1] != 'E' ||
 	    header->e_ident[2] != 'L' || header->e_ident[3] != 'F') {
 		// Memory is not of type ELF, error
+		ARC_DEBUG(ERR, "Memory region provided is not an ELF file\n");
 		return 0;
 	}
 

@@ -36,7 +36,6 @@
 #include <multiboot/multiboot2.h>
 #include <arch/x86/cpuid.h>
 #include <elf/elf.h>
-#include <fs/initramfs.h>
 
 struct ARC_FreelistMeta physical_mem = { 0 };
 uint64_t highest_address = 0;
@@ -115,14 +114,7 @@ int helper(void *mbi, uint32_t signature) {
 	}
 
 	// Map kernel
-	uint64_t kernel_file_load_addr = 0x0;
-	load_file("initramfs/kernel/kernel.elf", &kernel_file_load_addr);
-
-	for (int i = 0; i < 16; i++) {
-		ARC_DEBUG(INFO, "%02X\n", *(uint8_t *)(kernel_file_load_addr + i));
-	}
-
-	kernel_entry = load_elf(pml4, (void *)kernel_file_load_addr);
+	kernel_entry = load_elf(pml4, kernel_elf);
 
 	_boot_meta.pmm_state = (uintptr_t)&physical_mem;
 
