@@ -34,14 +34,13 @@
 /**
  * Load a file from the given CPIO image.
  *
- * The virtual addres must be page aligned.
- * If the given virtual address is NULL, then
- * physical contiguity is guaranteed.
+ * The caller provides a pointer to a uin64_t
+ * which determines the requested load address
+ * of the file.
  *
- * @param void *image - Physical pointer to the CPIO image.
  * @param char *path - The path of the file to load.
- * @param uint64_t - The virtual address at which to load the file.
+ * @param uint64_t *load_address - The requested address to load it at, set on return.
  * @return 0 for success. */
-int load_file(void *image, size_t size, char *path, uint64_t vaddr);
+int load_file(char *path, uint64_t *load_address);
 
 #endif

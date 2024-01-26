@@ -25,6 +25,8 @@
  * @DESCRIPTION
 */
 
+#include "mm/freelist.h"
+#include "mm/vmm.h"
 #include <fs/initramfs.h>
 #include <global.h>
 
@@ -47,11 +49,11 @@ struct ARC_CPIOHeader {
 	uint16_t filesize[2];
 }__attribute__((packed));
 
-int load_file(void *image, uint32_t size, char *path, uint64_t vaddr) {
+int load_file(char *path, uint64_t *load_address) {
 	uint32_t offset = 0;
 
-	while (offset < size) {
-		struct ARC_CPIOHeader *header = (struct ARC_CPIOHeader *)(image + offset);
+	while (offset < initramfs_size) {
+		struct ARC_CPIOHeader *header = (struct ARC_CPIOHeader *)(initramfs + offset);
 
 		if (header->magic != 0070707) {
 			// Header magic mismatch
@@ -61,7 +63,7 @@ int load_file(void *image, uint32_t size, char *path, uint64_t vaddr) {
 		uint16_t name_size = header->namesize + (header->namesize % 2);
 		uint32_t file_size = (header->filesize[0] << 16) | header->filesize[1];
 
-		char *name_base = (char *)(image + offset + sizeof(struct ARC_CPIOHeader));
+		char *name_base = (char *)(initramfs + offset + sizeof(struct ARC_CPIOHeader));
 		uint8_t *file_data = (uint8_t *)(name_base + name_size);
 
 		if (strcmp(name_base, path) != 0) {
@@ -72,6 +74,63 @@ int load_file(void *image, uint32_t size, char *path, uint64_t vaddr) {
 
 		// Found file
 		ARC_DEBUG(INFO, "Found file %s\n", name_base);
+
+		int aligned_size = ALIGN(file_size, 0x1000);
+		void *base = NULL;
+
+		if (*load_address != 0) {
+			uint64_t *pml4_old = pml4;
+
+			for (int i = 0; i < aligned_size >> 12; i++) {
+				void *page = Arc_ListAlloc(&physical_mem);
+
+				if (base == NULL) {
+					base = page;
+				}
+
+				pml4 = map_page(pml4, *load_address + (i << 12), (uintptr_t)page, 0);
+
+				if (pml4 == NULL || (pml4 != pml4_old && pml4_old != NULL)) {
+					// Mapping failure
+					pml4 = pml4_old;
+					return -2;
+				}
+			}
+
+			memset(base, 0, aligned_size);
+			memcpy(base, file_data, file_size);
+
+			*load_address = (uint64_t)base;
+
+			ARC_DEBUG(INFO, "Sucessfully mapped %s to 0x%"PRIX64"\n", name_base, *load_address);
+
+			return 0;
+		}
+
+		void *last = NULL;
+
+		for (int i = 0; i < aligned_size >> 12; i++) {
+			void *page = Arc_ListAlloc(&physical_mem);
+
+			if (base == NULL) {
+				base = page;
+				last = page;
+			}
+
+			if ((uintptr_t)page - (uintptr_t)last > 0x1000) {
+				// TODO: Uh oh, have to go find another base
+				//       and then try to find a contiguous set of
+				//       pages
+				ARC_DEBUG(ERR, "Allocation for %s is not contiguous, no implemented handler, unexpected behavior to happen\n");
+			}
+
+			last = page;
+		}
+
+		memset(base, 0, aligned_size);
+		memcpy(base, file_data, file_size);
+
+		ARC_DEBUG(INFO, "Sucessfully mapped %s to 0x%"PRIX64"\n", name_base, (uint64_t)base);
 
 		return 0;
 	}

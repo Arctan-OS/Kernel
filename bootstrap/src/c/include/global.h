@@ -75,6 +75,8 @@
 
 
 int strcmp(char *a, char *b);
+int memcpy(void *a, void *b, size_t size);
+void memset(void *mem, uint8_t value, size_t size);
 
 extern struct ARC_FreelistMeta physical_mem;
 extern uint64_t highest_address;
@@ -83,5 +85,6 @@ extern struct ARC_BootMeta _boot_meta;
 extern uint8_t __BOOTSTRAP_END__;
 extern void *initramfs;
 extern uint32_t initramfs_size;
+extern uint64_t *pml4;
 
 #endif

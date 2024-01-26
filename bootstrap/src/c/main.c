@@ -58,6 +58,25 @@ int strcmp(char *a, char *b) {
 	return sum;
 }
 
+int memcpy(void *a, void *b, size_t size) {
+	size_t i = 0;
+	while (i < size) {
+		*(uint8_t *)(a + i) = *(uint8_t *)(b + i);
+		if (i < 6) {
+			ARC_DEBUG(INFO, "(%p) %02X (%p )%02X\n", b, *(uint8_t *)(b + i), a,*(uint8_t *)(a + i));
+		}
+		i++;
+	}
+
+	return 0;
+}
+
+void memset(void *mem, uint8_t value, size_t size) {
+	for (size_t i = 0; i < size; i++) {
+		*(uint8_t *)(mem + i) = value;
+	}
+}
+
 int helper(void *mbi, uint32_t signature) {
 	ARC_DEBUG(INFO, "Loaded\n");
 
@@ -96,12 +115,16 @@ int helper(void *mbi, uint32_t signature) {
 	}
 
 	// Map kernel
-	load_file(initramfs, initramfs_size, "initramfs/kernel/kernel.elf", 0);
-	kernel_entry = load_elf(pml4, kernel_elf);
+	uint64_t kernel_file_load_addr = 0x0;
+	load_file("initramfs/kernel/kernel.elf", &kernel_file_load_addr);
+
+	for (int i = 0; i < 16; i++) {
+		ARC_DEBUG(INFO, "%02X\n", *(uint8_t *)(kernel_file_load_addr + i));
+	}
+
+	kernel_entry = load_elf(pml4, (void *)kernel_file_load_addr);
 
 	_boot_meta.pmm_state = (uintptr_t)&physical_mem;
-
-	for (;;);
 
 	return 0;
 }

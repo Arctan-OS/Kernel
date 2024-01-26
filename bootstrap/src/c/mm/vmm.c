@@ -27,12 +27,6 @@
 #include <mm/vmm.h>
 #include <mm/freelist.h>
 
-void memset(void *mem, uint8_t value, size_t size) {
-	for (size_t i = 0; i < size; i++) {
-		*(uint8_t *)(mem + i) = value;
-	}
-}
-
 // Return NULL: error
 uint64_t *create_table(uint64_t *parent, uint64_t vaddr, int level) {
 	if (parent == NULL) {
