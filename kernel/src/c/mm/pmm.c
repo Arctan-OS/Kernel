@@ -43,12 +43,28 @@ void *Arc_AllocPMM() {
 	return Arc_ListAlloc(arc_physical_mem);
 }
 
+void *Arc_ContiguousAllocPMM(int objects) {
+	if (arc_physical_mem == NULL) {
+		return NULL;
+	}
+
+	return Arc_ListContiguousAlloc(arc_physical_mem, objects);
+}
+
 void *Arc_FreePMM(void *address) {
 	if (arc_physical_mem == NULL) {
 		return NULL;
 	}
 
 	return Arc_ListFree(arc_physical_mem, address);
+}
+
+void *Arc_ContiguousFreePMM(void *address, int objects) {
+	if (arc_physical_mem == NULL) {
+		return NULL;
+	}
+
+	return Arc_ListContiguousFree(arc_physical_mem, address, objects);
 }
 
 void Arc_InitPMM(struct multiboot_tag_mmap *mmap, uint32_t boot_state) {

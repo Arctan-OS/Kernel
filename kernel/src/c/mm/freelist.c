@@ -65,10 +65,16 @@ void *Arc_ListContiguousAlloc(struct ARC_FreelistMeta *meta, int objects) {
 			// everything
 			to_free.head = allocation;
 			first_allocation = allocation;
+			base = allocation;
 		}
 
 		if (last_allocation != NULL && (last_allocation + meta->object_size) != allocation) {
 			// Keep track of this little contiguous allocation
+			// TODO: To ensure proper freeing later on the highest address
+			//       needs to be freed first, and the lowest last.
+			//       Arc_ListContiguousFree does invert the order in which
+			//       addresses are freed; however, I am not sure if this
+			//       actually works. Test this later.
 			Arc_ListContiguousFree(&to_free, base, object_count + 1);
 
 			// Move onto the next base
@@ -91,6 +97,12 @@ void *Arc_ListContiguousAlloc(struct ARC_FreelistMeta *meta, int objects) {
 		}
 
 		object_count++;
+	}
+
+	if (fails == 0) {
+		// FIRST TRY!!!!
+		// Just return, no pages to be freed
+		return base;
 	}
 
         // Free the all other allocations
@@ -120,7 +132,7 @@ void *Arc_ListFree(struct ARC_FreelistMeta *meta, void *address) {
 }
 
 void *Arc_ListContiguousFree(struct ARC_FreelistMeta *meta, void *address, int objects) {
-	for (int i = 0; i < objects; i++) {
+	for (int i = objects - 1; i >= 0; i--) {
 		Arc_ListFree(meta, address + (i * meta->object_size));
 	}
 
