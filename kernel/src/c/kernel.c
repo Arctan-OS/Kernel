@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "mm/freelist.h"
 #include "mm/pmm.h"
 #include <arctan.h>
 #include <global.h>

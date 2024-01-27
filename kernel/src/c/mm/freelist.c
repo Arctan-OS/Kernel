@@ -31,8 +31,6 @@
 #include <stdio.h>
 #include <interface/printf.h>
 
-// Allocate one object in given list
-// Return: non-NULL = success
 void *Arc_ListAlloc(struct ARC_FreelistMeta *meta) {
 	// Get address, mark as used
 	void *address = (void *)meta->head;
@@ -41,8 +39,71 @@ void *Arc_ListAlloc(struct ARC_FreelistMeta *meta) {
 	return address;
 }
 
-// Free given address in given list
-// Return: non-NULL = success
+void *Arc_ListContiguousAlloc(struct ARC_FreelistMeta *meta, int objects) {
+	struct ARC_FreelistMeta to_free = { 0 };
+	to_free.object_size = meta->object_size;
+	to_free.base = meta->base;
+	to_free.ciel = meta->ciel;
+
+	// Number of objects currently allocated
+	int object_count = 0;
+	// Limit so we don't try to allocate all of memory
+	int fails = 0;
+	// Last object allocated
+	void *last_allocation = NULL;
+	// Base of the contiguous allocation
+	void *base = NULL;
+	// First allocation
+	void *first_allocation = NULL;
+
+	while (object_count < objects) {
+		void *allocation = Arc_ListAlloc(meta);
+
+		if (to_free.head == NULL) {
+			// Keep track of the first allocation
+			// so if we fail, we are able to free
+			// everything
+			to_free.head = allocation;
+			first_allocation = allocation;
+		}
+
+		if (last_allocation != NULL && (last_allocation + meta->object_size) != allocation) {
+			// Keep track of this little contiguous allocation
+			Arc_ListContiguousFree(&to_free, base, object_count + 1);
+
+			// Move onto the next base
+			base = allocation;
+			fails++;
+			object_count = 0;
+		}
+
+		if (fails >= 16) {
+			// Free the all other allocations
+			struct ARC_FreelistNode *current = first_allocation;
+
+			while (current != NULL) {
+				Arc_ListFree(meta, (void *)current);
+				current = current->next;
+			}
+
+			// Free latest allocation
+			Arc_ListFree(meta, allocation);
+		}
+
+		object_count++;
+	}
+
+        // Free the all other allocations
+	struct ARC_FreelistNode *current = first_allocation;
+
+	while (current != NULL) {
+		Arc_ListFree(meta, (void *)current);
+		current = current->next;
+	}
+
+	return base;
+}
+
 void *Arc_ListFree(struct ARC_FreelistMeta *meta, void *address) {
 	struct ARC_FreelistNode *node = (struct ARC_FreelistNode *)address;
 
@@ -58,14 +119,14 @@ void *Arc_ListFree(struct ARC_FreelistMeta *meta, void *address) {
 	return address;
 }
 
-// Combine list A and list B into a single list, combined
-// Return: 0 = success
-// Return: -1 = object size mismatch
-// Return: -2 = lists are dirty *
-//
-// *: The lists have already been allocated into, thus cannot be
-//    combined nicely. If they were to be combined, data within
-//    the higher list would be lost
+void *Arc_ListContiguousFree(struct ARC_FreelistMeta *meta, void *address, int objects) {
+	for (int i = 0; i < objects; i++) {
+		Arc_ListFree(meta, address + (i * meta->object_size));
+	}
+
+	return address;
+}
+
 int Arc_ListLink(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B, struct ARC_FreelistMeta *combined) {
 	if (A->head != A->base && B->head != B->base) {
 		// Both lists are dirty, cannot link lists
@@ -98,11 +159,7 @@ int Arc_ListLink(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B, struct 
 	return 0;
 }
 
-// void *base - Base address for the freelist
-// void *ciel - Cieling address (address of last usable object) for the freelist
-// int object_size - The size of each object
-// struct Arc_FreelistMeta *meta - Generated metadata for the freelist (KEEP AT ALL COSTS)
-// Return: 0 = success
+
 int Arc_InitializeFreelist(void *_base, void *_ciel, int _object_size, struct ARC_FreelistMeta *meta) {
 	struct ARC_FreelistNode *base = (struct ARC_FreelistNode *)_base;
 	struct ARC_FreelistNode *ciel = (struct ARC_FreelistNode *)_ciel;

@@ -32,8 +32,8 @@
 #include <stdint.h>
 
 static struct ARC_FreelistMeta *arc_physical_mem = NULL;
-struct ARC_FreelistMeta new_list = { 0 };
-struct ARC_FreelistMeta combined = { 0 };
+static struct ARC_FreelistMeta new_list = { 0 };
+static struct ARC_FreelistMeta combined = { 0 };
 
 void *Arc_AllocPMM() {
 	if (arc_physical_mem == NULL) {
