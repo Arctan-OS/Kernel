@@ -68,8 +68,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	ARC_DEBUG(INFO, "(a): %p, (b) %p (%d)\n", a, b, (uintptr_t)(b - a) / 0x1000);
 	Arc_ContiguousFreePMM(a, 10);
 	void *c = Arc_ContiguousAllocPMM(5);
-	void *d = Arc_ContiguousAllocPMM(5);
-	void *e = Arc_ContiguousAllocPMM(1);
+	void *d = Arc_ContiguousAllocPMM(10);
+	void *e = Arc_ContiguousAllocPMM(5);
 	ARC_DEBUG(INFO, "(c): %p, (d): %p (%d), (e): %p (%d)\n", c, d, (uintptr_t)(d - c) / 0x1000, e, (uintptr_t)(e - d) / 0x1000);
 
 

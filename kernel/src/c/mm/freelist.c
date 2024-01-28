@@ -28,11 +28,10 @@
 #include <global.h>
 #include <mm/freelist.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <interface/printf.h>
 
 void *Arc_ListAlloc(struct ARC_FreelistMeta *meta) {
-	// Get address, mark as used
+	// Get address, move head
 	void *address = (void *)meta->head;
 	meta->head = meta->head->next;
 
@@ -49,82 +48,75 @@ void *Arc_ListContiguousAlloc(struct ARC_FreelistMeta *meta, int objects) {
 	int object_count = 0;
 	// Limit so we don't try to allocate all of memory
 	int fails = 0;
-	// Last object allocated
+	// Object allocated from previous iteration
 	void *last_allocation = NULL;
 	// Base of the contiguous allocation
 	void *base = NULL;
 	// First allocation
-	void *first_allocation = NULL;
+	void *bottom_allocation = NULL;
+	// Current allocation
+	void *allocation = NULL;
 
 	while (object_count < objects) {
-		void *allocation = Arc_ListAlloc(meta);
+		allocation = Arc_ListAlloc(meta);
 
 		if (to_free.head == NULL) {
 			// Keep track of the first allocation
 			// so if we fail, we are able to free
 			// everything
 			to_free.head = allocation;
-			first_allocation = allocation;
+			bottom_allocation = allocation;
 			base = allocation;
 		}
 
-		if (last_allocation != NULL && (last_allocation + meta->object_size) != allocation) {
+		if (last_allocation != NULL && abs((intptr_t)(last_allocation - allocation)) != (int64_t)meta->object_size) {
 			// Keep track of this little contiguous allocation
-			// TODO: To ensure proper freeing later on the highest address
-			//       needs to be freed first, and the lowest last.
-			//       Arc_ListContiguousFree does invert the order in which
-			//       addresses are freed; however, I am not sure if this
-			//       actually works. Test this later.
 			Arc_ListContiguousFree(&to_free, base, object_count + 1);
 
 			// Move onto the next base
 			base = allocation;
 			fails++;
 			object_count = 0;
+			last_allocation = NULL;
 		}
 
 		if (fails >= 16) {
-			// Free the all other allocations
-			struct ARC_FreelistNode *current = first_allocation;
-
-			while (current != NULL) {
-				Arc_ListFree(meta, (void *)current);
-				current = current->next;
-			}
-
-			// Free latest allocation
-			Arc_ListFree(meta, allocation);
+			break;
 		}
 
+		last_allocation = allocation;
 		object_count++;
 	}
+
+	ARC_DEBUG(INFO, "B:%p A:%p\n", base, allocation);
 
 	if (fails == 0) {
 		// FIRST TRY!!!!
 		// Just return, no pages to be freed
-		return base;
+		return min(base, allocation);
 	}
 
-        // Free the all other allocations
-	struct ARC_FreelistNode *current = first_allocation;
+        // Free all pages to be freed
+        struct ARC_FreelistNode *current = bottom_allocation;
 
-	while (current != NULL) {
-		Arc_ListFree(meta, (void *)current);
-		current = current->next;
+	while (current->next != bottom_allocation) {
+		struct ARC_FreelistNode *next = current->next;
+		Arc_ListFree(meta, current);
+		current = next;
 	}
 
-	return base;
+	return min(base, allocation);
 }
 
 void *Arc_ListFree(struct ARC_FreelistMeta *meta, void *address) {
 	struct ARC_FreelistNode *node = (struct ARC_FreelistNode *)address;
 
 	if (node == NULL || (node < meta->base || node > meta->ciel)) {
-		// Node doesn't exist, is below the freelist, or is above, return NULL
+		// Node doesn't exist, it's below the freelist, or is above, return NULL
 		return NULL;
 	}
 
-	// Mark as free
+	// Update links
 	node->next = meta->head;
 	meta->head = node;
 
