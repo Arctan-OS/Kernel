@@ -31,7 +31,7 @@ export CPPFLAG_E9HACK
 CPPFLAG_DEBUG :=
 export CPPFLAG_DEBUG
 
-QEMUFLAGS := -M q35,smm=off -m 4G -cdrom $(PRODUCT).iso -debugcon stdio
+QEMUFLAGS := -M q35,smm=off -m 4G -cdrom $(PRODUCT).iso -debugcon stdio -s
 
 DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
 

@@ -88,8 +88,6 @@ void *Arc_ListContiguousAlloc(struct ARC_FreelistMeta *meta, int objects) {
 		object_count++;
 	}
 
-	ARC_DEBUG(INFO, "B:%p A:%p\n", base, allocation);
-
 	if (fails == 0) {
 		// FIRST TRY!!!!
 		// Just return, no pages to be freed

@@ -31,7 +31,7 @@
 #include <mm/pmm.h>
 #include <stdint.h>
 
-static struct ARC_FreelistMeta *arc_physical_mem = NULL;
+struct ARC_FreelistMeta *arc_physical_mem = NULL;
 static struct ARC_FreelistMeta new_list = { 0 };
 static struct ARC_FreelistMeta combined = { 0 };
 
@@ -80,6 +80,8 @@ void Arc_InitPMM(struct multiboot_tag_mmap *mmap, uint32_t boot_state) {
 	// Update old PMM freelist to point to HHDM
 	// addresses
 	struct ARC_FreelistNode *current = arc_physical_mem->head;
+
+	ARC_DEBUG(INFO, "Made it here\n");
 
 	while (current != NULL) {
 		if ((((uintptr_t)current->next) >> 32) != (uint32_t)(ARC_HHDM_VADDR >> 32)) {

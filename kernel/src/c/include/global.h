@@ -76,5 +76,6 @@
 
 extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta main_terminal;
+extern struct ARC_FreelistMeta *arc_physical_mem;
 
 #endif

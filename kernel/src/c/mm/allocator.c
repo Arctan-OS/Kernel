@@ -26,11 +26,12 @@
 */
 #include "mm/freelist.h"
 #include <mm/allocator.h>
+#include <global.h>
 
 struct ARC_AllocMeta {
 	struct ARC_FreelistMeta *physical_mem;
-	struct ARC_FreelistMeta lists[10];
-	size_t list_sizes[10];
+	struct ARC_FreelistMeta lists[8];
+	size_t list_sizes[8];
 };
 
 static struct ARC_AllocMeta heap = { 0 };
@@ -42,8 +43,8 @@ void *Arc_SlabAlloc(size_t size) {
 	}
 
 	int i = 0;
-	for (; i < 9; i++) {
-		if (heap.list_sizes[i] <= size && size <= heap.list_sizes[i + 1]) {
+	for (; i < 8; i++) {
+		if (size <= heap.list_sizes[i]) {
 			break;
 		}
 	}
@@ -52,8 +53,23 @@ void *Arc_SlabAlloc(size_t size) {
 }
 
 void *Arc_SlabFree(void *address) {
+	int list = -1;
+	for (int i = 0; i < 8; i++) {
+		void *base = heap.lists[i].base;
+		void *ciel = heap.lists[i].ciel;
 
-	return NULL;
+		if (base <= address && address <= ciel) {
+			list = i;
+			break;
+		}
+	}
+
+	if (list == -1) {
+		// Could not find the list
+		return NULL;
+	}
+
+	return Arc_ListFree(&heap.lists[list], address);
 }
 
 /**
@@ -65,38 +81,30 @@ void *Arc_SlabFree(void *address) {
  * @return Error code (0: success)
  *  */
 static int Arc_InitList(int i, size_t size, size_t object_size) {
-	heap.list_sizes[i] = size;
+	ARC_DEBUG(INFO, "Initializing SLAB (%p) list %d { .size = %d pages, .obj_size = %d bytes }\n", &heap, i, size, object_size);
 
-	struct ARC_FreelistMeta base = { 0 };
-	struct ARC_FreelistMeta new = { 0 };
+	heap.list_sizes[i] = object_size;
 
-	for (size_t page_idx = 0; page_idx < size; page_idx++) {
-		void *page = Arc_ListAlloc(heap.physical_mem);
+	void *base = Arc_ListContiguousAlloc(heap.physical_mem, size);
 
-		if (base.base == NULL) {
-			Arc_InitializeFreelist(page, page + 0x1000, object_size, &base);
-		} else {
-			Arc_InitializeFreelist(page, page + 0x1000, object_size, &new);
+	Arc_InitializeFreelist(base, base + (size << 12), object_size, &heap.lists[i]);
 
-			struct ARC_FreelistMeta combined = { 0 };
-
-			Arc_ListLink(&base, &new, &combined);
-
-			base.base = combined.base;
-			base.ciel = combined.ciel;
-			base.head = combined.head;
-		}
-
-	}
-
-	heap.lists[i].base = base.base;
-	heap.lists[i].ciel = base.ciel;
-	heap.lists[i].head = base.head;
-	heap.lists[i].object_size = object_size;
+	return 0;
 }
 
-int Arc_InitSlabAllocator(struct ARC_FreelistMeta *memory) {
+int Arc_InitSlabAllocator(struct ARC_FreelistMeta *memory, int init_page_count) {
+	heap.physical_mem = memory;
 
+	Arc_InitList(0, init_page_count, 16);
+	Arc_InitList(1, init_page_count, 32);
+	Arc_InitList(2, init_page_count, 64);
+	Arc_InitList(3, init_page_count, 128);
+	Arc_InitList(4, init_page_count, 256);
+	Arc_InitList(5, init_page_count, 512);
+	Arc_InitList(6, init_page_count, 1024);
+	Arc_InitList(7, init_page_count, 2048);
+
+	ARC_DEBUG(INFO, "Initialized SLAB allocator\n");
 
 	return 0;
 }

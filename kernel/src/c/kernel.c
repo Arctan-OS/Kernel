@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "mm/allocator.h"
 #include "mm/freelist.h"
 #include "mm/pmm.h"
 #include <arctan.h>
@@ -61,17 +62,15 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	parse_mbi();
 
+	Arc_InitSlabAllocator(arc_physical_mem, 10);
+
+	void *a = Arc_SlabAlloc(5);
+	void *b = Arc_SlabAlloc(5);
+	ARC_DEBUG(INFO, "%p %p\n", a, b);
+	Arc_SlabFree(a);
+	ARC_DEBUG(INFO, "%p\n", Arc_SlabAlloc(10));
+
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
-
-	void *a = Arc_ContiguousAllocPMM(10);
-	void *b = Arc_ContiguousAllocPMM(6);
-	ARC_DEBUG(INFO, "(a): %p, (b) %p (%d)\n", a, b, (uintptr_t)(b - a) / 0x1000);
-	Arc_ContiguousFreePMM(a, 10);
-	void *c = Arc_ContiguousAllocPMM(5);
-	void *d = Arc_ContiguousAllocPMM(10);
-	void *e = Arc_ContiguousAllocPMM(5);
-	ARC_DEBUG(INFO, "(c): %p, (d): %p (%d), (e): %p (%d)\n", c, d, (uintptr_t)(d - c) / 0x1000, e, (uintptr_t)(e - d) / 0x1000);
-
 
 	for (int i = 0; i < 600; i++) {
 		for (int y = 0; y < main_terminal.fb_height; y++) {

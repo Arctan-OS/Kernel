@@ -27,4 +27,32 @@
 #ifndef ARC_MM_ALLOCATOR_H
 #define ARC_MM_ALLOCATOR_H
 
+#include <stddef.h>
+#include <mm/freelist.h>
+
+/**
+ * Allocate \a size bytes in the kernel heap.
+ *
+ * @param size_t size - The number of bytes to allocate.
+ * @return The base address of the allocation.
+ * */
+void *Arc_SlabAlloc(size_t size);
+
+/**
+ * Free the allocation at \a address.
+ *
+ * @param void *address - The allocation to free from the kernel heap.
+ * @return The given address if successful.
+ * */
+void *Arc_SlabFree(void *address);
+
+/**
+ * Initialize the kernel SLAB allocator.
+ *
+ * @param struct ARC_FreelistMeta *memory - The freelist in which to initialize the allocator's lists.
+ * @param int init_page_count - The number of 0x1000 byte pages each list is given.
+ * @return Error code (0: success).
+ * */
+int Arc_InitSlabAllocator(struct ARC_FreelistMeta *memory, int init_page_count);
+
 #endif
