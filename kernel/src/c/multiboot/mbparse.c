@@ -67,9 +67,9 @@ int parse_mbi() {
 
 			if (strcmp(info->cmdline, "arctan-module.kernel.efi") == 0) {
 				ARC_DEBUG(INFO, "\tFound kernel\n")
-			} else if (strcmp(info->cmdline, "arctan-module.kernel.font.bin") == 0) {
-				ARC_DEBUG(INFO, "\tFound kernel.font\n")
-				main_terminal.font_bmp = (uint8_t *)(info->mod_start + ARC_HHDM_VADDR);
+			} else if (strcmp(info->cmdline, "arctan-module.initramfs.cpio") == 0) {
+				ARC_DEBUG(INFO, "\tFound initramfs\n")
+				main_terminal.font_bmp = (uint8_t *)(info->mod_start + ARC_HHDM_VADDR + 26 + 20);
 				main_terminal.font_width = 8;
 				main_terminal.font_height = 8;
 			}

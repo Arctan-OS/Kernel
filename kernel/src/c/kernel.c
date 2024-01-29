@@ -43,13 +43,13 @@
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta main_terminal = { 0 };
-static char main_terminal_mem[0x1000] = { 0 };
+static char main_terminal_mem[120 * 120] = { 0 };
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;
 
 	main_terminal.term_width = 120;
-	main_terminal.term_height = 25;
+	main_terminal.term_height = 120;
 	main_terminal.term_mem = main_terminal_mem;
 
 	main_terminal.cx = 0;
@@ -62,7 +62,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	parse_mbi();
 
-	Arc_InitSlabAllocator(arc_physical_mem, 10);
+	Arc_InitSlabAllocator((struct ARC_FreelistMeta *)(ARC_HHDM_VADDR + boot_meta->pmm_state), 10);
 
 	void *a = Arc_SlabAlloc(5);
 	void *b = Arc_SlabAlloc(5);

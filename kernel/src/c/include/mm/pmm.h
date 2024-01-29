@@ -27,6 +27,7 @@
 #ifndef ARC_MM_PMM_H
 #define ARC_MM_PMM_H
 
+#include "mm/freelist.h"
 #include <multiboot/multiboot2.h>
 #include <global.h>
 
