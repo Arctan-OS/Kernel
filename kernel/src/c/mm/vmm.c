@@ -36,31 +36,31 @@ static uint64_t *pml4 = NULL;
 // Returns HHDM address
 // The first 12 bits of the flags parameter are identical to
 // a page tables flags. The last bit specifies the create flag.
-uint64_t *Arc_GetPageTable(uint64_t *parent, int level, uint64_t vaddr, int flags) {
+uint64_t *Arc_GetPageTable(uint64_t *parent, int level, uint64_t vaddr, uint32_t flags) {
 	int shift = ((level - 1) * 9) + 12;
 	int index = (vaddr >> shift) & 0x1FF;
 
 	uint64_t entry = parent[index];
-	uint64_t *address = (uint64_t *)ARC_PHYS_TO_HHDM(parent[index] & 0xFFFFFFFFFFFF000);
+	uint64_t *address = (uint64_t *)ARC_PHYS_TO_HHDM(parent[index] & 0x0000FFFFFFFFF000);
 
-	if ((entry & 1) == 0 && ((flags & ARC_VMM_OVERW_FLAG) != 0 || (flags & ARC_VMM_CREAT_FLAG) != 0)) {
+	if (((entry & 1) == 0 || (void *)ARC_HHDM_TO_PHYS(address) == NULL)
+	    && ((flags & ARC_VMM_OVERW_FLAG) != 0 || (flags & ARC_VMM_CREAT_FLAG) != 0)) {
 		// Not present, overwrite / create flag set
 		address = (uint64_t *)Arc_AllocPMM();
 		parent[index] = (uintptr_t)ARC_HHDM_TO_PHYS(address) | (flags & 0xFFF);
-
 	}
 
 	return address;
 }
 
-extern void _invlpg(void *vaddr);
+extern void _invlpg(uint64_t vaddr);
 
 // Maps given physical address to given virtual address
 // with given flags. The first 12 bits of the flags is
 // identical to those of a PTE. The upper bit specifies
 // the overwrite flag. If set, this flag will overwrite
 // the entry, even if it is present.
-int Arc_MapPage(uint64_t paddr, uint64_t vaddr, int flags) {
+int Arc_MapPage(uint64_t paddr, uint64_t vaddr, uint32_t flags) {
 	if (pml4 == NULL) {
 		ARC_DEBUG(ERR, "No PML4 loaded\n");
 		return 2;
@@ -81,10 +81,9 @@ int Arc_MapPage(uint64_t paddr, uint64_t vaddr, int flags) {
 		return -1;
 	}
 
-	pml1[entry_idx] = paddr | flags;
+	pml1[entry_idx] = paddr | (flags & 0xFFF);
 
-	// TODO: Figure out how this works
-	_invlpg(&vaddr);
+	_invlpg(vaddr);
 
 	return 0;
 }

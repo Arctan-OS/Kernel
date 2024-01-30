@@ -32,9 +32,9 @@
 #include <global.h>
 
 void *Arc_AllocPMM();
-void *Arc_ContiguousAllocPMM(int objects);
+void *Arc_ContiguousAllocPMM(size_t objects);
 void *Arc_FreePMM(void *address);
-void *Arc_ContiguousFreePMM(void *address, int objects);
+void *Arc_ContiguousFreePMM(void *address, size_t objects);
 void Arc_InitPMM(struct multiboot_tag_mmap *mmap, uint32_t boot_state);
 
 #endif

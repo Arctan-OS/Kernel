@@ -63,12 +63,20 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	parse_mbi();
 	Arc_InitVMM();
-	Arc_InitSlabAllocator((struct ARC_FreelistMeta *)(ARC_HHDM_VADDR + boot_meta->pmm_state), 10);
+	Arc_InitSlabAllocator(10);
 
-	void *data = Arc_AllocPMM();
-	ARC_DEBUG(INFO, "%d\n", Arc_MapPage(ARC_HHDM_TO_PHYS(data), 0xFE00000, ARC_VMM_CREAT_FLAG));
+	void *bufferA = Arc_AllocPMM();
+	void *bufferB = Arc_AllocPMM();
 
-	*(uint8_t *)0xFE00000 = 'A';
+	Arc_MapPage(ARC_HHDM_TO_PHYS(bufferA), 0xFFFFFFFF00000000, ARC_VMM_OVERW_FLAG | 3);
+	*(uint8_t *)0xFFFFFFFF00000000 = 'A';
+
+	Arc_MapPage(ARC_HHDM_TO_PHYS(bufferB), 0xFFFFFFFF00000000, ARC_VMM_OVERW_FLAG | 3);
+	*(uint8_t *)0xFFFFFFFF00000000 = 'B';
+
+	Arc_MapPage(ARC_HHDM_TO_PHYS(bufferA), 0xFFFFFFFF00000000, ARC_VMM_OVERW_FLAG | 3);
+
+	ARC_DEBUG(INFO, "%c %c %c\n", *(uint8_t *)bufferA, *(uint8_t *)bufferB, *(uint8_t *)0xFFFFFFFF00000000);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
@@ -79,6 +87,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
+
 	double fa = 0.6;
 	double fb = 0.2;
 	double fc = fa + fb;

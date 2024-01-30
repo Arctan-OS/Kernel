@@ -53,6 +53,6 @@ void *Arc_SlabFree(void *address);
  * @param int init_page_count - The number of 0x1000 byte pages each list is given.
  * @return Error code (0: success).
  * */
-int Arc_InitSlabAllocator(struct ARC_FreelistMeta *memory, int init_page_count);
+int Arc_InitSlabAllocator(size_t init_page_count);
 
 #endif

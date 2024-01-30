@@ -43,7 +43,7 @@ void *Arc_AllocPMM() {
 	return Arc_ListAlloc(arc_physical_mem);
 }
 
-void *Arc_ContiguousAllocPMM(int objects) {
+void *Arc_ContiguousAllocPMM(size_t objects) {
 	if (arc_physical_mem == NULL) {
 		return NULL;
 	}
@@ -59,7 +59,7 @@ void *Arc_FreePMM(void *address) {
 	return Arc_ListFree(arc_physical_mem, address);
 }
 
-void *Arc_ContiguousFreePMM(void *address, int objects) {
+void *Arc_ContiguousFreePMM(void *address, size_t objects) {
 	if (arc_physical_mem == NULL) {
 		return NULL;
 	}

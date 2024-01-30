@@ -63,14 +63,14 @@
 // Returns HHDM address
 // The first 12 bits of the flags parameter are identical to
 // a page tables flags. The last bit specifies the create flag.
-uint64_t *Arc_GetPageTable(uint64_t *parent, int level, uint64_t vaddr, int flags);
+uint64_t *Arc_GetPageTable(uint64_t *parent, int level, uint64_t vaddr, uint32_t flags);
 
 // Maps given physical address to given virtual address
 // with given flags. The first 12 bits of the flags is
 // identical to those of a PTE. The upper bit specifies
 // the overwrite flag. If set, this flag will overwrite
 // the entry, even if it is present.
-int Arc_MapPage(uint64_t paddr, uint64_t vaddr, int flags);
+int Arc_MapPage(uint64_t paddr, uint64_t vaddr, uint32_t flags);
 
 void Arc_InitVMM();
 

@@ -25,6 +25,7 @@
  * @DESCRIPTION
 */
 #include "mm/freelist.h"
+#include "mm/pmm.h"
 #include <mm/allocator.h>
 #include <global.h>
 
@@ -85,16 +86,14 @@ static int Arc_InitList(int i, size_t size, size_t object_size) {
 
 	heap.list_sizes[i] = object_size;
 
-	void *base = Arc_ListContiguousAlloc(heap.physical_mem, size);
+	void *base = Arc_ContiguousAllocPMM(size);
 
 	Arc_InitializeFreelist(base, base + (size << 12), object_size, &heap.lists[i]);
 
 	return 0;
 }
 
-int Arc_InitSlabAllocator(struct ARC_FreelistMeta *memory, int init_page_count) {
-	heap.physical_mem = memory;
-
+int Arc_InitSlabAllocator(size_t init_page_count) {
 	Arc_InitList(0, init_page_count, 16);
 	Arc_InitList(1, init_page_count, 32);
 	Arc_InitList(2, init_page_count, 64);
