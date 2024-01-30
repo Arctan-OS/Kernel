@@ -31,6 +31,8 @@
 
 extern void _osxsave_support();
 
+uint8_t fxsave_space[512] __attribute__((aligned(16), section(".data")));
+
 void init_sse(int ecx, int edx) {
 	// Check for SSE2
 	if (((edx >> 25) & 1) == 0 && ((edx >> 26) & 1) == 0

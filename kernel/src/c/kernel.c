@@ -27,6 +27,7 @@
 #include "mm/allocator.h"
 #include "mm/freelist.h"
 #include "mm/pmm.h"
+#include "mm/vmm.h"
 #include <arctan.h>
 #include <global.h>
 #include <arch/x86/io/port.h>
@@ -61,14 +62,13 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	install_idt();
 
 	parse_mbi();
-
+	Arc_InitVMM();
 	Arc_InitSlabAllocator((struct ARC_FreelistMeta *)(ARC_HHDM_VADDR + boot_meta->pmm_state), 10);
 
-	void *a = Arc_SlabAlloc(5);
-	void *b = Arc_SlabAlloc(5);
-	ARC_DEBUG(INFO, "%p %p\n", a, b);
-	Arc_SlabFree(a);
-	ARC_DEBUG(INFO, "%p\n", Arc_SlabAlloc(10));
+	void *data = Arc_AllocPMM();
+	ARC_DEBUG(INFO, "%d\n", Arc_MapPage(ARC_HHDM_TO_PHYS(data), 0xFE00000, ARC_VMM_CREAT_FLAG));
+
+	*(uint8_t *)0xFE00000 = 'A';
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
@@ -79,6 +79,10 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
+	double fa = 0.6;
+	double fb = 0.2;
+	double fc = fa + fb;
+	ARC_DEBUG(INFO, "%f + %f = %f\n", fa, fb, fc);
 
 	for (;;) {
 		Arc_TermDraw(&main_terminal);

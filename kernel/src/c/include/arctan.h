@@ -28,6 +28,8 @@
 #define ARC_ARCTAN_H
 
 #define ARC_HHDM_VADDR   0xFFFFC00000000000 // 192 TiB
+#define ARC_PHYS_TO_HHDM(physical) ((uintptr_t)physical + ARC_HHDM_VADDR)
+#define ARC_HHDM_TO_PHYS(hhdm) ((uintptr_t)hhdm - ARC_HHDM_VADDR)
 
 #include <stdint.h>
 #include <stddef.h>

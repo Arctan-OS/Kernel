@@ -30,10 +30,11 @@ bits 32
 %define FXSAVE_SIZE 512
 
 global _osxsave_support
+extern fxsave_space
 _osxsave_support:   push ecx
                     push edx
                     push eax
-                    lea eax, [rel _fxsave_space]
+                    lea eax, [rel fxsave_space]
                     fxsave [eax]
 
 
@@ -46,8 +47,3 @@ _osxsave_support:   push ecx
                     pop ecx
 
                     ret
-
-section .data
-global _fxsave_space
-align 16
-_fxsave_space: times FXSAVE_SIZE db 0x0
