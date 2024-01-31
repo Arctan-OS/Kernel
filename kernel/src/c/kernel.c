@@ -65,18 +65,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(10);
 
-	void *bufferA = Arc_AllocPMM();
-	void *bufferB = Arc_AllocPMM();
-
-	Arc_MapPage(ARC_HHDM_TO_PHYS(bufferA), 0xFFFFFFFF00000000, ARC_VMM_OVERW_FLAG | 3);
-	*(uint8_t *)0xFFFFFFFF00000000 = 'A';
-
-	Arc_MapPage(ARC_HHDM_TO_PHYS(bufferB), 0xFFFFFFFF00000000, ARC_VMM_OVERW_FLAG | 3);
-	*(uint8_t *)0xFFFFFFFF00000000 = 'B';
-
-	Arc_MapPage(ARC_HHDM_TO_PHYS(bufferA), 0xFFFFFFFF00000000, ARC_VMM_OVERW_FLAG | 3);
-
-	ARC_DEBUG(INFO, "%c %c %c\n", *(uint8_t *)bufferA, *(uint8_t *)bufferB, *(uint8_t *)0xFFFFFFFF00000000);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
