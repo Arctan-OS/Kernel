@@ -55,9 +55,9 @@ int Arc_MapPageVMM(uint64_t paddr, uint64_t vaddr, uint32_t flags) {
 		return 2;
 	}
 
-	uint64_t *pml3 = Arc_GetPageTable(pml4, 4, vaddr, flags);
-	uint64_t *pml2 = Arc_GetPageTable(pml3, 3, vaddr, flags);
-	uint64_t *pml1 = Arc_GetPageTable(pml2, 2, vaddr, flags);
+	uint64_t *pml3 = Arc_GetPageTableVMM(pml4, 4, vaddr, flags);
+	uint64_t *pml2 = Arc_GetPageTableVMM(pml3, 3, vaddr, flags);
+	uint64_t *pml1 = Arc_GetPageTableVMM(pml2, 2, vaddr, flags);
 
 	if (pml3 == NULL || pml2 == NULL || pml1 == NULL) {
 		return 1;
