@@ -7,7 +7,7 @@
 # * Arctan - Operating System Kernel
 # * Copyright (C) 2023-2024 awewsomegamer
 # *
-# * This file is apart of Arctan.
+# * This file is part of Arctan.
 # *
 # * Arctan is free software; you can redistribute it and/or
 # * modify it under the terms of the GNU General Public License
@@ -27,7 +27,7 @@
 #    Arctan - Operating System Kernel
 #    Copyright (C) 2023  awewsomegamer
 #
-#    This file is apart of Arctan.
+#    This file is part of Arctan.
 #
 #    Arctan is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU General Public License

@@ -7,7 +7,7 @@
  * Arctan - Operating System Kernel
  * Copyright (C) 2023-2024 awewsomegamer
  *
- * This file is apart of Arctan.
+ * This file is part of Arctan.
  *
  * Arctan is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,6 +24,16 @@
  *
  * @DESCRIPTION
 */
+#include <arch/x86/io/port.h>
+#include <interface/terminal.h>
+#include <interface/printf.h>
+#include <global.h>
+
+void putchar_(char c) {
+	E9_HACK(c);
+
+	Arc_TermPutChar(&main_terminal, c);
+}
 /**
  * @author (c) Eyal Rozenberg <eyalroz1@gmx.com>
  *             2021-2022, Haifa, Palestine/Israel
@@ -65,15 +75,11 @@
 
 // Define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H=1 ...) to include the
 // printf_config.h header file
-#include "arch/x86/io/port.h"
-#include "interface/terminal.h"
 #include <sys/types.h>
 #if PRINTF_INCLUDE_CONFIG_H
 #include "printf_config.h"
 #endif
 
-#include <interface/printf.h>
-#include <global.h>
 
 #ifdef __cplusplus
 #include <cstdint>
@@ -289,11 +295,6 @@ typedef uint64_t double_uint_t;
 #endif
 #define DOUBLE_STORED_MANTISSA_BITS (DBL_MANT_DIG - 1)
 
-void putchar_(char c) {
-	E9_HACK(c);
-
-	Arc_TermPutChar(&main_terminal, c);
-}
 
 typedef union {
   double_uint_t U;
