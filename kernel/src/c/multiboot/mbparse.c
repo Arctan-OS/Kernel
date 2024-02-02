@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "fs/initramfs.h"
 #include <global.h>
 #include <multiboot/mbparse.h>
 #include <multiboot/multiboot2.h>
@@ -69,7 +70,7 @@ int parse_mbi() {
 				ARC_DEBUG(INFO, "\tFound kernel\n")
 			} else if (strcmp(info->cmdline, "arctan-module.initramfs.cpio") == 0) {
 				ARC_DEBUG(INFO, "\tFound initramfs\n")
-				main_terminal.font_bmp = (uint8_t *)(info->mod_start + ARC_HHDM_VADDR + 26 + 20);
+				main_terminal.font_bmp = (uint8_t *)(Arc_FindFileInitramfs((void *)(info->mod_start + ARC_HHDM_VADDR), "initramfs/FONT.fnt"));
 				main_terminal.font_width = 8;
 				main_terminal.font_height = 8;
 			}
