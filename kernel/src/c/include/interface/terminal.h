@@ -30,22 +30,47 @@
 #include <stdint.h>
 
 struct ARC_TermMeta {
-	void *framebuffer; // Virtual address of framebuffer
-	int fb_width; // Framebuffer width in pixels
-	int fb_height; // Framebuffer height in pixels
-	int fb_bpp; // Framebuffer bpp
-	int fb_pitch; // Framebuffer pitch
-	int cx; // Current character x position
-	int cy; // Current character y position
-	uint8_t *font_bmp; // The BMP font
-	int font_width; // Width of the font in pixels
-	int font_height; // Height of the font in pixels
-	char *term_mem; // Character memory of terminal
-	int term_width; // Width of the terminal in characters
-	int term_height; // Height of the terminal in characters
+	/// Virtual address of framebuffer
+	void *framebuffer;
+	/// Framebuffer width in pixels
+	int fb_width;
+	/// Framebuffer height in pixels
+	int fb_height;
+	/// Framebuffer bpp
+	int fb_bpp;
+	/// Framebuffer pitch
+	int fb_pitch;
+	/// Current character x position
+	int cx;
+	/// Current character y position
+	int cy;
+	/// The BMP font
+	uint8_t *font_bmp;
+	/// Width of the font in pixels
+	int font_width;
+	/// Height of the font in pixels
+	int font_height;
+	/// Character memory of terminal
+	char *term_mem;
+	/// Width of the terminal in characters
+	int term_width;
+	/// Height of the terminal in characters
+	int term_height;
+	/// Length (in bytes) of the RX and TX buffers
+	int rxtx_buf_len;
+	/// Pointer to the RX buffer
+	char *rx_buf;
+	/// Pointer to the next character in the RX buffer
+	int rx_buf_idx;
+	/// Pointer to the TX buffer
+	char *tx_buf;
+	/// Pointer to the next character in the TX buffer
+	int tx_buf_idx;
 };
 
 void Arc_TermPutChar(struct ARC_TermMeta *term, char c);
 void Arc_TermDraw(struct ARC_TermMeta *term);
+int Arc_TermPush(struct ARC_TermMeta *term, int rx, char c);
+char Arc_TermPop(struct ARC_TermMeta *term, int rx);
 
 #endif

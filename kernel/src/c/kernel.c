@@ -44,12 +44,17 @@
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta main_terminal = { 0 };
-static char main_terminal_mem[120 * 120] = { 0 };
+static char main_terminal_mem[180 * 120] = { 0 };
+
+static char rx_buf[0x1000];
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;
 
-	main_terminal.term_width = 120;
+	main_terminal.rxtx_buf_len = 0x1000;
+	main_terminal.rx_buf = rx_buf;
+	main_terminal.tx_buf = NULL;
+	main_terminal.term_width = 180;
 	main_terminal.term_height = 120;
 	main_terminal.term_mem = main_terminal_mem;
 
@@ -76,10 +81,16 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
-	double fa = 0.6;
-	double fb = 0.2;
-	double fc = fa + fb;
-	ARC_DEBUG(INFO, "%f + %f = %f\n", fa, fb, fc);
+	for (int j = 0; j < 10; j++) {
+	for (int i = 0; i < 10; i++) {
+		Arc_TermPush(&main_terminal, 1, 'H');
+	}
+
+	for (int i = 0; i < 12; i++) {
+		char c = Arc_TermPop(&main_terminal, 1);
+		ARC_DEBUG(INFO, "%c (%d)\n", c, c);
+	}
+	}
 
 	for (;;) {
 		Arc_TermDraw(&main_terminal);

@@ -24,24 +24,13 @@
  *
  * @DESCRIPTION
 */
-#include "fs/initramfs.h"
+#include <fs/initramfs.h>
 #include <global.h>
 #include <multiboot/mbparse.h>
 #include <multiboot/multiboot2.h>
 #include <interface/printf.h>
 #include <mm/pmm.h>
-
-int strcmp(char *a, char *b) {
-	int sum = 0;
-	while (*a != 0) {
-		sum += *a - *b;
-
-		a++;
-		b++;
-	}
-
-	return sum;
-}
+#include <util.h>
 
 int parse_mbi() {
 	struct multiboot_tag *tag = (struct multiboot_tag *)(Arc_BootMeta->mb2i + ARC_HHDM_VADDR);

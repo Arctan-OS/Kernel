@@ -24,15 +24,10 @@
  *
  * @DESCRIPTION
 */
-#include "global.h"
+#include <global.h>
 #include <interface/terminal.h>
 #include <arctan.h>
-
-void memcpy(void *a, void *b, size_t size) {
-	for (size_t i = 0; i < size; i++) {
-		*(uint8_t *)(a + i) = *(uint8_t *)(b + i);
-	}
-}
+#include <util.h>
 
 void Arc_TermPutChar(struct ARC_TermMeta *term, char c) {
 	if (term->cy >= term->term_height) {
@@ -90,4 +85,66 @@ void Arc_TermDraw(struct ARC_TermMeta *term) {
 	}
 }
 
-// TODO: Implement terminal input FIFO push and pop
+// Returns error code (0: success, 1: could not enqueue)
+int Arc_TermPush(struct ARC_TermMeta *term, int rx, char c) {
+	char *buffer = term->tx_buf;
+	int ptr = term->tx_buf_idx;
+
+	if (rx) {
+		buffer = term->rx_buf;
+		ptr = term->rx_buf_idx;
+	}
+
+	if (ptr >= term->rxtx_buf_len) {
+		// Cannot insert another character
+		return 1;
+	}
+
+	buffer[ptr++] = c;
+
+	if (rx) {
+		term->rx_buf_idx = ptr;
+
+		return 0;
+	}
+
+	term->tx_buf_idx = ptr;
+
+	return 0;
+}
+
+char Arc_TermPop(struct ARC_TermMeta *term, int rx) {
+	char *buffer = term->tx_buf;
+	int ptr = term->tx_buf_idx;
+
+	if (rx) {
+		buffer = term->rx_buf;
+		ptr = term->rx_buf_idx;
+	}
+
+	if (ptr < 0) {
+		return 0;
+	}
+
+	char c = *buffer;
+
+	memcpy(buffer, buffer + 1, term->rxtx_buf_len - 1);
+
+	if (rx) {
+		term->rx_buf_idx--;
+
+		if (term->rx_buf_idx < 0) {
+			term->rx_buf_idx = 0;
+		}
+
+		return c;
+	}
+
+	term->tx_buf_idx--;
+
+	if (term->tx_buf_idx < 0) {
+		term->tx_buf_idx = 0;
+	}
+
+	return c;
+}

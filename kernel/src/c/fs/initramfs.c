@@ -26,6 +26,7 @@
 */
 #include <fs/initramfs.h>
 #include <global.h>
+#include <util.h>
 
 struct ARC_HeaderCPIO {
 	uint16_t magic;
