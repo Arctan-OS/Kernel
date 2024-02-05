@@ -65,7 +65,7 @@ int read_mb2i(void *mb2i) {
 					_boot_meta.highest_address = (uint64_t)(entry.addr + entry.len);
 				}
 
-				ARC_DEBUG(INFO, "\t%4d : 0x%16"PRIX64", 0x%16"PRIX64" B (%s)\n", i, entry.addr, entry.len, names[entry.type])
+				ARC_DEBUG(INFO, "\t%4d : 0x%16llX, 0x%16llX B (%s)\n", i, entry.addr, entry.len, names[entry.type])
 			}
 
 			ARC_DEBUG(INFO, "Highest physical address: 0x%"PRIX64"\n", _boot_meta.highest_address);
@@ -102,7 +102,7 @@ int read_mb2i(void *mb2i) {
 			struct multiboot_tag_framebuffer *info = (struct multiboot_tag_framebuffer *)tag;
 			struct multiboot_tag_framebuffer_common common = (struct multiboot_tag_framebuffer_common)info->common;
 
-			ARC_DEBUG(INFO, "Framebuffer 0x%"PRIX64"(%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp);
+			ARC_DEBUG(INFO, "Framebuffer 0x%llX (%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp);
 
 			break;
 		}

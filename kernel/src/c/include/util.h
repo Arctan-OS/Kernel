@@ -32,5 +32,6 @@
 
 int strcmp(char *a, char *b);
 void memcpy(void *a, void *b, size_t size);
+long strtol(char *string, char **end, int base);
 
 #endif

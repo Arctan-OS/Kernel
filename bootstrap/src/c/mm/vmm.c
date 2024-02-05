@@ -37,7 +37,7 @@ uint64_t *create_table(uint64_t *parent, uint64_t vaddr, int level) {
 
 	if ((parent[(vaddr >> shift) & 0x1FF] & 1) == 1) {
 		// Entry already exists
-		return (uint64_t *)(parent[(vaddr >> shift) & 0x1FF] & 0x0000FFFFFFFFF000);
+		return (uint64_t *)((uint32_t)(parent[(vaddr >> shift) & 0x1FF] & 0x0000FFFFFFFFF000));
 	}
 
 	uint64_t *table = (uint64_t *)Arc_ListAlloc(&physical_mem);

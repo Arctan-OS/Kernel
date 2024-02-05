@@ -51,12 +51,12 @@ void *Arc_FindFileInitramfs(void *fs, char *filename) {
 
 		char *name = (char *)((uintptr_t)header + sizeof(struct ARC_HeaderCPIO));
 
+		uint32_t filesize = (header->filesize[0] << 16) | header->filesize[1];
+		uint32_t data_off = sizeof(struct ARC_HeaderCPIO) + namesize;
+
 		if (strcmp(name, filename) != 0) {
 			goto next;
 		}
-
-		uint32_t filesize = (header->filesize[0] << 16) | header->filesize[1];
-		uint32_t data_off = sizeof(struct ARC_HeaderCPIO) + namesize;
 
 		ARC_DEBUG(INFO, "Found file \"%s\"\n", filename);
 

@@ -24,8 +24,8 @@
  *
  * @DESCRIPTION
 */
-#include "global.h"
-#include "mm/freelist.h"
+#include <global.h>
+#include <mm/freelist.h>
 #include <elf/elf.h>
 #include <mm/vmm.h>
 
@@ -146,8 +146,8 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 
 	ARC_DEBUG(INFO, "Entry at: 0x%"PRIX64"\n", header->e_entry);
 
-	struct Elf64_Shdr *section_headers = ((struct Elf64_Shdr *)((uintptr_t)file + header->e_shoff));
-	char *str_table_base = (char *)((uintptr_t)file + section_headers[header->e_shstrndx].sh_offset);
+	struct Elf64_Shdr *section_headers = ((struct Elf64_Shdr *)(file + header->e_shoff));
+	char *str_table_base = (char *)(file + section_headers[header->e_shstrndx].sh_offset);
 
 	for (int i = 0; i < header->e_shnum; i++) {
 		struct Elf64_Shdr section = section_headers[i];
@@ -181,7 +181,7 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 
 		// Map into memory
 		for (int j = 0; j < highest_address; j++) {
-			uint64_t paddr = paddr_file + (j << 12);
+			uint32_t paddr = paddr_file + (j << 12);
 
 			if (section.sh_type == SHT_NOBITS) {
 				// Section is not present in file, allocate

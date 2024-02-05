@@ -35,10 +35,7 @@ QEMUFLAGS := -M q35,smm=off -m 4G -cdrom $(PRODUCT).iso -debugcon stdio -s
 
 DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
 
-all: clean
-	make -C bootstrap
-	make -C kernel
-
+all: clean kern boot
 	mkdir -p iso/boot/grub
 
 	# Put initramfs together
@@ -51,6 +48,12 @@ all: clean
 
 	# Create ISO
 	grub-mkrescue -o $(PRODUCT).iso iso
+
+boot:
+	make -C bootstrap
+
+kern:
+	make -C kernel
 
 run: all
 	qemu-system-x86_64 -enable-kvm -cpu qemu64 -d cpu_reset $(QEMUFLAGS)

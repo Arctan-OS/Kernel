@@ -28,5 +28,10 @@
 #include <interface/compositor.h>
 
 int Arc_BinaryComposite(struct ARC_CompositeMode *mode, struct ARC_FramebufferMeta *master, struct ARC_FramebufferMeta *addition) {
+	// Beautiful warningless compiler output
+	(void)mode;
+	(void)master;
+	(void)addition;
+
 	return 0;
 }

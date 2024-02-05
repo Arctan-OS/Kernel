@@ -82,7 +82,7 @@ void *Arc_SlabFree(void *address) {
  * @return Error code (0: success)
  *  */
 static int Arc_InitList(int i, size_t size, size_t object_size) {
-	ARC_DEBUG(INFO, "Initializing SLAB (%p) list %d { .size = %d pages, .obj_size = %d bytes }\n", &heap, i, size, object_size);
+	ARC_DEBUG(INFO, "Initializing SLAB (%p) list %d { .size = %lu pages, .obj_size = %lu bytes }\n", &heap, i, size, object_size);
 
 	heap.list_sizes[i] = object_size;
 

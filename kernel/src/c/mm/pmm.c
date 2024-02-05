@@ -67,10 +67,10 @@ void *Arc_ContiguousFreePMM(void *address, size_t objects) {
 	return Arc_ListContiguousFree(arc_physical_mem, address, objects);
 }
 
-void Arc_InitPMM(struct multiboot_tag_mmap *mmap, uint32_t boot_state) {
-	arc_physical_mem = (struct ARC_FreelistMeta *)(boot_state + ARC_HHDM_VADDR);
+void Arc_InitPMM(struct multiboot_tag_mmap *mmap) {
+	arc_physical_mem = (struct ARC_FreelistMeta *)(Arc_BootMeta->pmm_state + ARC_HHDM_VADDR);
 
-	ARC_DEBUG(INFO, "Bootstrap allocator: { B:%"PRIXPTR" C:%"PRIXPTR" H:%"PRIXPTR" SZ:%d }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
+	ARC_DEBUG(INFO, "Bootstrap allocator: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
 
 	// Revise old PMM meta to use HHDM addresses
 	arc_physical_mem->base = (struct ARC_FreelistNode *)((uintptr_t)arc_physical_mem->base + ARC_HHDM_VADDR);

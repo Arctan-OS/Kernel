@@ -50,8 +50,8 @@ int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end) {
 			continue;
 		}
 
-		void *base = (void *)(entry.addr);
-		void *ciel = (void *)(entry.addr + entry.len - 0x1000);
+		void *base = (void *)((uint32_t)entry.addr);
+		void *ciel = (void *)((uint32_t)entry.addr + (uint32_t)entry.len - 0x1000);
 
 		if (entry.addr < bootstrap_end && entry.addr + entry.len > bootstrap_end) {
 			// bootstrap_end contained is in this entry

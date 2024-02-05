@@ -25,6 +25,7 @@
  * @DESCRIPTION
 */
 #include <arch/x86/idt.h>
+#include <arch/x86/io/port.h>
 #include <global.h>
 
 struct idt_desc {

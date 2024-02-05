@@ -21,7 +21,7 @@ void memcpy(void *a, void *b, size_t size) {
 
 static const char *NUMBERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-long strtol(char *string, char *end, int base) {
+long strtol(char *string, char **end, int base) {
 	char c = *string;
 	int offset = 0;
 	long number = 0;
@@ -38,7 +38,7 @@ long strtol(char *string, char *end, int base) {
 		c = *(string + offset++);
 	}
 
-	end = (char *)(string + offset);
+	*end = (char *)(string + offset);
 
 	return number;
 }

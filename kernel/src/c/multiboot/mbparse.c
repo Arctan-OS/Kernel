@@ -43,7 +43,7 @@ int parse_mbi() {
 		case MULTIBOOT_TAG_TYPE_MMAP: {
 			struct multiboot_tag_mmap *info = (struct multiboot_tag_mmap *)tag;
 
-			Arc_InitPMM(info, Arc_BootMeta->pmm_state);
+			Arc_InitPMM(info);
 
 			break;
 		}
@@ -73,13 +73,7 @@ int parse_mbi() {
 			struct multiboot_tag_framebuffer *info = (struct multiboot_tag_framebuffer *)tag;
 			struct multiboot_tag_framebuffer_common common = (struct multiboot_tag_framebuffer_common)(info->common);
 
-			ARC_DEBUG(INFO, "Framebuffer 0x%"PRIX64"(%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp)
-
-			for (int i = 0; i < common.framebuffer_height; i++) {
-				for (int j = 0; j < common.framebuffer_width; j++) {
-					*((uint32_t *)(common.framebuffer_addr + ARC_HHDM_VADDR) + (i * common.framebuffer_width) + j) = 0x0043210FF;
-				}
-			}
+			ARC_DEBUG(INFO, "Framebuffer 0x%llX (%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp)
 
 			main_terminal.framebuffer = (void *)(common.framebuffer_addr + ARC_HHDM_VADDR);
 			main_terminal.fb_width = common.framebuffer_width;
@@ -93,7 +87,6 @@ int parse_mbi() {
 
 		tag = (struct multiboot_tag *)((uintptr_t)tag + ALIGN(tag->size, 8));
 	}
-
 
 	return 0;
 }
