@@ -29,8 +29,7 @@
 #include <global.h>
 #include <mm/freelist.h>
 #include <mm/pmm.h>
-
-
+#include <arctan.h>
 
 int read_mb2i(void *mb2i) {
 	ARC_DEBUG(INFO, "Reading multiboot information structure\n")
@@ -62,14 +61,14 @@ int read_mb2i(void *mb2i) {
 			for (int i = 0; i < entries; i++) {
 				struct multiboot_mmap_entry entry = mmap->entries[i];
 
-				if (highest_address < (uint64_t)(entry.addr + entry.len)) {
-					highest_address = (uint64_t)(entry.addr + entry.len);
+				if (_boot_meta.highest_address < (uint64_t)(entry.addr + entry.len)) {
+					_boot_meta.highest_address = (uint64_t)(entry.addr + entry.len);
 				}
 
 				ARC_DEBUG(INFO, "\t%4d : 0x%16"PRIX64", 0x%16"PRIX64" B (%s)\n", i, entry.addr, entry.len, names[entry.type])
 			}
 
-			ARC_DEBUG(INFO, "Highest physical address: 0x%"PRIX64"\n", highest_address);
+			ARC_DEBUG(INFO, "Highest physical address: 0x%"PRIX64"\n", _boot_meta.highest_address);
 
 			break;
 		}
@@ -83,11 +82,11 @@ int read_mb2i(void *mb2i) {
 
 			if (strcmp(info->cmdline, "arctan-module.kernel.elf") == 0) {
 				ARC_DEBUG(INFO, "\tFound kernel\n");
-				kernel_elf = (void *)info->mod_start;
+				_boot_meta.kernel_elf = (void *)info->mod_start;
 			} else if (strcmp(info->cmdline, "arctan-module.initramfs.cpio") == 0) {
 				ARC_DEBUG(INFO, "\tFound initramfs\n");
-				initramfs = (void *)info->mod_start;
-				initramfs_size = info->mod_end - info->mod_start;
+				_boot_meta.initramfs = (void *)info->mod_start;
+				_boot_meta.initramfs_size = info->mod_end - info->mod_start;
 			}
 
 			ARC_DEBUG(INFO, "----------------\n")

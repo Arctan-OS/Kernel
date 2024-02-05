@@ -38,43 +38,8 @@
 #include <elf/elf.h>
 
 struct ARC_FreelistMeta physical_mem = { 0 };
-uint64_t highest_address = 0;
-void *kernel_elf = NULL;
 uint64_t *pml4 = NULL;
 uint64_t kernel_entry = 0;
-void *initramfs = NULL;
-uint32_t initramfs_size = 0;
-
-int strcmp(char *a, char *b) {
-	int sum = 0;
-	while (*a != 0) {
-		sum += *a - *b;
-
-		a++;
-		b++;
-	}
-
-	return sum;
-}
-
-int memcpy(void *a, void *b, size_t size) {
-	size_t i = 0;
-	while (i < size) {
-		*(uint8_t *)(a + i) = *(uint8_t *)(b + i);
-		if (i < 6) {
-			ARC_DEBUG(INFO, "(%p) %02X (%p )%02X\n", b, *(uint8_t *)(b + i), a,*(uint8_t *)(a + i));
-		}
-		i++;
-	}
-
-	return 0;
-}
-
-void memset(void *mem, uint8_t value, size_t size) {
-	for (size_t i = 0; i < size; i++) {
-		*(uint8_t *)(mem + i) = value;
-	}
-}
 
 int helper(void *mbi, uint32_t signature) {
 	ARC_DEBUG(INFO, "Loaded\n");
@@ -84,7 +49,7 @@ int helper(void *mbi, uint32_t signature) {
 		ARC_HANG
 	}
 
-	_boot_meta.mb2i = (uintptr_t)mbi;
+	_boot_meta.mb2i = mbi;
 
 	check_features();
 
@@ -104,7 +69,7 @@ int helper(void *mbi, uint32_t signature) {
 	}
 
 	// Create HHDM
-	for (uint64_t i = 0; i <= highest_address; i += 0x1000) {
+	for (uint64_t i = 0; i <= _boot_meta.highest_address; i += 0x1000) {
 		pml4 = map_page(pml4, i + ARC_HHDM_VADDR, i, 1);
 
 		if (pml4 == NULL) {
@@ -114,9 +79,9 @@ int helper(void *mbi, uint32_t signature) {
 	}
 
 	// Map kernel
-	kernel_entry = load_elf(pml4, kernel_elf);
+	kernel_entry = load_elf(pml4, _boot_meta.kernel_elf);
 
-	_boot_meta.pmm_state = (uintptr_t)&physical_mem;
+	_boot_meta.pmm_state = &physical_mem;
 
 	return 0;
 }

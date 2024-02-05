@@ -94,10 +94,8 @@ _entry:                 mov esp, _stack_end                     ; Setup stack
 section .bss
 
 global _boot_meta
-_boot_meta:
-.mbi_struct:            resb 4                              ; Pointer to MBI Structure (Physical)
-.first_free:            resb 4                              ; Pointer to the the first free address after HHDM (Physical)
-.state:                 resb 8                              ; Pointer to previous kernel state (Virtual)
+BOOT_MEMBER_COUNT   equ 16                                  ; Member count
+_boot_meta:         resq BOOT_MEMBER_COUNT
 
 global _stack
 global _stack_end

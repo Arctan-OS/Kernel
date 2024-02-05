@@ -24,10 +24,10 @@
  *
  * @DESCRIPTION
 */
-#include "mm/allocator.h"
-#include "mm/freelist.h"
-#include "mm/pmm.h"
-#include "mm/vmm.h"
+#include <mm/allocator.h>
+#include <mm/freelist.h>
+#include <mm/pmm.h>
+#include <mm/vmm.h>
 #include <arctan.h>
 #include <global.h>
 #include <arch/x86/io/port.h>
@@ -79,17 +79,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 				*((uint32_t *)main_terminal.framebuffer + (y * main_terminal.fb_width) + x) = (x * y * i / 300) & 0x3FFF;
 			}
 		}
-	}
-
-	for (int j = 0; j < 10; j++) {
-	for (int i = 0; i < 10; i++) {
-		Arc_TermPush(&main_terminal, 1, 'H');
-	}
-
-	for (int i = 0; i < 12; i++) {
-		char c = Arc_TermPop(&main_terminal, 1);
-		ARC_DEBUG(INFO, "%c (%d)\n", c, c);
-	}
 	}
 
 	for (;;) {

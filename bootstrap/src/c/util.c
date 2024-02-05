@@ -1,5 +1,5 @@
 /**
- * @file global.h
+ * @file util.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,41 +24,35 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_GLOBAL_H
-#define ARC_GLOBAL_H
-
-#include <multiboot/multiboot2.h>
-#include <arctan.h>
-#include <mm/freelist.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <inttypes.h>
 #include <util.h>
-#include <arctan.h>
 
-#define ARC_HANG for (;;) __asm__("hlt");
+int strcmp(char *a, char *b) {
+	int sum = 0;
+	while (*a != 0) {
+		sum += *a - *b;
 
-#define ASSERT(cond) if (!(cond)) {					\
-			printf("Assertion %s failed (%s:%d)\n", #cond, __FILE__, __LINE__); \
-			for (;;); \
-		     }
-#define ALIGN(v, a) ((v + (a - 1)) & ~(a - 1))
+		a++;
+		b++;
+	}
 
-#define max(a, b) \
-        ({ __typeof__ (a) _a = (a); \
-        __typeof__ (b) _b = (b); \
-        _a > _b ? _a : _b; })
+	return sum;
+}
 
-#define min(a, b) \
-        ({ __typeof__ (a) _a = (a); \
-        __typeof__ (b) _b = (b); \
-        _a < _b ? _a : _b; })
+int memcpy(void *a, void *b, size_t size) {
+	size_t i = 0;
+	while (i < size) {
+		*(uint8_t *)(a + i) = *(uint8_t *)(b + i);
+		if (i < 6) {
+			ARC_DEBUG(INFO, "(%p) %02X (%p )%02X\n", b, *(uint8_t *)(b + i), a,*(uint8_t *)(a + i));
+		}
+		i++;
+	}
 
+	return 0;
+}
 
-extern uint64_t *pml4;
-extern struct ARC_FreelistMeta physical_mem;
-
-extern struct ARC_BootMeta _boot_meta;
-extern uint8_t __BOOTSTRAP_END__;
-
-#endif
+void memset(void *mem, uint8_t value, size_t size) {
+	for (size_t i = 0; i < size; i++) {
+		*(uint8_t *)(mem + i) = value;
+	}
+}

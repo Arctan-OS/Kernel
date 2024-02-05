@@ -39,9 +39,16 @@ struct ARC_KernMeta {
 }__attribute__((packed));
 
 struct ARC_BootMeta {
-	uint32_t mb2i; // Physical address of MBI2 structure
-	uint32_t pmm_state; // Physical pointer to the state of the bootstrapper's PMM (of type struct ARC_FreelsitMeta)
-	struct Arc_KernMeta *state; // State of the last kernel
+	/// Physical address of MBI2 structure
+	void *mb2i __attribute__((aligned(8)));
+	/// Physical pointer to the state of the bootstrapper's PMM (of type struct ARC_FreelsitMeta)
+	void *pmm_state __attribute__((aligned(8)));
+	uint64_t highest_address __attribute__((aligned(8)));
+	void *kernel_elf __attribute__((aligned(8)));
+	void *initramfs __attribute__((aligned(8)));
+	uint32_t initramfs_size __attribute__((aligned(8)));
+	/// State of the last kernel
+	struct Arc_KernMeta *state __attribute__((aligned(8)));
 }__attribute__((packed));
 
 #endif
