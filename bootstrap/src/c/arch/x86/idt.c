@@ -41,8 +41,11 @@ struct idt_entry {
 	uint8_t attrs;
 	uint16_t offset2;
 }__attribute__((packed));
-struct idt_entry idt_entries[256];
+static struct idt_entry idt_entries[256];
 
+/**
+ * Structure pushed onto stack by any IDT stub.
+ * */
 struct junction_args {
 	uint32_t eax;
 	uint32_t ebx;
@@ -55,6 +58,9 @@ struct junction_args {
 	uint32_t code;
 }__attribute__((packed));
 
+/**
+ * Names of the 32 Intel reserved ISRs.
+ * */
 static const char *exception_names[] = {
 	"Division Error (#DE)",
 	"Debug Exception (#DB)",
@@ -112,6 +118,14 @@ void handle_gp(int error_code) {
 	ARC_DEBUG(ERR, "Error code 0x%02X\n", error_code);
 }
 
+/**
+ * General interrupt handler.
+ *
+ * Currently is not able to recover from exceptions,
+ * it is able to merely detect them.
+ *
+ * @param uint32_t esp - 32-bit pointer to the base a struct junction_args.
+ * */
 void interrupt_junction(uint32_t esp) {
 	// Cast structure pushed to stack into args
 	struct junction_args *args = (struct junction_args *)(esp);
@@ -172,7 +186,13 @@ fall_through:;
 	outb(0x20, 0x20);
 }
 
+/**
+ * External assembly function for installing the IDT.
+ * */
 extern void _install_idt();
+/**
+ * Extern assembly IDT stubs.
+ * */
 extern void _idt_stub_0_();
 extern void _idt_stub_1_();
 extern void _idt_stub_2_();

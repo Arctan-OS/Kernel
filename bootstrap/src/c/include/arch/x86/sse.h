@@ -27,6 +27,9 @@
 #ifndef ARC_ARCH_X86_SSE_H
 #define ARC_ARCH_X86_SSE_H
 
+/**
+ * Detect and enable SSE.
+ * */
 void init_sse(int ecx, int edx);
 
 #endif

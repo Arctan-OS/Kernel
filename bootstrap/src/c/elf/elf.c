@@ -130,6 +130,7 @@ struct Elf64_Phdr {
 // Return e_entry: success
 // Return 0: not ELF
 // Return 1: mapping failed
+// TODO: Better return values
 uint64_t load_elf(uint64_t *pml4, void *file) {
 	uint64_t *old_pml4 = pml4;
 	struct Elf64_Ehdr *header = (struct Elf64_Ehdr *)file;

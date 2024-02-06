@@ -24,6 +24,14 @@
  *
  * @DESCRIPTION
 */
+
+#include <arctan.h>
+#include <global.h>
+
+void putchar_(char c) {
+	E9_HACK(c);
+}
+
 /**
  * @author (c) Eyal Rozenberg <eyalroz1@gmx.com>
  *             2021-2022, Haifa, Palestine/Israel
@@ -65,8 +73,6 @@
 
 // Define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H=1 ...) to include the
 // printf_config.h header file
-#include "arctan.h"
-#include "global.h"
 #if PRINTF_INCLUDE_CONFIG_H
 #include "printf_config.h"
 #endif
@@ -286,13 +292,6 @@ typedef uint64_t double_uint_t;
 #error "Unsupported double type configuration"
 #endif
 #define DOUBLE_STORED_MANTISSA_BITS (DBL_MANT_DIG - 1)
-
-static int terminal_x = 0;
-static int terminal_y = 0;
-
-void putchar_(char c) {
-	E9_HACK(c);
-}
 
 typedef union {
   double_uint_t U;

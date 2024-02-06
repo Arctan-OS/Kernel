@@ -70,7 +70,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(10);
 
-
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	for (int i = 0; i < 600; i++) {

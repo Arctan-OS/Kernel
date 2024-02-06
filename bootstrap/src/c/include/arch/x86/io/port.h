@@ -29,6 +29,12 @@
 
 #include <stdint.h>
 
+/**
+ * Extern assembly function to write to IO port.
+ *
+ * @param uint16_t port - The port to write to.
+ * @param uint8_t value - The value to write.
+ * */
 extern void outb(uint16_t port, uint8_t value);
 
 #endif

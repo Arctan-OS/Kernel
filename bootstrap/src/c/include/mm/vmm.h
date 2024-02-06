@@ -29,6 +29,16 @@
 
 #include <global.h>
 
+/**
+ * Map the given page to the given page frame in the given PML4.
+ *
+ * New page tables will be created automatically, if overwrite is set to
+ * 1 then any existing page is already mapped and present it will be
+ * overwritten.
+ *
+ * @return Returns a pointer to the PML4, upon success it will be the same
+ * as uint64_t *pml4.
+ * */
 uint64_t *map_page(uint64_t *pml4, uint64_t vaddr, uint64_t paddr, int overwrite);
 
 #endif

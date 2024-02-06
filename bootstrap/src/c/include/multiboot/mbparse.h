@@ -29,6 +29,15 @@
 
 #include <mm/freelist.h>
 
+/**
+ * Reads the tags provided by boothloader.
+ *
+ * Populates the _boot_meta, also initializes the
+ * PMM.
+ *
+ * @param void *mb2i - Pointer to the base of the first tag.
+ * @return Error code (0: success).
+ * */
 int read_mb2i(void *mb2i);
 
 #endif

@@ -27,6 +27,14 @@
 #ifndef ARC_ARCH_X86_GDT_H
 #define ARC_ARCH_X86_GDT_H
 
+/**
+ * Create a GDT.
+ *
+ * [0]: NULL.
+ * [1]: 32 Kernel Code.
+ * [2]: 32/64 Kernel Data.
+ * [3]: 64 Kernel Code.
+ * */
 void install_gdt();
 
 #endif

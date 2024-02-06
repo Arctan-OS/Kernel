@@ -29,6 +29,17 @@
 
 #include <global.h>
 
+/**
+ * Simple ELF64 loader.
+ *
+ * Very simple ELF loader function for loading a
+ * higher-half kernel.
+ *
+ * @param uint64_t *pml4 - Current PML4 page map to map the file into.
+ * @param void *file - 32-bit physical pointer to the start of the ELF file.
+ * @return Address at which the file was loaded. Files cannot be loaded at
+ * 0x0 or 0x1, as those are used for error codes.
+ * */
 uint64_t load_elf(uint64_t *pml4, void *elf);
 
 #endif

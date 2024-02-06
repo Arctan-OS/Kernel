@@ -27,7 +27,19 @@
 #ifndef ARC_ARCH_X86_CPUID_H
 #define ARC_ARCH_X86_CPUID_H
 
+/**
+ * Check for CPU features.
+ *
+ * Checks for various CPU features, currently also enables
+ * these features. if PAE, Extended CPUID functions, or LM
+ * are not supported, this function will hang.
+ *
+ * @return An integer specifying which features are supported.
+ * */
 int check_features();
+/**
+ * Unused
+ * */
 int enable_features();
 
 #endif

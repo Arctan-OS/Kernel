@@ -27,6 +27,12 @@
 #ifndef ARC_ARCH_X86_IDT_H
 #define ARC_ARCH_X86_IDT_H
 
+/**
+ * Install the IDT.
+ *
+ * Installs all ISRs and initializes the
+ * 8259 PIC in a master / slave configuration.
+ * */
 void install_idt();
 
 #endif

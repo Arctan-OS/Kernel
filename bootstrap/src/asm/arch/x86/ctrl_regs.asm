@@ -87,8 +87,8 @@ global _x86_CR1
 global _x86_CR2
 global _x86_CR3
 global _x86_CR4
-_x86_CR0:   resb 4
-_x86_CR1:   resb 4
-_x86_CR2:   resb 4
-_x86_CR3:   resb 4
-_x86_CR4:   resb 4
+_x86_CR0:   resb 8
+_x86_CR1:   resb 8
+_x86_CR2:   resb 8
+_x86_CR3:   resb 8
+_x86_CR4:   resb 8

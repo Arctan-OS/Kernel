@@ -35,6 +35,7 @@
 #include <arch/x86/io/port.h>
 #define E9_HACK(c) outb(0xE9, c);
 #else
+/// If ARC_E9HACK_ENABLE is defined, this macro will output the given character on the 0xE9 port.
 #define E9_HACK(c) ;
 #endif
 

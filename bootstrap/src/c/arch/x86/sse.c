@@ -29,8 +29,14 @@
 #include <global.h>
 #include <arch/x86/sse.h>
 
+/**
+ * External assembly function to enable SSE.
+ * */
 extern void _osxsave_support();
 
+/**
+ * Space for CPU to save and restore SIMD state.
+ * */
 uint8_t fxsave_space[512] __attribute__((aligned(16), section(".data")));
 
 void init_sse(int ecx, int edx) {

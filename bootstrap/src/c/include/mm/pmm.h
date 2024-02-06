@@ -30,6 +30,16 @@
 #include <multiboot/multiboot2.h>
 #include <mm/freelist.h>
 
+/**
+ * Initialize the PMM.
+ *
+ * Finds free regions of memory in the 32-bit address range
+ * and initializes them into freelists.
+ *
+ * @param struct multiboot_tag_mmap *mmap - The MMAP tag provided by GRUB.
+ * @param uintptr_t bootstrap_end - The highest address used by the bootstrapper.
+ * @return Error code (0: success).
+ * */
 int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end);
 
 #endif

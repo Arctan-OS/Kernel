@@ -54,7 +54,6 @@
         __typeof__ (b) _b = (b); \
         _a < _b ? _a : _b; })
 
-
 extern uint64_t *pml4;
 extern struct ARC_FreelistMeta physical_mem;
 

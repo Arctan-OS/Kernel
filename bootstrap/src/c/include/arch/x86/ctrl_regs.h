@@ -29,25 +29,35 @@
 
 #include <stdint.h>
 
+/// Last read value of CR0.
 extern uint64_t _x86_CR0;
+/// Last read value of CR1.
 extern uint64_t _x86_CR1;
+/// Last read value of CR2.
 extern uint64_t _x86_CR2;
+/// Last read value of CR3.
 extern uint64_t _x86_CR3;
+/// Last read value of CR4.
 extern uint64_t _x86_CR4;
-
+/// Reads CR0 into _x86_CR0.
 extern void _x86_getCR0();
+/// Writes _x86_CR0 to CR0.
 extern void _x86_setCR0();
-
+/// Reads CR1 into _x86_CR1.
 extern void _x86_getCR1();
+/// Writes _x86_CR1 to CR1.
 extern void _x86_setCR1();
-
+/// Reads CR2 into _x86_CR2.
 extern void _x86_getCR2();
+/// Writes _x86_CR2 to CR2.
 extern void _x86_setCR2();
-
+/// Reads CR3 into _x86_CR3.
 extern void _x86_getCR3();
+/// Writes _x86_CR3 to CR3.
 extern void _x86_setCR3();
-
+/// Reads CR4 into _x86_CR4.
 extern void _x86_getCR4();
+/// Writes _x86_CR4 to CR4.
 extern void _x86_setCR4();
 
 #endif
