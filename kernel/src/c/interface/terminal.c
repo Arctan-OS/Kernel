@@ -75,7 +75,7 @@ void Arc_TermDraw(struct ARC_TermMeta *term) {
 			uint8_t *data = term->font_bmp + (c * term->font_height);
 
 			for (int i = 0; i < term->font_height; i++) {
-				for (int j = term->font_width - 1; j >= 0; j--) {
+				for (int j = 0; j < term->font_width; j++) {
 					if (((data[i] >> j) & 1) == 1 && c != 0) {
 						*((uint32_t *)term->framebuffer + (i + sy) * term->fb_width + (j + sx)) = 0x00FFFFFF;
 					}
