@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * The file which handles the 64-bit IDT.
 */
 #include <arch/x86/ctrl_regs.h>
 #include <arch/x86/io/port.h>

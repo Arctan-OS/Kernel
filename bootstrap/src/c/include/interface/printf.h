@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Port of https://github.com/eyalroz/printf
 */
 #ifndef ARC_INTERFACE_PRINTF_H
 #define ARC_INTERFACE_PRINTF_H

@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Called by CPUID to enable support for SSE.
 */
 #ifndef ARC_ARCH_X86_SSE_H
 #define ARC_ARCH_X86_SSE_H

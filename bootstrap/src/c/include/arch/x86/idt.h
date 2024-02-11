@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Simple IDT to handle errors which may occur when getting to the kernel.
 */
 #ifndef ARC_ARCH_X86_IDT_H
 #define ARC_ARCH_X86_IDT_H

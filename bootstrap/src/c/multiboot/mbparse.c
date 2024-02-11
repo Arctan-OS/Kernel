@@ -23,6 +23,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Provides a function for reading the multiboot2 boot information tag
+ * structure.
 */
 #include <multiboot/mbparse.h>
 #include <multiboot/multiboot2.h>

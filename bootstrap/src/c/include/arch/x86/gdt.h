@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Initial GDT Loader.
 */
 #ifndef ARC_ARCH_X86_GDT_H
 #define ARC_ARCH_X86_GDT_H

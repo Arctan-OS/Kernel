@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Simple, tiny, buggy ELF loader.
 */
 #ifndef ARC_ELF_ELF_H
 #define ARC_ELF_ELF_H

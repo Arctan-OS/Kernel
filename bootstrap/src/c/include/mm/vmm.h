@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Simple virtual memory manager.
 */
 #ifndef ARC_MM_VMM_H
 #define ARC_MM_VMM_H

@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Arctan header file.
 */
 #ifndef ARC_ARCTAN_H
 #define ARC_ARCTAN_H

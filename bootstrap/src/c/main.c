@@ -23,6 +23,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Main file containing the main helper function, which prepares the CPU
+ * for the kernel.
 */
 #include <stdint.h>
 #include <global.h>

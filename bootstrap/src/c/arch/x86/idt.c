@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Simple IDT to handle errors which may occur when getting to the kernel.
 */
 #include <arch/x86/idt.h>
 #include <arch/x86/io/port.h>

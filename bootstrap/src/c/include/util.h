@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * File containing utility functions / macros.
 */
 #ifndef ARC_UTIL_H
 #define ARC_UTIL_H

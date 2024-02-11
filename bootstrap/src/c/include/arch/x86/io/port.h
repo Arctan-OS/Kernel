@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * C headers for assembly I/O functions.
 */
 #ifndef ARC_IO_PORT_H
 #define ARC_IO_PORT_H

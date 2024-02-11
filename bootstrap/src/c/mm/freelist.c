@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Abstract freelist implementation.
 */
 #include <global.h>
 #include <mm/freelist.h>

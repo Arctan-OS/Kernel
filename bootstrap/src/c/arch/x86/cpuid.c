@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * A file to check and enable various CPU features.
 */
 #include <cpuid.h>
 #include <arch/x86/cpuid.h>

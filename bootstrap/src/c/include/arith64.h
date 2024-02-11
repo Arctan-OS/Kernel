@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Header for arith64.c.
 */
 #ifndef ARITH_64_H
 #define ARITH_64_H

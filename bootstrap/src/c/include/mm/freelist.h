@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Abstract freelist implementation.
 */
 #ifndef ARC_MM_FREELIST_H
 #define ARC_MM_FREELIST_H

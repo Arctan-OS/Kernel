@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Provides 64-bit arithmetic functions in 32-bit land.
 */
 #include "include/arith64.h"
 // GCC 32/64-bit integer arithmetic support for 32-bit systems that can't link

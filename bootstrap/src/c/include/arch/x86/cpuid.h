@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * A file to check and enable various CPU features.
 */
 #ifndef ARC_ARCH_X86_CPUID_H
 #define ARC_ARCH_X86_CPUID_H

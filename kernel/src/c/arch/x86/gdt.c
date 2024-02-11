@@ -23,6 +23,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Change out the GDT to better suit 64-bit mode, remove no longer needed 32-bit
+ * segments.
 */
 #include <global.h>
 

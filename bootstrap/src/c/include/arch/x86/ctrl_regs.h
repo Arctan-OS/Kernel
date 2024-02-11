@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * C headers for modifying the various control registers.
 */
 #ifndef ARC_X86_CTRL_REGS_H
 #define ARC_X86_CTRL_REGS_H

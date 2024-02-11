@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Simple PMM initializer.
 */
 #include "mm/freelist.h"
 #include <mm/pmm.h>
