@@ -41,18 +41,18 @@
 
 #include <interface/terminal.h>
 #include <mm/pmm.h>
+#include <fs/vfs.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta main_terminal = { 0 };
 static char main_terminal_mem[180 * 120] = { 0 };
 
-static char rx_buf[0x1000];
+static struct ARC_VFSNode initram_vfs = { 0 };
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;
 
-	main_terminal.rxtx_buf_len = 0x1000;
-	main_terminal.rx_buf = rx_buf;
+	main_terminal.rx_buf = NULL;
 	main_terminal.tx_buf = NULL;
 	main_terminal.term_width = 180;
 	main_terminal.term_height = 120;
@@ -79,6 +79,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
+
+	initram_vfs.fs_type = ARC_VFS_INITRAMFS;
+	initram_vfs.disk = 0;
 
 	for (;;) {
 		Arc_TermDraw(&main_terminal);
