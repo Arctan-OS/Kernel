@@ -30,16 +30,17 @@
 #include <fs/vfs.h>
 
 static const char *root = "/";
+static struct ARC_VFSNode vfs_root = { 0 };
 
-int Arc_InitializeVFS(struct ARC_VFSNode *vfs) {
-	vfs->disk = NULL;
-	vfs->address = NULL;
-	vfs->next = NULL;
-	vfs->children = NULL;
-	vfs->fs_type = ARC_VFS_NULL;
-	vfs->type = ARC_VFS_N_MOUNT;
+int Arc_InitializeVFS() {
+	vfs_root.disk = NULL;
+	vfs_root.address = NULL;
+	vfs_root.next = NULL;
+	vfs_root.children = NULL;
+	vfs_root.fs_type = ARC_VFS_NULL;
+	vfs_root.type = ARC_VFS_N_MOUNT;
 
-	vfs->name = (char *)root;
+	vfs_root.name = (char *)root;
 
 	return 0;
 }
@@ -64,5 +65,18 @@ struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, voi
 	return mount;
 }
 
-// TODO: Implement abstracted functions like read, write,
-//       open, and close files.
+struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, char *perms) {
+	return NULL;
+}
+
+int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
+	return 0;
+}
+
+int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
+	return 0;
+}
+
+int Arc_CloseFileVFS(struct ARC_VFSNode *file) {
+	return 0;
+}

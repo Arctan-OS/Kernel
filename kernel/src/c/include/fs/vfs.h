@@ -41,48 +41,64 @@
 
 #include <stddef.h>
 
+
+struct ARC_VFSFile {
+	/// Current offset into the file.
+	size_t offset;
+	/// Address of the file on disk
+	void *address;
+	/// State required by the file driver
+	void *state;
+	union {
+		// Functions pretaining to ARC_VFSNode of type ARC_VFS_N_FILE
+		// write(buffer, size, count, where)
+		// read(buffer, size, count, where)
+	} file_functions;
+};
+
+struct ARC_VFSMount {
+	/// Type of file system.
+	int fs_type;
+	/// Address of the superblock on disk.
+	void *super_address;
+
+	/// State required by the file system driver.
+	void *fs_state;
+
+	union {
+		// Functions pretaining to ARC_VFSNode of type ARC_VFS_N_MOUNT
+		// mount()
+		// unmount()
+		// sync()
+	} fs_functions;
+};
+
 /**
  * A single node in a VFS tree.
  * */
 struct ARC_VFSNode {
-	/// The ID of the disk (virtual address in case of initramfs).
-	void *disk;
-	/// The address of this node on disk.
-	void *address;
-	/// The type of file system.
-	int fs_type;
+	/// Pointer to the device.
+	void *device;
 	/// The type of node.
 	int type;
 	/// The name of this node.
 	char *name;
+
+	struct ARC_VFSFile *file;
+	struct ARC_VFSMount *mount;
+
 	/// Pointer to the head of the children linked list.
 	struct ARC_VFSNode *children;
 	/// Pointer to the next element in the current linked list.
 	struct ARC_VFSNode *next;
 };
 
-typedef int (*VFS_Hook)(struct ARC_VFSNode);
-
 /**
- * A structure containing hooks into a FS driver.
+ * Initalize the VFS root.
  *
- * Contains pointers to various functions.
- * */
-struct ARC_FSDriver {
-	void (*find_file)(VFS_Hook hook, char *name);
-	void (*open_file)(VFS_Hook hook, char *name);
-	void (*close_file)(VFS_Hook hook, void *file);
-	void (*read_file)(VFS_Hook hook, void *file, size_t size, size_t count, void *buffer);
-	void (*write_file)(VFS_Hook hook, void *file, size_t size, size_t count, void *buffer);
-};
-
-/**
- * Initialize the given VFS to be a root.
- *
- * @param struct ARC_VFSNode *vfs - The VFS node to initialize as root
  * @return 0: success
  * */
-int Arc_InitializeVFS(struct ARC_VFSNode *vfs);
+int Arc_InitializeVFS();
 
 
 /**
@@ -98,5 +114,49 @@ int Arc_InitializeVFS(struct ARC_VFSNode *vfs);
  * @return A non-NULL pointer to the VFS node that describes the mounted device.
  * */
 struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, void *disk, void *address, int type);
+
+/**
+ * Open the given file with the given perms.
+ *
+ * @param char *filepath - Path to the file to open.
+ * @param char *perms - Permissions to open the file with.
+ * @return A non-NULL pointer on success.
+ * */
+struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, char *perms);
+
+/**
+ * Read the given file.
+ *
+ * Reads /count words of /a size bytes from /a file into
+ * /a buffer.
+ *
+ * @param void *buffer - The buffer into which to read the file data.
+ * @param size_t size - The size of each word to read.
+ * @param size_t count - The number of words to read.
+ * @param struct ARC_VFSNode *file - The file to read.
+ * @return The number of words read.
+ * */
+int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
+
+/**
+ * Write to the given file.
+ *
+ * Writes /count words of /a size bytes from /a buffer into
+ * /a file.
+ *
+ * @param void *buffer - The buffer from which to read the data.
+ * @param size_t size - The size of each word to write.
+ * @param size_t count - The number of words to write.
+ * @param struct ARC_VFSNode *file - The file to write.
+ * @return The number of words written.
+ * */
+int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
+
+/**
+ * Close the given file in the VFS.
+ *
+ * @param struct ARC_VFSNode *file - The file to close.
+ * */
+int Arc_CloseFileVFS(struct ARC_VFSNode *file);
 
 #endif

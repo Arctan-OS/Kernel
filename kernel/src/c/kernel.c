@@ -47,8 +47,6 @@ struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta main_terminal = { 0 };
 static char main_terminal_mem[180 * 120] = { 0 };
 
-static struct ARC_VFSNode initram_vfs = { 0 };
-
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;
 
@@ -80,8 +78,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
-	initram_vfs.fs_type = ARC_VFS_INITRAMFS;
-	initram_vfs.disk = 0;
+	Arc_MountVFS(NULL, "initramfs", NULL, boot_meta->initramfs, ARC_VFS_FS_INITRAMFS);
 
 	for (;;) {
 		Arc_TermDraw(&main_terminal);
