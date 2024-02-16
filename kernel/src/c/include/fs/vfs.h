@@ -29,6 +29,7 @@
 #ifndef ARC_VFS_H
 #define ARC_VFS_H
 
+#include "lib/resource.h"
 #define ARC_VFS_NULL  0
 
 #define ARC_VFS_N_FILE  1
@@ -41,19 +42,15 @@
 
 #include <stddef.h>
 
-
 struct ARC_VFSFile {
 	/// Current offset into the file.
 	size_t offset;
-	/// Address of the file on disk
+	/// Address of the file on disk.
 	void *address;
-	/// State required by the file driver
+	/// Pointer to the parent VFS node.
+	struct ARC_VFSNode *node;
+	/// State required by the file driver.
 	void *state;
-	union {
-		// Functions pretaining to ARC_VFSNode of type ARC_VFS_N_FILE
-		// write(buffer, size, count, where)
-		// read(buffer, size, count, where)
-	} file_functions;
 };
 
 struct ARC_VFSMount {
@@ -61,16 +58,10 @@ struct ARC_VFSMount {
 	int fs_type;
 	/// Address of the superblock on disk.
 	void *super_address;
-
+	/// Pointer to the parent VFS node.
+	struct ARC_VFSNode *node;
 	/// State required by the file system driver.
-	void *fs_state;
-
-	union {
-		// Functions pretaining to ARC_VFSNode of type ARC_VFS_N_MOUNT
-		// mount()
-		// unmount()
-		// sync()
-	} fs_functions;
+	void *state;
 };
 
 /**
@@ -78,15 +69,15 @@ struct ARC_VFSMount {
  * */
 struct ARC_VFSNode {
 	/// Pointer to the device.
-	void *device;
+	struct ARC_Resource *resource;
 	/// The type of node.
 	int type;
 	/// The name of this node.
 	char *name;
-
-	struct ARC_VFSFile *file;
-	struct ARC_VFSMount *mount;
-
+	/// Specific structure (like ARC_VFSFile / ARC_VFSMount)
+	void *spec;
+	/// Pointer to the parent of the current node.
+	struct ARC_VFSNode *parent;
 	/// Pointer to the head of the children linked list.
 	struct ARC_VFSNode *children;
 	/// Pointer to the next element in the current linked list.
