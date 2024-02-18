@@ -35,7 +35,11 @@ QEMUFLAGS := -M q35,smm=off -m 4G -cdrom $(PRODUCT).iso -debugcon stdio -s
 
 DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
 
-all: clean kern boot
+ARCTAN_HOME := $(shell pwd)
+export ARCTAN_HOME
+
+.PHONY: all
+all: clean ports kern boot
 	mkdir -p iso/boot/grub
 
 	# Put initramfs together
@@ -49,20 +53,28 @@ all: clean kern boot
 	# Create ISO
 	grub-mkrescue -o $(PRODUCT).iso iso
 
-boot:
+.PHONY: bootstrap
+bootstrap:
 	make -C bootstrap
 
-kern:
+.PHONY: kernel
+kernel:
 	make -C kernel
 
+.PHONY: run
 run: all
 	qemu-system-x86_64 -enable-kvm -cpu qemu64 -d cpu_reset $(QEMUFLAGS)
 
+.PHONY: clean
 clean:
 	find . -type f $(DISCARDABLE) -delete
-
 	rm -rf iso
 
+.PHONY: ports
+ports:
+	make -C ports
+
+.PHONY: documentation
 documentation:
 	doxygen Doxyfile
 

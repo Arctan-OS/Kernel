@@ -1,0 +1,16 @@
+diff --git a/meson.build b/meson.build
+index 7a6c6fd0..638bc942 100644
+--- a/meson.build
++++ b/meson.build
+@@ -221,6 +221,11 @@ elif host_machine.system() == 'dripos'
+ 	rtdl_include_dirs += include_directories('sysdeps/dripos/include')
+ 	libc_include_dirs += include_directories('sysdeps/dripos/include')
+ 	subdir('sysdeps/dripos')
++elif host_machine.system() == 'arctan'
++	disable_linux_option = true
++	rtdl_include_dirs += include_directories('sysdeps/arctan/include')
++	libc_include_dirs += include_directories('sysdeps/arctan/include')
++	subdir('sysdeps/arctan')
+ else
+ 	error('No sysdeps defined for OS: ' + host_machine.system())
+ endif
