@@ -26,17 +26,18 @@
 #*/
 PRODUCT := Arctan
 
+ARCTAN_HOME := $(shell pwd)
+ARCTAN_INITRAMFS := $(ARCTAN_HOME)/initramfs
+
 CPPFLAG_E9HACK :=
-export CPPFLAG_E9HACK
 CPPFLAG_DEBUG :=
-export CPPFLAG_DEBUG
-
 QEMUFLAGS := -M q35,smm=off -m 4G -cdrom $(PRODUCT).iso -debugcon stdio -s
-
 DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
 
-ARCTAN_HOME := $(shell pwd)
 export ARCTAN_HOME
+export CPPFLAG_E9HACK
+export CPPFLAG_DEBUG
+export ARCTAN_INITRAMFS
 
 .PHONY: all
 all: clean ports kern boot

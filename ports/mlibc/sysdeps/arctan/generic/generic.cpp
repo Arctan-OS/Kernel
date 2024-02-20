@@ -1,275 +1,120 @@
-#include <bits/ensure.h>
-#include <mlibc/debug.hpp>
-#include <mlibc/all-sysdeps.hpp>
-#include <errno.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <limits.h>
+#include <time.h>
 
 namespace mlibc {
 
-void sys_libc_log(const char *message) {
-	unsigned long res;
-	asm volatile ("syscall" : "=a"(res)
-			: "a"(50), "D"(message)
-			: "rcx", "r11", "rdx");
-}
-
-void sys_libc_panic() {
-	mlibc::infoLogger() << "\e[31mmlibc: panic!" << frg::endlog;
-	asm volatile ("syscall" :
-			: "a"(12), "D"(1)
-			: "rcx", "r11", "rdx");
-}
-
-int sys_tcb_set(void *pointer) {
-	int res;
-	asm volatile ("syscall" : "=a"(res)
-			: "a"(300), "D"(pointer)
-			: "rcx", "r11", "rdx");
-	return res;
-}
-
-int sys_anon_allocate(size_t size, void **pointer) {
-	void *ret;
-	int sys_errno;
-
-	asm volatile ("syscall"
-			: "=a"(ret), "=d"(sys_errno)
-			: "a"(9), "D"(0), "S"(size)
-			: "rcx", "r11");
-
-	if (!ret)
-		return sys_errno;
-
-	*pointer = ret;
-	return 0;
-}
-
-int sys_anon_free(void *pointer, size_t size) {
-	int unused_return;
-	int sys_errno;
-
-	asm volatile ("syscall"
-			: "=a"(unused_return), "=d"(sys_errno)
-			: "a"(11), "D"(pointer), "S"(size)
-			: "rcx", "r11");
-
-	if (unused_return)
-		return sys_errno;
-
-	return 0;
-}
-
-#ifndef MLIBC_BUILDING_RTDL
-void sys_exit(int status) {
-	asm volatile ("syscall" :
-			: "a"(12), "D"(status)
-			: "rcx", "r11", "rdx");
-}
-#endif
-
-#ifndef MLIBC_BUILDING_RTDL
-int sys_clock_get(int clock, time_t *secs, long *nanos) {
-	return 0;
-}
-#endif
-
-int sys_open(const char *path, int flags, mode_t mode, int *fd) {
-	int ret;
-	int sys_errno;
-
-	asm volatile ("syscall"
-			: "=a"(ret), "=d"(sys_errno)
-			: "a"(2), "D"(path), "S"(flags), "d"(0)
-			: "rcx", "r11");
-
-	if (ret == -1)
-		return sys_errno;
-
-	*fd = ret;
-	return 0;
-}
-
-int sys_close(int fd) {
-	int ret;
-	int sys_errno;
-
-	asm volatile ("syscall"
-			: "=a"(ret), "=d"(sys_errno)
-			: "a"(3), "D"(fd)
-			: "rcx", "r11");
-
-	if (ret == -1)
-		return sys_errno;
-
-	return 0;
-}
-
-int sys_read(int fd, void *buf, size_t count, ssize_t *bytes_read) {
-	ssize_t ret;
-	int sys_errno;
-
-	asm volatile ("syscall"
-			: "=a"(ret), "=d"(sys_errno)
-			: "a"(0), "D"(fd), "S"(buf), "d"(count)
-			: "rcx", "r11");
-
-	if (ret == -1)
-		return sys_errno;
-
-	*bytes_read = ret;
-	return 0;
-}
-
-#ifndef MLIBC_BUILDING_RTDL
-int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written) {
-	ssize_t ret;
-	int sys_errno;
-
-	asm volatile ("syscall"
-			: "=a"(ret), "=d"(sys_errno)
-			: "a"(1), "D"(fd), "S"(buf), "d"(count)
-			: "rcx", "r11");
-
-	if (ret == -1)
-		return sys_errno;
-
-	*bytes_written = ret;
-	return 0;
-}
-#endif
-
-
-int sys_seek(int fd, off_t offset, int whence, off_t *new_offset) {
-	off_t ret;
-	int sys_errno;
-
-	asm volatile ("syscall"
-			: "=a"(ret), "=d"(sys_errno)
-			: "a"(8), "D"(fd), "S"(offset), "d"(whence)
-			: "rcx", "r11");
-
-	if (ret == -1)
-		return sys_errno;
-
-	*new_offset = ret;
-	return 0;
-}
-
-int sys_vm_map(void *hint, size_t size, int prot, int flags,
-		int fd, off_t offset, void **window) {
-	__ensure(flags & MAP_ANONYMOUS);
-	void *ret;
-	int sys_errno;
-
-	// mlibc::infoLogger() << "calling sys_vm_map with size: " << size << frg::endlog;
-
-	asm volatile ("syscall"
-			: "=a"(ret), "=d"(sys_errno)
-			: "a"(9), "D"(hint), "S"(size)
-			: "rcx", "r11");
-
-	if (!ret)
-		return sys_errno;
-
-	*window = ret;
-
-	return 0;
-}
-
-int sys_vm_unmap(void *pointer, size_t size) {
-	return sys_anon_free(pointer, size);
-}
-
-int sys_futex_wait(int *pointer, int expected, const struct timespec *time) {
-	uint64_t err;
-	asm volatile ("syscall"
-			: "=d"(err)
-			: "a"(66), "D"(pointer), "S"(expected)
-			: "rcx", "r11");
-
-	if (err) {
-		return -1;
+	void sys_libc_log(char const *str) {
+		(void)str;
 	}
 
-	return 0;
-}
-
-int sys_futex_wake(int *pointer) {
-	uint64_t err;
-	asm volatile ("syscall"
-			: "=d"(err)
-			: "a"(65), "D"(pointer)
-			: "rcx", "r11");
-
-	if (err) {
-		return -1;
+	void sys_libc_panic() {
+		for (;;);
 	}
 
-	return 0;
-}
+	int sys_tcb_set(void *arg) {
+		(void)arg;
+		return 0;
+	}
 
-// All remaining functions are disabled in ldso.
-#ifndef MLIBC_BUILDING_RTDL
+	int sys_futex_wait(int *ptr, int expected, timespec const *time) {
+		(void)ptr;
+		(void)expected;
+		(void)time;
 
-int sys_sleep(time_t *secs, long *nanos) {
-	long ms = (*nanos / 1000000) + (*secs * 1000);
-	asm volatile ("syscall"
-		:
-		: "a"(6), "D"(ms)
-		: "rcx", "r11");
-	*secs = 0;
-	*nanos = 0;
-	return 0;
-}
+		return 0;
+	}
 
-int sys_fork(pid_t *child) {
-	pid_t ret;
-	int sys_errno;
+	int sys_futex_wake(int *ptr) {
+		(void)ptr;
 
-	asm volatile ("syscall"
-			: "=a"(ret), "=d"(sys_errno)
-			: "a"(57)
-			: "rcx", "r11");
+		return 0;
+	}
 
-	if (ret == -1)
-		return sys_errno;
+	int sys_clock_get(int a, long *b, long *c) {
+		(void)a;
+		(void)b;
+		(void)c;
 
-	*child = ret;
-	return 0;
-}
+		return 0;
+	}
 
-int sys_execve(const char *path, char *const argv[], char *const envp[]) {
-	int ret;
-	int sys_errno;
+	void sys_exit(int code) {
+		(void)code;
 
-	asm volatile ("syscall"
-			: "=a"(ret), "=d"(sys_errno)
-			: "a"(59), "D"(path), "S"(argv), "d"(envp)
-			: "rcx", "r11");
+		for (;;);
+	}
 
-	if (sys_errno != 0)
-		return sys_errno;
+	int sys_seek(int fd, long offset, int whence, long *new_offset) {
+		(void)fd;
+		(void)offset;
+		(void)whence;
+		(void)new_offset;
 
-	return 0;
-}
+		return 0;
+	}
 
-pid_t sys_getpid() {
-	pid_t pid;
-	asm volatile ("syscall" : "=a"(pid)
-			: "a"(5)
-			: "rcx", "r11", "rdx");
-	return pid;
-}
-pid_t sys_getppid() {
-	pid_t ppid;
-	asm volatile ("syscall" : "=a"(ppid)
-			: "a"(14)
-			: "rcx", "r11", "rdx");
-	return ppid;
-}
+	int sys_write(int fd, void const *a, unsigned long b, long *c) {
+		(void)fd;
+		(void)a;
+		(void)b;
+		(void)c;
 
-#endif // MLIBC_BUILDING_RTDL
+		return 0;
+	}
 
+	int sys_read(int fd, void *buf, unsigned long count, long *bytes_read) {
+		(void)fd;
+		(void)buf;
+		(void)count;
+		(void)bytes_read;
+
+		return 0;
+	}
+
+	int sys_close(int fd) {
+		(void)fd;
+
+		return 0;
+	}
+
+	int sys_open(char const *name, int flags, unsigned int mode, int *fd) {
+		(void)name;
+		(void)flags;
+		(void)mode;
+		(void)fd;
+
+		return 0;
+	}
+
+	int sys_vm_map(void *hint, unsigned long size, int prot, int flags, int fd, long offset, void **window) {
+		(void)hint;
+		(void)size;
+		(void)prot;
+		(void)flags;
+		(void)fd;
+		(void)offset;
+		(void)window;
+
+		return 0;
+	}
+
+	int sys_vm_unmap(void *c, unsigned long b) {
+		(void)c;
+		(void)b;
+
+		return 0;
+	}
+
+	int sys_anon_allocate(unsigned long size, void **ptr) {
+		(void)size;
+		(void)ptr;
+
+		return 0;
+	}
+
+	int sys_anon_free(void *ptr, unsigned long size) {
+		(void)ptr;
+		(void)size;
+
+		return 0;
+	}
 } // namespace mlibc
