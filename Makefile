@@ -40,7 +40,7 @@ export CPPFLAG_DEBUG
 export ARCTAN_INITRAMFS
 
 .PHONY: all
-all: clean ports kern boot
+all: clean ports kernel bootstrap
 	mkdir -p iso/boot/grub
 
 	# Put initramfs together

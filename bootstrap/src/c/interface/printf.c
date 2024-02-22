@@ -28,6 +28,7 @@
 
 #include <arctan.h>
 #include <global.h>
+#include <interface/printf.h>
 
 void putchar_(char c) {
 	E9_HACK(c);
@@ -78,7 +79,6 @@ void putchar_(char c) {
 #include "printf_config.h"
 #endif
 
-#include <interface/printf.h>
 
 #ifdef __cplusplus
 #include <cstdint>

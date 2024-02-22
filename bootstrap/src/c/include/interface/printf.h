@@ -33,20 +33,15 @@
 #include <stdarg.h>
 
 #ifdef ARC_E9HACK_ENABLE
-#include <arch/x86/io/port.h>
-#define E9_HACK(c) outb(0xE9, c);
+    #include <arch/x86/io/port.h>
+    #define E9_HACK(c) outb(0xE9, c);
 #else
 /// If ARC_E9HACK_ENABLE is defined, this macro will output the given character on the 0xE9 port.
-#define E9_HACK(c) ;
+    #define E9_HACK(c) ;
 #endif
 
 #define printf printf_
 
-// Configuration for printf.h
-//#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 1
-//#define PRINTF_SUPPORT_DECIMAL_SPECIFIERS 0
-
-extern void outb(uint16_t port, uint8_t value);
 /**
  * @author (c) Eyal Rozenberg <eyalroz1@gmx.com>
  *             2021-2022, Haifa, Palestine/Israel

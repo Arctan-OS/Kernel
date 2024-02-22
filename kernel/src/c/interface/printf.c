@@ -24,7 +24,6 @@
  *
  * @DESCRIPTION
 */
-#include <arch/x86/io/port.h>
 #include <interface/terminal.h>
 #include <interface/printf.h>
 #include <global.h>

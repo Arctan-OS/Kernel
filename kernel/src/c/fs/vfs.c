@@ -34,55 +34,57 @@ static const char *root = "/";
 static struct ARC_VFSNode vfs_root = { 0 };
 
 int Arc_InitializeVFS() {
-	vfs_root.file = NULL;
-	vfs_root.mount = NULL;
-	vfs_root.next = NULL;
-	vfs_root.children = NULL;
-	vfs_root.type = ARC_VFS_N_MOUNT;
+//	vfs_root.file = NULL;
+//	vfs_root.mount = NULL;
+//	vfs_root.next = NULL;
+//	vfs_root.children = NULL;
+//	vfs_root.type = ARC_VFS_N_MOUNT;
 
-	vfs_root.name = (char *)root;
+//	vfs_root.name = (char *)root;
 
 	return 0;
 }
 
 struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, void *disk, void *address, int type) {
-	struct ARC_VFSNode *node = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode));
-	struct ARC_VFSMount *mount = (struct ARC_VFSMount *)Arc_SlabAlloc(sizeof(struct ARC_VFSMount));
+//	struct ARC_VFSNode *node = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode));
+//	struct ARC_VFSMount *mount = (struct ARC_VFSMount *)Arc_SlabAlloc(sizeof(struct ARC_VFSMount));
 
-	if (node == NULL || mount == NULL) {
-		return NULL;
-	}
+//	if (node == NULL || mount == NULL) {
+//		return NULL;
+//	}
 
-	mount->disk = disk;
-	mount->super_address = address;
-	mount->fs_functions = NULL; // Set this
-	mount->fs_type = type;
+//	mount->disk = disk;
+//	mount->super_address = address;
+//	mount->fs_type = type;
+//	mount->fs_functions = NULL; // Set this
 
-	node->next = mountpoint->children;
-	mountpoint->children = node;
-	node->name = name;
-	node->type = ARC_VFS_N_MOUNT;
-	node->children = NULL;
-	node->mount = mount;
-	node->file = NULL;
+//	node->next = mountpoint->children;
+//	mountpoint->children = node;
+//	node->name = name;
+//	node->type = ARC_VFS_N_MOUNT;
+//	node->children = NULL;
+//	node->mount = mount;
+//	node->file = NULL;
 
-	if (mount->fs_functions != NULL && mount->fs_functions->mount != NULL) {
-		(mount->fs_functions->mount)(node, name);
-	} else {
-		ARC_DEBUG(ERR, "No fs_functions or fs_functions->mount for %s (%p : %p : %d)!\n", name, disk, address, type);
-	}
+//	if (mount->fs_functions != NULL && mount->fs_functions->mount != NULL) {
+//		(mount->fs_functions->mount)(node, name);
+//	} else {
+//		ARC_DEBUG(ERR, "No fs_functions or fs_functions->mount for %s (%p : %p : %d)!\n", name, disk, address, type);
+//	}
 
-	return node;
+//	return node;
+
+	return NULL;
 }
 
 int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 
 
-	if (mount->mount->fs_functions != NULL && mount->mount->fs_functions->unmount != NULL) {
-		(mount->mount->fs_functions->unmount)(mount);
-	} else {
-
-	}
+//	if (mount->mount->fs_functions != NULL && mount->mount->fs_functions->unmount != NULL) {
+//		(mount->mount->fs_functions->unmount)(mount);
+//	} else {
+//
+//	}
 
 	return 0;
 }
@@ -93,13 +95,13 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, char *perms) {
 }
 
 int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
-	(file->file->file_functions->read(buffer, size, count, file));
+//	(file->file->file_functions->read(buffer, size, count, file));
 
 	return 0;
 }
 
 int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
-	(file->file->file_functions->write(buffer, size, count, file));
+//	(file->file->file_functions->write(buffer, size, count, file));
 
 	return 0;
 }
