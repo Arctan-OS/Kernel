@@ -30,18 +30,20 @@
 #include <mm/vmm.h>
 #include <arctan.h>
 #include <global.h>
-#include <arch/x86/io/port.h>
+#include <arch/x86-64/io/port.h>
 #include <stdint.h>
 #include <interface/printf.h>
-#include <arch/x86/ctrl_regs.h>
+#include <arch/x86-64/ctrl_regs.h>
 #include <multiboot/mbparse.h>
 
-#include <arch/x86/idt.h>
-#include <arch/x86/gdt.h>
+#include <arch/x86-64/idt.h>
+#include <arch/x86-64/gdt.h>
 
 #include <interface/terminal.h>
 #include <mm/pmm.h>
 #include <fs/vfs.h>
+
+#include <arch/x86-64/syscall.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta main_terminal = { 0 };
@@ -67,6 +69,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	parse_mbi();
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(10);
+	Arc_InitializeSyscall();
+	Arc_MountVFS(NULL, "initramfs", NULL, boot_meta->initramfs, ARC_VFS_FS_INITRAMFS);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
@@ -77,8 +81,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
-
-	Arc_MountVFS(NULL, "initramfs", NULL, boot_meta->initramfs, ARC_VFS_FS_INITRAMFS);
 
 	for (;;) {
 		Arc_TermDraw(&main_terminal);

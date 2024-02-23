@@ -24,8 +24,8 @@
  *
  * @DESCRIPTION
 */
-#include "arch/x86/ctrl_regs.h"
-#include "arctan.h"
+#include <arch/x86-64/ctrl_regs.h>
+#include <arctan.h>
 #include "mm/pmm.h"
 #include <mm/vmm.h>
 #include <global.h>

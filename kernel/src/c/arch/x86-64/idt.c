@@ -25,10 +25,10 @@
  * @DESCRIPTION
  * The file which handles the 64-bit IDT.
 */
-#include <arch/x86/ctrl_regs.h>
-#include <arch/x86/io/port.h>
+#include <arch/x86-64/ctrl_regs.h>
+#include <arch/x86-64/io/port.h>
 #include <global.h>
-#include <arch/x86/idt.h>
+#include <arch/x86-64/idt.h>
 #include <interface/printf.h>
 
 struct idt_desc {

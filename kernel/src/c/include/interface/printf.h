@@ -32,7 +32,7 @@
 #include <stdarg.h>
 
 #ifdef ARC_E9HACK_ENABLE
-   #include <arch/x86/io/port.h>
+   #include <arch/x86-64/io/port.h>
    #define E9_HACK(c) outb(0xE9, c);
 #else
     #define E9_HACK(c) ;

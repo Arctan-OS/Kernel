@@ -25,8 +25,8 @@
  * @DESCRIPTION
  * C headers for modifying the various control registers.
 */
-#ifndef ARC_X86_CTRL_REGS_H
-#define ARC_X86_CTRL_REGS_H
+#ifndef ARC_ARCH_X86_CTRL_REGS_H
+#define ARC_ARCH_X86_CTRL_REGS_H
 
 #include <stdint.h>
 
