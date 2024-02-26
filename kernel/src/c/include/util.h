@@ -32,6 +32,8 @@
 
 int strcmp(char *a, char *b);
 void memcpy(void *a, void *b, size_t size);
+size_t strlen(char *a);
+char *strdup(char *a);
 long strtol(char *string, char **end, int base);
 
 #endif

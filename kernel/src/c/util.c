@@ -1,3 +1,4 @@
+#include <mm/allocator.h>
 #include <util.h>
 #include <global.h>
 
@@ -13,10 +14,36 @@ int strcmp(char *a, char *b) {
 	return sum;
 }
 
+void memset(void *a, uint8_t value, size_t size) {
+	for (size_t i = 0; i < size; i++) {
+		*((uint8_t *)a + i) = value;
+	}
+}
+
 void memcpy(void *a, void *b, size_t size) {
 	for (size_t i = 0; i < size; i++) {
 		*(uint8_t *)(a + i) = *(uint8_t *)(b + i);
 	}
+}
+
+size_t strlen(char *a) {
+	size_t i = 0;
+
+	while (*(a + i) != 0) {
+		i++;
+	}
+
+	return i;
+}
+
+char *strdup(char *a) {
+	size_t len = strlen(a);
+
+	char *b = Arc_SlabAlloc(len);
+	memset(b, 0, len);
+	memcpy(b, a, len);
+
+	return b;
 }
 
 static const char *NUMBERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";

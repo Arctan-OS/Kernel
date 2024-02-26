@@ -29,7 +29,6 @@
 #ifndef ARC_VFS_H
 #define ARC_VFS_H
 
-#include "lib/resource.h"
 #define ARC_VFS_NULL  0
 
 #define ARC_VFS_N_FILE  1
@@ -41,6 +40,8 @@
 #define ARC_VFS_FS_INITRAMFS 2
 
 #include <stddef.h>
+#include <lib/resource.h>
+#include <lib/reference.h>
 
 struct ARC_VFSFile {
 	/// Current offset into the file.
@@ -82,10 +83,12 @@ struct ARC_VFSNode {
 	struct ARC_VFSNode *children;
 	/// Pointer to the next element in the current linked list.
 	struct ARC_VFSNode *next;
+	/// Pointer to the previous element in the current linked list.
+	struct ARC_VFSNode *prev;
 	/// The number of references this node has directly or indirectly.
 	int ref_count;
-	/// The number of references to add to this node's parent.
-	int ref_delta;
+	/// The actual references
+	struct ARC_Reference *references;
 };
 
 /**
@@ -103,12 +106,11 @@ int Arc_InitializeVFS();
  *
  * @param struct ARC_VFSNode *mountpoint - The VFS node under which to mount (/mounts).
  * @param char *name - The name of the mountpoint (A).
- * @param void *disk - The disk the file system is on.
- * @param void *address - The address at which the file system starts on disk.
+ * @param struct ARC_Resource *resource - The resource by which to address the mountpoint.
  * @param int type - The type of the file system.
  * @return A non-NULL pointer to the VFS node that describes the mounted device.
  * */
-struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, void *disk, void *address, int type);
+struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, struct ARC_Resource *resource, int type);
 
 /**
  * Open the given file with the given perms.

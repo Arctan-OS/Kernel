@@ -69,8 +69,11 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	parse_mbi();
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(10);
+
+	Arc_InitializeVFS();
+	Arc_MountVFS(NULL, "initramfs", NULL, ARC_VFS_FS_INITRAMFS);
+
 	Arc_InitializeSyscall();
-	Arc_MountVFS(NULL, "initramfs", NULL, boot_meta->initramfs, ARC_VFS_FS_INITRAMFS);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
