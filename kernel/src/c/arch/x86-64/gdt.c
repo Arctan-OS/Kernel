@@ -60,8 +60,8 @@ void install_gdt() {
 	set_gdt_gate(0, 0, 0, 0, 0);
 	set_gdt_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xA); // Kernel Code 64
 	set_gdt_gate(2, 0, 0xFFFFFFFF, 0x92, 0xC); // Kernel Data 32 / 64
-	set_gdt_gate(3, 0, 0xFFFFFFFF, 0xFA, 0xA); // User Code 64
-	set_gdt_gate(4, 0, 0xFFFFFFFF, 0xF2, 0xC); // User Data 32 / 64
+	set_gdt_gate(3, 0, 0xFFFFFFFF, 0xF2, 0xC); // User Data 32 / 64
+	set_gdt_gate(4, 0, 0xFFFFFFFF, 0xFA, 0xA); // User Code 64
 
 
 	gdtr.size = sizeof(gdt_entries) * 8 - 1;

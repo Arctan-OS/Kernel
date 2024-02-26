@@ -82,6 +82,10 @@ struct ARC_VFSNode {
 	struct ARC_VFSNode *children;
 	/// Pointer to the next element in the current linked list.
 	struct ARC_VFSNode *next;
+	/// The number of references this node has directly or indirectly.
+	int ref_count;
+	/// The number of references to add to this node's parent.
+	int ref_delta;
 };
 
 /**
