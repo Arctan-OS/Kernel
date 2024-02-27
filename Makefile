@@ -26,33 +26,10 @@
 #*/
 PRODUCT := Arctan
 
-ARCTAN_HOME := $(shell pwd)
-ARCTAN_INITRAMFS := $(ARCTAN_HOME)/initramfs
-
-CPPFLAG_E9HACK :=
-CPPFLAG_DEBUG :=
-QEMUFLAGS := -M q35,smm=off -m 4G -cdrom $(PRODUCT).iso -debugcon stdio -s
 DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
-
-export ARCTAN_HOME
-export CPPFLAG_E9HACK
-export CPPFLAG_DEBUG
-export ARCTAN_INITRAMFS
 
 .PHONY: all
 all: clean kernel bootstrap
-	mkdir -p iso/boot/grub
-
-	# Put initramfs together
-	find ./initramfs -type f | cpio -o > iso/boot/initramfs.cpio
-
-	# Copy various important things to grub directory
-	cp -u kernel/kernel.elf iso/boot
-	cp bootstrap/bootstrap.elf iso/boot
-	cp grub.cfg iso/boot/grub
-
-	# Create ISO
-	grub-mkrescue -o $(PRODUCT).iso iso
 
 .PHONY: bootstrap
 bootstrap:
@@ -62,25 +39,11 @@ bootstrap:
 kernel:
 	make -C kernel
 
-.PHONY: run
-run: all
-	qemu-system-x86_64 -enable-kvm -cpu qemu64 -d cpu_reset $(QEMUFLAGS)
-
 .PHONY: clean
 clean:
 	find . -type f $(DISCARDABLE) -delete
 	rm -rf iso
 
-.PHONY: ports
-ports:
-	make -C ports
-
 .PHONY: documentation
 documentation:
 	doxygen Doxyfile
-
-debug: CPPFLAG_DEBUG = -DARC_DEBUG_ENABLE
-debug: e9hack
-
-e9hack: CPPFLAG_E9HACK = -DARC_E9HACK_ENABLE
-e9hack: all
