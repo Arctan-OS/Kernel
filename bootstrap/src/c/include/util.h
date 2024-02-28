@@ -28,22 +28,20 @@
 #ifndef ARC_UTIL_H
 #define ARC_UTIL_H
 
-#include <global.h>
-
 #ifdef ARC_DEBUG_ENABLE
 
 #include <interface/printf.h>
 
-#define ARC_DEBUG_NAME_STR "[BOOTSTRAP "__FILE__"]"
+#define ARC_DEBUG_NAME_STR "[BOOTSTRAP "__FILE__":%d]"
 #define ARC_DEBUG_NAME_SEP_STR " : "
 #define ARC_DEBUG_INFO_STR "[INFO]"
 #define ARC_DEBUG_WARN_STR "[WARNING]"
 #define ARC_DEBUG_ERR_STR  "[ERROR]"
 
 #define ARC_DEBUG(__level__, ...) ARC_DEBUG_##__level__(__VA_ARGS__)
-#define ARC_DEBUG_INFO(...) printf(ARC_DEBUG_INFO_STR ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR __VA_ARGS__);
-#define ARC_DEBUG_WARN(...) printf(ARC_DEBUG_WARN_STR ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR __VA_ARGS__);
-#define ARC_DEBUG_ERR(...)  printf(ARC_DEBUG_ERR_STR  ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR __VA_ARGS__);
+#define ARC_DEBUG_INFO(...) printf(ARC_DEBUG_INFO_STR ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR, __LINE__); printf(__VA_ARGS__);
+#define ARC_DEBUG_WARN(...) printf(ARC_DEBUG_WARN_STR ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR, __LINE__); printf(__VA_ARGS__);
+#define ARC_DEBUG_ERR(...)  printf(ARC_DEBUG_ERR_STR  ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR, __LINE__); printf(__VA_ARGS__);
 
 #else
 
