@@ -31,6 +31,8 @@
 #include <stddef.h>
 
 int strcmp(char *a, char *b);
+int strncmp(char *a, char *b, size_t len);
+
 void memcpy(void *a, void *b, size_t size);
 size_t strlen(char *a);
 char *strdup(char *a);

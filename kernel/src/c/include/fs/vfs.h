@@ -39,13 +39,19 @@
 #define ARC_VFS_FS_EXT2      1
 #define ARC_VFS_FS_INITRAMFS 2
 
+#define ARC_VFS_SEEK_SET 1
+#define ARC_VFS_SEEK_CUR 2
+#define ARC_VFS_SEEK_END 3
+
 #include <stddef.h>
+#include <stdint.h>
 #include <lib/resource.h>
-#include <lib/reference.h>
 
 struct ARC_VFSFile {
 	/// Current offset into the file.
 	size_t offset;
+	/// Size of the file.
+	size_t size;
 	/// Address of the file on disk.
 	void *address;
 	/// Pointer to the parent VFS node.
@@ -69,7 +75,7 @@ struct ARC_VFSMount {
  * A single node in a VFS tree.
  * */
 struct ARC_VFSNode {
-	/// Pointer to the device.
+	/// Pointer to the device. References can be found through consulting resource.
 	struct ARC_Resource *resource;
 	/// The type of node.
 	int type;
@@ -85,10 +91,6 @@ struct ARC_VFSNode {
 	struct ARC_VFSNode *next;
 	/// Pointer to the previous element in the current linked list.
 	struct ARC_VFSNode *prev;
-	/// The number of references this node has directly or indirectly.
-	int ref_count;
-	/// The actual references
-	struct ARC_Reference *references;
 };
 
 /**
@@ -119,7 +121,7 @@ struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, str
  * @param char *perms - Permissions to open the file with.
  * @return A non-NULL pointer on success.
  * */
-struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, char *perms);
+struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode);
 
 /**
  * Read the given file.

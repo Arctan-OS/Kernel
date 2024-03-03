@@ -14,6 +14,18 @@ int strcmp(char *a, char *b) {
 	return sum;
 }
 
+int strncmp(char *a, char *b, size_t len) {
+	size_t i = 0;
+	int sum = 0;
+
+	while (i < len && *a != 0 && *b != 0) {
+		sum += a[i] - b[i];
+ 		i++;
+	}
+
+	return sum + (len - i);
+}
+
 void memset(void *a, uint8_t value, size_t size) {
 	for (size_t i = 0; i < size; i++) {
 		*((uint8_t *)a + i) = value;
