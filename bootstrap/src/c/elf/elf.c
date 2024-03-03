@@ -194,16 +194,11 @@ uint64_t load_elf(uint64_t *pml4, void *file) {
 				ARC_DEBUG(INFO, "\tSection is of type NOBITS, allocated 0x%"PRIX64" for it\n", paddr);
 			}
 
-			// TODO: Allow for sections which overlap in pages
-			//       to be handled properly:
-			//        - Ignore the error
-			//        - Check if any more pages need to be mapped
-			//          the overlapping section
 			pml4 = map_page(pml4, vaddr + (j << 12), paddr, 0);
 
 			if (pml4 == NULL || (pml4 != old_pml4 && old_pml4 != NULL)) {
-				ARC_DEBUG(ERR, "Mapping failed\n");
-				return 1;
+				ARC_DEBUG(INFO, "\tOverlapping section, ignoring\n");
+				pml4 = old_pml4;
 			}
 		}
 	}

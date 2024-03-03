@@ -41,6 +41,32 @@ SECTIONS {
 
     . = ALIGN(0x1000);
 
+    __DRIVERS0_START = .;
+
+    .drivers.0 : {
+        *(.drivers.0)
+    } :rodata
+
+    __DRIVERS1_START = .;
+
+    .drivers.1 : {
+        *(.drivers.1)
+    } :rodata
+
+    __DRIVERS2_START = .;
+    .drivers.2 : {
+        *(.drivers.2)
+    } :rodata
+
+    __DRIVERS3_START = .;
+    .drivers.3 : {
+        *(.drivers.3)
+    } :rodata
+
+    __DRIVERS_END = .;
+
+    . = ALIGN(0x1000);
+
     .data : {
         *(.data .data.*)
     } :data

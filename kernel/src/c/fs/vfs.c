@@ -33,6 +33,7 @@
 #include <util.h>
 
 static const char *root = "\0";
+static const struct ARC_Resource root_res = { .name = "/" };
 static struct ARC_VFSNode vfs_root = { 0 };
 
 int Arc_InitializeVFS() {
@@ -40,7 +41,7 @@ int Arc_InitializeVFS() {
 	vfs_root.children = NULL;
 	vfs_root.next = NULL;
 	vfs_root.parent = NULL;
-	vfs_root.resource = NULL; // Set this to be the boot disk
+	vfs_root.resource = (struct ARC_Resource *)&root_res;
 	vfs_root.type = ARC_VFS_N_ROOT;
 	vfs_root.spec = NULL;
 
@@ -56,7 +57,7 @@ struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, str
 	}
 
 	if (name == NULL || resource == NULL) {
-		ARC_DEBUG(ERR, "Name or resource not specified, cannot mount %s/%s\n", mountpoint->name, name);
+		ARC_DEBUG(ERR, "Name or resource not specified, cannot mount %s/%s\n", mountpoint->resource->name, name);
 		return NULL;
 	}
 
@@ -81,7 +82,7 @@ struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, str
 
 	// Preform additional physical mount operations
 
-	ARC_DEBUG(INFO, "Mounted %s on /%s (0x%"PRIX64") type %d\n", name, mountpoint->name, resource, type);
+	ARC_DEBUG(INFO, "Mounted %s on %s (0x%"PRIX64") type %d\n", name, mountpoint->resource->name, resource, type);
 
 	return node;
 }
@@ -197,7 +198,7 @@ int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode 
 		return 0;
 	}
 
-	return file->resource->read(buffer, size, count);
+	return file->resource->driver->read(buffer, size, count);
 }
 
 int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
@@ -209,7 +210,7 @@ int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode
 		return 0;
 	}
 
-	return file->resource->write(buffer, size, count);
+	return file->resource->driver->write(buffer, size, count);
 }
 
 int Arc_SeekFileVFS(struct ARC_VFSNode *file, long offset, int whence) {
@@ -217,7 +218,7 @@ int Arc_SeekFileVFS(struct ARC_VFSNode *file, long offset, int whence) {
 		return 1;
 	}
 
-	return file->resource->seek(offset, whence);
+	return file->resource->driver->seek(offset, whence);
 }
 
 int Arc_CloseFileVFS(struct ARC_VFSNode *file) {
@@ -232,7 +233,7 @@ int Arc_CloseFileVFS(struct ARC_VFSNode *file) {
 		return 1;
 	}
 
-	res->close();
+	res->driver->close();
 
 	Arc_SlabFree(file->spec);
 	Arc_SlabFree(file->name);

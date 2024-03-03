@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "lib/resource.h"
 #include <mm/allocator.h>
 #include <mm/freelist.h>
 #include <mm/pmm.h>
@@ -47,6 +48,7 @@
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta main_terminal = { 0 };
+struct ARC_Resource initramfs_res = { .dri_group = 0, .dri_index = 0 };
 static char main_terminal_mem[180 * 120] = { 0 };
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
@@ -69,6 +71,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	parse_mbi();
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(10);
+
+	Arc_InitializeResource("/initramfs", &initramfs_res);
 
 	Arc_InitializeVFS();
 	Arc_MountVFS(NULL, "initramfs", (void *)0x1, ARC_VFS_FS_INITRAMFS);
