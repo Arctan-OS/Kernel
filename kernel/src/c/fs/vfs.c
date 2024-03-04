@@ -226,7 +226,7 @@ int Arc_CloseFileVFS(struct ARC_VFSNode *file) {
 
 	struct ARC_Resource *res = file->resource;
 
-	if (res->reference->ref_count > 0) {
+	if (res->ref_count > 0) {
 		// This resource is still in use, for now do not
 		// close the file
 		ARC_DEBUG(INFO, "VFS Node %p is still in use, cannot close\n", file)

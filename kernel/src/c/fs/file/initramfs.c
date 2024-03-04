@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include <fs/initramfs.h>
+#include <lib/resource.h>
 #include <global.h>
 #include <util.h>
 
@@ -41,6 +41,24 @@ struct ARC_HeaderCPIO {
 	uint16_t namesize;
 	uint16_t filesize[2];
 }__attribute__((packed));
+
+int initramfs_init() {
+	ARC_DEBUG(INFO, "Hello World from the initramfs driver\n");
+
+	return 0;
+}
+
+int initramfs_uninit() {
+	ARC_DEBUG(INFO, "Goodbye World from the initramfs driver\n");
+
+	return 0;
+}
+
+ARC_REGISTER_DRIVER(0, initramfs) = {
+	.index = 0,
+	.init = initramfs_init,
+	.uninit = initramfs_uninit
+};
 
 void *Arc_FindFileInitramfs(void *fs, char *filename) {
 	struct ARC_HeaderCPIO *header = (struct ARC_HeaderCPIO *)fs;

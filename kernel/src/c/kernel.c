@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include "lib/resource.h"
+#include <lib/resource.h>
 #include <mm/allocator.h>
 #include <mm/freelist.h>
 #include <mm/pmm.h>
@@ -59,7 +59,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	main_terminal.term_width = 180;
 	main_terminal.term_height = 120;
 	main_terminal.term_mem = main_terminal_mem;
-
+	main_terminal.font_width = 8;
+	main_terminal.font_height = 8;
 	main_terminal.cx = 0;
 	main_terminal.cy = 0;
 
@@ -75,8 +76,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitializeResource("/initramfs", &initramfs_res);
 
 	Arc_InitializeVFS();
-	Arc_MountVFS(NULL, "initramfs", (void *)0x1, ARC_VFS_FS_INITRAMFS);
-	Arc_OpenFileVFS("/initramfs/boot/FONT.fnt", 0, 0);
+	Arc_MountVFS(NULL, "initramfs", &initramfs_res, ARC_VFS_FS_INITRAMFS);
+//	Arc_OpenFileVFS("/initramfs/boot/FONT.fnt", 0, 0);
 
 	Arc_InitializeSyscall();
 

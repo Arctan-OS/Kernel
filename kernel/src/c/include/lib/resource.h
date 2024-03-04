@@ -37,22 +37,27 @@ struct ARC_DriverDef {
 	int (*read)(void *buffer, size_t size, size_t count);
 	int (*close)(); // FS-specific
 	int (*seek)(long offset, int whence);
+
+	int (*init)(void *args);
+	int (*uninit)(void *args);
 };
 
 #define ARC_REGISTER_DRIVER(group, name) \
 	static struct ARC_DriverDef __driver__##name __attribute__((used, section(".drivers."#group)))
 
-
 struct ARC_Reference {
+	// Functions for managing this reference.
 	struct ARC_Resource *resource;
-	int lock; // TODO: Implement lock system
-
-	int ref_count;
+	struct ARC_Reference *prev;
+	struct ARC_Reference *next;
 };
 
 struct ARC_Resource {
-	struct ARC_Reference *reference;
 	int lock; // TODO: Implement lock system
+
+	struct ARC_Reference *references;
+	int ref_count;
+	int ref_lock; // Reference specific lock
 
 	/// Dynamically allocated name.
 	char *name;
@@ -68,5 +73,7 @@ struct ARC_Resource {
 
 int Arc_InitializeResource(char *name, struct ARC_Resource *resource);
 int Arc_UninitializeResource(struct ARC_Resource *resource);
+
+struct ARC_DriverDef *Arc_GetDriverDef(int group, int index);
 
 #endif

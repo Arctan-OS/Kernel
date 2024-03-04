@@ -30,28 +30,13 @@
 #include <util.h>
 
 extern struct ARC_DriverDef __DRIVERS0_START[];
-
-int ItWorked() {
-	ARC_DEBUG(INFO, "It worked 1\n");
-
-	return 0;
-}
-
-int ItWorked_TheSequel() {
-	ARC_DEBUG(INFO, "It worked 2\n");
-
-	return 0;
-}
-
-ARC_REGISTER_DRIVER(0, name) = (struct ARC_DriverDef) {
-	.index = 1,
-	.open = ItWorked
-};
-
-ARC_REGISTER_DRIVER(1, name2) = (struct ARC_DriverDef) {
-	.index = 0,
-	.open = ItWorked_TheSequel
-};
+extern struct ARC_DriverDef __DRIVERS1_START[];
+extern struct ARC_DriverDef __DRIVERS2_START[];
+extern struct ARC_DriverDef __DRIVERS3_START[];
+extern struct ARC_DriverDef __DRIVERS0_END[];
+extern struct ARC_DriverDef __DRIVERS1_END[];
+extern struct ARC_DriverDef __DRIVERS2_END[];
+extern struct ARC_DriverDef __DRIVERS3_END[];
 
 int Arc_InitializeResource(char *name, struct ARC_Resource *resource) {
 	ARC_DEBUG(INFO, "Initializing resource \"%s\"\n", name);
@@ -61,7 +46,13 @@ int Arc_InitializeResource(char *name, struct ARC_Resource *resource) {
 	// Set open, close, read, write, and seek pointers
 	// Call driver initialization function from driver table
 
-	__DRIVERS0_START[0].open(0, 0);
+	struct ARC_DriverDef *def = Arc_GetDriverDef(resource->dri_group, resource->dri_index);
+
+	resource->driver = def;
+
+	if (def != NULL) {
+		def->init(resource->args);
+	}
 
 	resource->args = NULL;
 
@@ -83,4 +74,102 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 	Arc_SlabFree(resource);
 
 	return 0;
+}
+
+struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource) {
+	// Lock reference lock
+
+	struct ARC_Reference *ref = (struct ARC_Reference *)Arc_SlabAlloc(sizeof(struct ARC_Reference));
+
+	if (ref == NULL) {
+		goto reference_fall;
+	}
+
+	memset(ref, 0, sizeof(struct ARC_Reference));
+
+	ref->resource = resource;
+
+	resource->ref_count += 1;
+	ref->next = resource->references;
+	resource->references->prev = ref;
+	resource->references = ref;
+
+reference_fall:
+	// Unlock lock
+	return ref;
+}
+
+int Arc_UnreferenceResource(struct ARC_Reference *reference) {
+	if (reference == NULL) {
+		return 1;
+	}
+
+	// Lock reference lock
+
+	struct ARC_Resource *res = reference->resource;
+
+	res->ref_count -= 1;
+
+	struct ARC_Reference *next = reference->next;
+	struct ARC_Reference *prev = reference->prev;
+
+	if (prev == NULL) {
+		res->references = next;
+	} else {
+		prev->next = next;
+	}
+
+	if (next != NULL) {
+		next->prev = prev;
+	}
+
+	// Unlock lock
+
+	Arc_SlabFree(reference);
+
+	return 0;
+}
+
+// TODO: This can most definitely be optimzied
+struct ARC_DriverDef *Arc_GetDriverDef(int group, int index) {
+	struct ARC_DriverDef *start = NULL;
+	struct ARC_DriverDef *end = NULL;
+
+	switch (group) {
+	case 0: {
+		start = __DRIVERS0_START;
+		end = __DRIVERS0_END;
+		break;
+	}
+
+	case 1: {
+		start = __DRIVERS1_START;
+		end = __DRIVERS1_END;
+		break;
+	}
+
+	case 2: {
+		start = __DRIVERS2_START;
+		end = __DRIVERS2_END;
+		break;
+	}
+
+	case 3: {
+		start = __DRIVERS3_START;
+		end = __DRIVERS3_END;
+		break;
+	}
+	}
+
+	if (start == NULL || end == NULL) {
+		return NULL;
+	}
+
+	for (struct ARC_DriverDef *def = start; def < end; def++) {
+		if (def->index == index) {
+			return def;
+		}
+	}
+
+	return NULL;
 }
