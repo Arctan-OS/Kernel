@@ -26,6 +26,7 @@
  * Abstract virtual file system driver. Is able to create and delete virtual
  * file systems for caching files on disk.
 */
+#include "abi-bits/errno.h"
 #include <lib/resource.h>
 #include <mm/allocator.h>
 #include <fs/vfs.h>
@@ -121,7 +122,7 @@ int Arc_RecursiveFreeNodes(struct ARC_VFSNode *head) {
 int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 	if (mount->type != ARC_VFS_N_MOUNT) {
 		ARC_DEBUG(INFO, "%s is not a mountpoint\n", mount->name);
-		return -1;
+		return EINVAL;
 	}
 
 	Arc_RecursiveFreeNodes(mount);
@@ -191,7 +192,7 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
 
 int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
 	if (buffer == NULL || file == NULL) {
-		return 1;
+		return -EINVAL;
 	}
 
 	if (size == 0 || count == 0) {
@@ -203,7 +204,7 @@ int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode 
 
 int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
 	if (buffer == NULL || file == NULL) {
-		return 1;
+		return -EINVAL;
 	}
 
 	if (size == 0 || count == 0) {
@@ -230,7 +231,7 @@ int Arc_CloseFileVFS(struct ARC_VFSNode *file) {
 		// This resource is still in use, for now do not
 		// close the file
 		ARC_DEBUG(INFO, "VFS Node %p is still in use, cannot close\n", file)
-		return 1;
+		return EBUSY;
 	}
 
 	res->driver->close();

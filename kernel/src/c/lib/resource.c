@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "abi-bits/errno.h"
 #include <mm/allocator.h>
 #include <lib/resource.h>
 #include <global.h>
@@ -54,8 +55,6 @@ int Arc_InitializeResource(char *name, struct ARC_Resource *resource) {
 		def->init(resource->args);
 	}
 
-	resource->args = NULL;
-
 	return 0;
 }
 
@@ -64,11 +63,7 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 
 	// Call driver uninitialization function from driver table
 
-	if (resource->args == NULL) {
-		// args are not NULL, possible memory leak
-		// if it is not freed
-		return 1;
-	}
+	// TODO: Figure out resource->args dillema
 
 	Arc_SlabFree(resource->name);
 	Arc_SlabFree(resource);
@@ -101,7 +96,7 @@ reference_fall:
 
 int Arc_UnreferenceResource(struct ARC_Reference *reference) {
 	if (reference == NULL) {
-		return 1;
+		return EINVAL;
 	}
 
 	// Lock reference lock

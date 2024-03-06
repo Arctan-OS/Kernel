@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <arctan.h>
 #include <multiboot/multiboot2.h>
+
 #define ARC_HANG for (;;) __asm__("hlt");
 
 #ifdef ARC_DEBUG_ENABLE

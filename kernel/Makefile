@@ -31,7 +31,7 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include
+CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include -I $(ARC_ROOT)/initramfs/include
 CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
 		  -fno-lto -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
 		  -Wextra -ffreestanding

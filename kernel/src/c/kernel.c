@@ -46,6 +46,8 @@
 
 #include <arch/x86-64/syscall.h>
 
+#include <errno.h>
+
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta main_terminal = { 0 };
 struct ARC_Resource initramfs_res = { .dri_group = 0, .dri_index = 0 };

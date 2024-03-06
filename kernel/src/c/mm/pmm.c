@@ -81,7 +81,6 @@ void Arc_InitPMM(struct multiboot_tag_mmap *mmap) {
 	// addresses
 	struct ARC_FreelistNode *current = arc_physical_mem->head;
 
-
 	while (current != NULL) {
 		if ((((uintptr_t)current->next) >> 32) != (uint32_t)(ARC_HHDM_VADDR >> 32)) {
 			// Next pointer is not a HHDM address]
