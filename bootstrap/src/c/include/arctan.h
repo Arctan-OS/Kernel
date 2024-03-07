@@ -28,7 +28,7 @@
 #ifndef ARC_ARCTAN_H
 #define ARC_ARCTAN_H
 
-#define ARC_HHDM_VADDR   0xFFFFC00000000000 // 192 TiB
+#define ARC_HHDM_VADDR   (uint64_t)0xFFFFC00000000000 // 192 TiB
 #define ARC_PHYS_TO_HHDM(physical) ((uintptr_t)(physical) + (uintptr_t)ARC_HHDM_VADDR)
 #define ARC_HHDM_TO_PHYS(hhdm) ((uintptr_t)(hhdm) - (uintptr_t)ARC_HHDM_VADDR)
 

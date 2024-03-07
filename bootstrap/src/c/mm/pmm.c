@@ -47,7 +47,7 @@ int init_pmm(struct multiboot_tag_mmap *mmap, uintptr_t bootstrap_end) {
 		ARC_DEBUG(INFO, "Entry %d suitable for freelist\n", i)
 
 		if ((uint32_t)(entry.addr >> 32) > 0) {
-			ARC_DEBUG(INFO, "\tEntry %d is above 32-bit address range, ignoring\n")
+			ARC_DEBUG(INFO, "\tEntry %d is above 32-bit address range, ignoring\n", i)
 			continue;
 		}
 

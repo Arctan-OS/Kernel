@@ -25,6 +25,7 @@
  * @DESCRIPTION
  * Abstract freelist implementation.
 */
+#include "util.h"
 #include <global.h>
 #include <mm/freelist.h>
 #include <stdint.h>

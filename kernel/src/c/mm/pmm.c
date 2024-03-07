@@ -81,14 +81,15 @@ void Arc_InitPMM(struct multiboot_tag_mmap *mmap) {
 	// addresses
 	struct ARC_FreelistNode *current = arc_physical_mem->head;
 
-	while (current != NULL) {
-		if ((((uintptr_t)current->next) >> 32) != (uint32_t)(ARC_HHDM_VADDR >> 32)) {
-			// Next pointer is not a HHDM address]
-			// NOTE: Bootstrapper's PMM should only use the lower 32-bits
-			//       of the address
-			current->next = (struct ARC_FreelistNode *)(((uintptr_t)current->next & UINT32_MAX) + ARC_HHDM_VADDR);
-			current = current->next;
-		}
+	while (current->next != NULL) {
+		uintptr_t next = (uintptr_t)current->next;
+
+		// Bootstrap only sets lower 32-bits
+		next &= UINT32_MAX;
+		next = ARC_PHYS_TO_HHDM(next);
+
+		current->next = (void *)next;
+		current = current->next;
 	}
 
 	int entry_count = (mmap->size - sizeof(struct multiboot_tag)) / mmap->entry_size;

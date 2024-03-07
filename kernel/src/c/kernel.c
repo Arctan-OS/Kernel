@@ -85,6 +85,12 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
+	// Quickly map framebuffer in
+	uint64_t fb_size = main_terminal.fb_width * main_terminal.fb_height * (main_terminal.fb_bpp / 8);
+	for (uint64_t i = 0; i < fb_size; i += 0x1000) {
+		Arc_MapPageVMM(ARC_HHDM_TO_PHYS(main_terminal.framebuffer + i), (uintptr_t)(main_terminal.framebuffer + i), ARC_VMM_OVERW_FLAG | 3);
+	}
+
 	for (int i = 0; i < 600; i++) {
 		for (int y = 0; y < main_terminal.fb_height; y++) {
 			for (int x = 0; x < main_terminal.fb_width; x++) {

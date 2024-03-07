@@ -26,11 +26,13 @@
  * Provides a function for reading the multiboot2 boot information tag
  * structure.
 */
+#include "util.h"
 #include <multiboot/mbparse.h>
 #include <multiboot/multiboot2.h>
 #include <global.h>
 #include <mm/freelist.h>
 #include <mm/pmm.h>
+#include <mm/vmm.h>
 #include <arctan.h>
 
 int read_mb2i(void *mb2i) {
@@ -44,13 +46,15 @@ int read_mb2i(void *mb2i) {
 
 	tag = (struct multiboot_tag *)((uintptr_t)tag + 8);
 
+	int entries = 0;
+
 	while (tag->type != 0 && tag < end) {
 		switch (tag->type) {
 		case MULTIBOOT_TAG_TYPE_MMAP: {
 			mmap = (struct multiboot_tag_mmap *)tag;
 			ARC_DEBUG(INFO, "Found memory map (%d)\n", mmap->entry_version);
 
-			int entries = (mmap->size - sizeof(struct multiboot_tag_mmap)) / mmap->entry_size;
+			entries = (mmap->size - sizeof(struct multiboot_tag_mmap)) / mmap->entry_size;
 
 			const char *names[] = {
 				[MULTIBOOT_MEMORY_AVAILABLE] = "Available",
@@ -143,6 +147,31 @@ int read_mb2i(void *mb2i) {
 	ARC_DEBUG(INFO, "End of bootstrap 0x%"PRIX32"\n", bootstrap_end)
 
 	init_pmm(mmap, (uintptr_t)bootstrap_end);
+
+	// Create HHDM
+	ARC_DEBUG(INFO, "Creating HHDM\n");
+
+	for (int i = 0; i < entries; i++) {
+		struct multiboot_mmap_entry entry = mmap->entries[i];
+
+		if (entry.type != MULTIBOOT_MEMORY_AVAILABLE) {
+			continue;
+		}
+
+		ARC_DEBUG(INFO, "Mapping entry %d (0x%"PRIX64", 0x%"PRIX64" B) into pml4\n", i, entry.addr, entry.len);
+
+		for (uint64_t j = 0; j < entry.len; j += 0x1000) {
+			uint64_t linear = (uint64_t)(entry.addr + j);
+
+			pml4 = map_page(pml4, linear + ARC_HHDM_VADDR, linear, 1);
+
+			if (pml4 == NULL) {
+				ARC_DEBUG(ERR, "Mapping failed\n");
+				ARC_HANG
+			}
+		}
+
+	}
 
 	return 0;
 }

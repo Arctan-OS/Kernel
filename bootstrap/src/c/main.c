@@ -26,6 +26,7 @@
  * Main file containing the main helper function, which prepares the CPU
  * for the kernel.
 */
+#include "util.h"
 #include <stdint.h>
 #include <global.h>
 #include <interface/printf.h>
@@ -70,15 +71,6 @@ int helper(void *mbi, uint32_t signature) {
 		}
 	}
 
-	// Create HHDM
-	for (uint64_t i = 0; i <= _boot_meta.highest_address; i += 0x1000) {
-		pml4 = map_page(pml4, i + ARC_HHDM_VADDR, i, 1);
-
-		if (pml4 == NULL) {
-			ARC_DEBUG(ERR, "Mapping failed\n")
-			ARC_HANG
-		}
-	}
 
 	// Map kernel
 	kernel_entry = load_elf(pml4, _boot_meta.kernel_elf);
