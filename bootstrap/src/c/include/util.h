@@ -28,6 +28,8 @@
 #ifndef ARC_UTIL_H
 #define ARC_UTIL_H
 
+#include <stddef.h>
+
 #ifdef ARC_DEBUG_ENABLE
 
 #include <interface/printf.h>
