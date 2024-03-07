@@ -29,6 +29,7 @@
 #define ARC_UTIL_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef ARC_DEBUG_ENABLE
 
