@@ -30,12 +30,8 @@ bits 64
 
 global _kernel_entry
 extern kernel_main
-_kernel_entry:  lea rbp, [rel stack_end]
+extern __KERNEL_STACK__
+_kernel_entry:  mov rbp, __KERNEL_STACK__
                 mov rsp, rbp
                 call kernel_main
                 jmp $
-
-
-section .bss
-stack:  resb 0x1000
-stack_end:

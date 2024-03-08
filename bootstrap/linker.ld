@@ -51,9 +51,15 @@ SECTIONS {
 	.bss : {
 		*(COMMON)
 		*(.bss .bss.*)
+
+        . = ALIGN(0x1000);
+        . += 0x2000;
+        __BOOTSTRAP_STACK__ = .;
 	} :data
 
     . = ALIGN(0x1000);
+    /* Padding */
+    . += 0x10;
 
 	__BOOTSTRAP_END__ = .;
 }

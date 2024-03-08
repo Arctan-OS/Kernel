@@ -67,8 +67,9 @@ extern helper
 extern pml4
 extern _kernel_station
 global _entry
-_entry:                 mov esp, _stack_end                     ; Setup stack
-                    mov ebp, esp                        ; Make sure base gets the memo
+extern __BOOTSTRAP_STACK__
+_entry:             mov ebp, __BOOTSTRAP_STACK__                     ; Setup stack
+                    mov esp, ebp                        ; Make sure base gets the memo
                     push eax                            ; Push multiboot2 loader signature
                     push ebx                            ; Push boot information
                     call helper                             ; HELP!
@@ -96,8 +97,3 @@ section .bss
 global _boot_meta
 BOOT_MEMBER_COUNT   equ 16                                  ; Member count
 _boot_meta:         resq BOOT_MEMBER_COUNT
-
-global _stack
-global _stack_end
-_stack:                 resb STACK_SZ                       ; Reserve stack space
-_stack_end:
