@@ -28,16 +28,19 @@ PRODUCT := Arctan
 
 DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
 
-#.PHONY: all
-#all:
+LD := x86_64-pc-arctan-mlibc-ld
+export LD
 
-#.PHONY: bootstrap
-#bootstrap:
-#	make -C bootstrap
+.PHONY: all
+all: kernel bootstrap
 
-#.PHONY: kernel
-#kernel:
-#	make -C kernel
+.PHONY: bootstrap
+bootstrap:
+	$(MAKE) -C bootstrap
+
+.PHONY: kernel
+kernel:
+	$(MAKE) -C kernel
 
 .PHONY: clean
 clean:

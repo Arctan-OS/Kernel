@@ -24,7 +24,7 @@
 # *
 # * @DESCRIPTION
 #*/
-PRODUCT := kernel.elf
+PRODUCT := bootstrap.elf
 
 CFILES := $(shell find ./src/c/ -type f -name "*.c")
 ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
@@ -32,17 +32,14 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
 CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include -I $(ARC_ROOT)/initramfs/include
-CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
-		  -fno-lto -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
-		  -Wextra -ffreestanding
+CFLAGS := -m32 -c -fno-stack-protector -mno-sse -mno-sse2 -masm=intel -nostdlib -nodefaultlibs -fno-builtin
 
-LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -static -nostdlib -o $(PRODUCT)
+LDFLAGS := -Tlinker.ld -melf_i386 -z max-page-size=0x1000 -o $(PRODUCT)
 
-NASMFLAGS := -f elf64
+NASMFLAGS := -f elf32
 
 all: $(OFILES)
-	ld $(LDFLAGS) $(OFILES)
-	$(INSTALL) ./kernel.elf $(DESTDIR)/kernel/kernel.elf
+	$(LD) $(LDFLAGS) $(OFILES)
 
 src/c/%.o: src/c/%.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@
