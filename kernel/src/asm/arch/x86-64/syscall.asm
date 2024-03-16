@@ -7,7 +7,7 @@ _syscall:
             push rcx
             push r11
             shl rdi, 3
-            lea rax, Arc_SyscallTable
+            mov rax, [rel Arc_SyscallTable]
             add rax, rdi
             mov rdi, rsi
             call [rax]
