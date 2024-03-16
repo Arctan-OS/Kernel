@@ -24,27 +24,26 @@
 # *
 # * @DESCRIPTION
 #*/
-PRODUCT := kernel.elf
+PRODUCT := Arctan
 
-CFILES := $(shell find ./src/c/ -type f -name "*.c")
-ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
+DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
 
-OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
+#.PHONY: all
+#all:
 
-CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include -I $(ARC_ROOT)/initramfs/include
-CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
-		  -fno-lto -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
-		  -Wextra -ffreestanding
+#.PHONY: bootstrap
+#bootstrap:
+#	make -C bootstrap
 
-LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -static -nostdlib -o $(PRODUCT)
+#.PHONY: kernel
+#kernel:
+#	make -C kernel
 
-NASMFLAGS := -f elf64
+.PHONY: clean
+clean:
+#	find . -type f $(DISCARDABLE) -delete
+#	rm -rf iso
 
-all: $(OFILES)
-	ld $(LDFLAGS) $(OFILES)
-
-src/c/%.o: src/c/%.c
-	gcc $(CPPFLAGS) $(CFLAGS) $< -o $@
-
-src/asm/%.o: src/asm/%.asm
-	nasm $(NASMFLAGS) $< -o $@
+.PHONY: documentation
+documentation:
+	doxygen Doxyfile

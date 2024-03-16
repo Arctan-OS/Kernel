@@ -24,26 +24,26 @@
 # *
 # * @DESCRIPTION
 #*/
-PRODUCT := Arctan
+PRODUCT := bootstrap.elf
 
-DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
+CFILES := $(shell find ./src/c/ -type f -name "*.c")
+ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 
-.PHONY: all
-all: clean kernel bootstrap
+OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-.PHONY: bootstrap
-bootstrap:
-	make -C bootstrap
+CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include -I $(ARC_ROOT)/initramfs/include
+CFLAGS := -m32 -c -fno-stack-protector -mno-sse -mno-sse2 -masm=intel -nostdlib -nodefaultlibs -fno-builtin
 
-.PHONY: kernel
-kernel:
-	make -C kernel
+LDFLAGS := -Tlinker.ld -melf_i386 -z max-page-size=0x1000 -o $(PRODUCT)
 
-.PHONY: clean
-clean:
-	find . -type f $(DISCARDABLE) -delete
-	rm -rf iso
+NASMFLAGS := -f elf32
 
-.PHONY: documentation
-documentation:
-	doxygen Doxyfile
+all: $(OFILES)
+	$(LD) $(LDFLAGS) $(OFILES)
+	$(INSTALL) ./bootstrap.elf $(DESTDIR)/kernel/bootstrap.elf
+
+src/c/%.o: src/c/%.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+src/asm/%.o: src/asm/%.asm
+	nasm $(NASMFLAGS) $< -o $@
