@@ -30,6 +30,8 @@ DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -o
 
 LD := x86_64-pc-arctan-mlibc-ld
 export LD
+CC := x86_64-pc-arctan-mlibc-gcc
+export CC
 
 .PHONY: all
 all: kernel bootstrap
