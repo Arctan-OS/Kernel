@@ -50,6 +50,7 @@ int Arc_InitializeResource(char *name, struct ARC_Resource *resource, void *args
 	struct ARC_DriverDef *def = Arc_GetDriverDef(resource->dri_group, resource->dri_index);
 
 	resource->driver = def;
+	resource->args = args;
 
 	if (def != NULL) {
 		def->init(args);

@@ -24,10 +24,16 @@
  *
  * @DESCRIPTION
 */
-#include "fs/vfs.h"
+#include <fs/vfs.h>
+#include <mm/allocator.h>
 #include <lib/resource.h>
 #include <global.h>
 #include <util.h>
+
+#define ARC_NAME_OFFSET (sizeof(struct ARC_HeaderCPIO))
+#define ARC_NAME_SIZE(header) (header->namesize + (header->namesize & 1))
+#define ARC_DATA_OFFSET(header) (ARC_NAME_OFFSET + ARC_NAME_SIZE(header))
+#define ARC_DATA_SIZE(header) (((header->filesize[0] << 16) | header->filesize[1]) + (((header->filesize[0] << 16) | header->filesize[1]) & 1))
 
 struct ARC_HeaderCPIO {
 	uint16_t magic;
@@ -43,24 +49,121 @@ struct ARC_HeaderCPIO {
 	uint16_t filesize[2];
 }__attribute__((packed));
 
+void *Arc_FindFileInitramfs(void *fs, char *filename) {
+	if (fs == NULL || filename == NULL) {
+		ARC_DEBUG(ERR, "Either fs %p or filename %p is NULL\n", fs, filename);
+		return NULL;
+	}
+
+	struct ARC_HeaderCPIO *header = (struct ARC_HeaderCPIO *)fs;
+	uint64_t offset = 0;
+
+	while (header->magic == 0070707) {
+		char *name = ((char *)header) + ARC_NAME_OFFSET;
+
+		if (strcmp(name, filename) != 0) {
+			goto next;
+		}
+
+		ARC_DEBUG(INFO, "Found file \"%s\"\n", name);
+
+		return (void *)header;
+
+		next:;
+		offset += ARC_DATA_OFFSET(header) + ARC_DATA_SIZE(header);
+		header = (struct ARC_HeaderCPIO *)(fs + offset);
+
+	}
+
+	ARC_DEBUG(ERR, "Could not find file \"%s\"\n", filename);
+
+	return NULL;
+}
+
 int initramfs_empty() {
 	return 0;
 }
 
-int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
-	ARC_DEBUG(INFO, "Reading file %p into buffer %p (%d %d)\n", file, buffer, size, count);
+int initramfs_open(struct ARC_VFSNode *file, int flags, uint32_t mode) {
+	// TODO: Permissions check
+
+	struct ARC_VFSFile *spec = file->spec;
+
+	struct ARC_HeaderCPIO *header = Arc_FindFileInitramfs(file->resource->args, file->resource->name);
+
+	if (header == NULL) {
+		ARC_DEBUG(ERR, "Failed to open file\n");
+
+		return 1;
+	}
+
+	spec->size = (header->filesize[0] << 16) | header->filesize[1];
+	spec->address = (void *)header;
 
 	return 0;
 }
 
+int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
+	struct ARC_VFSFile *spec = file->spec;
+
+	if (spec->address == NULL) {
+		return 0;
+	}
+
+	struct ARC_HeaderCPIO *header = (struct ARC_HeaderCPIO *)spec->address;
+
+	uint8_t *data = (uint8_t *)(spec->address + ARC_DATA_OFFSET(header));
+
+	// Copy file data to buffer
+	for (size_t i = 0; i < size * count; i++) {
+		uint8_t value = 0;
+
+		if (i + spec->offset < spec->size) {
+			value = *((uint8_t *)(data + spec->offset + i));
+		}
+
+		*((uint8_t *)(buffer + i)) = value;
+	}
+
+	return count;
+}
+
 int initramfs_write() {
-	ARC_DEBUG(INFO, "Read only file system\n");
+	ARC_DEBUG(ERR, "Read only file system\n");
 
 	return 1;
 }
 
 int initramfs_seek(struct ARC_VFSNode *file, long offset, int whence) {
-	ARC_DEBUG(INFO, "Seeking initramfs file to %ld bytes from %d", offset, whence);
+	struct ARC_VFSFile *spec = file->spec;
+
+	switch (whence) {
+	case ARC_VFS_SEEK_SET: {
+		spec->offset = offset;
+
+		return 0;
+	}
+
+	case ARC_VFS_SEEK_CUR: {
+		spec->offset += offset;
+
+		if (spec->offset >= spec->size) {
+			spec->offset = spec->size;
+		}
+
+		return 0;
+	}
+
+	case ARC_VFS_SEEK_END: {
+		spec->offset = spec->size - offset - 1;
+
+		if (spec->offset < 0) {
+			spec->offset = 0;
+		}
+
+		return 0;
+	}
+	}
 
 	return 0;
 }
@@ -69,7 +172,7 @@ ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.index = 0,
 	.init = initramfs_empty,
 	.uninit = initramfs_empty,
-	.open = initramfs_empty,
+	.open = initramfs_open,
 	.close = initramfs_empty,
 	.read = initramfs_read,
 	.write = initramfs_write,
@@ -80,39 +183,9 @@ ARC_REGISTER_DRIVER(0, initramfs_file) = {
 	.index = 1,
 	.init = initramfs_empty,
 	.uninit = initramfs_empty,
-	.open = initramfs_empty,
+	.open = initramfs_open,
 	.close = initramfs_empty,
 	.read = initramfs_read,
 	.write = initramfs_write,
 	.seek = initramfs_seek,
 };
-
-void *Arc_FindFileInitramfs(void *fs, char *filename) {
-	struct ARC_HeaderCPIO *header = (struct ARC_HeaderCPIO *)fs;
-	uint64_t offset = 0;
-
-	while (header->magic == 0070707) {
-		uint16_t namesize = (header->namesize) + (header->namesize % 2);
-
-		char *name = (char *)((uintptr_t)header + sizeof(struct ARC_HeaderCPIO));
-
-		uint32_t filesize = (header->filesize[0] << 16) | header->filesize[1];
-		uint32_t data_off = sizeof(struct ARC_HeaderCPIO) + namesize;
-
-		if (strcmp(name, filename) != 0) {
-			goto next;
-		}
-
-		ARC_DEBUG(INFO, "Found file \"%s\"\n", filename);
-
-		return (void *)(fs + offset + data_off);
-
-next:;
-		offset += sizeof(struct ARC_HeaderCPIO) + filesize + namesize;
-		header = (struct ARC_HeaderCPIO *)(fs + offset);
-	}
-
-	ARC_DEBUG(ERR, "Could not find file \"%s\"\n", filename);
-
-	return NULL;
-}

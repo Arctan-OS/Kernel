@@ -152,6 +152,11 @@ int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode 
 int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
 
 /**
+ *
+ * */
+int Arc_SeekFileVFS(struct ARC_VFSNode *file, long offset, int whence);
+
+/**
  * Close the given file in the VFS.
  *
  * @param struct ARC_VFSNode *file - The file to close.

@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "arctan.h"
 #include <global.h>
 #include <multiboot/mbparse.h>
 #include <multiboot/multiboot2.h>
@@ -59,6 +60,7 @@ int parse_mbi() {
 			} else if (strcmp(info->cmdline, "arctan-module.initramfs.cpio") == 0) {
 				ARC_DEBUG(INFO, "\tFound initramfs\n")
 
+				Arc_InitializeResource("/initramfs", &Arc_InitramfsRes, (void *)ARC_PHYS_TO_HHDM(info->mod_start));
 			}
 
 			ARC_DEBUG(INFO, "----------------\n")
@@ -72,11 +74,11 @@ int parse_mbi() {
 
 			ARC_DEBUG(INFO, "Framebuffer 0x%llX (%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp)
 
-			main_terminal.framebuffer = (void *)(common.framebuffer_addr + ARC_HHDM_VADDR);
-			main_terminal.fb_width = common.framebuffer_width;
-			main_terminal.fb_height = common.framebuffer_height;
-			main_terminal.fb_bpp = common.framebuffer_bpp;
-			main_terminal.fb_pitch = common.framebuffer_pitch;
+			Arc_MainTerm.framebuffer = (void *)(common.framebuffer_addr + ARC_HHDM_VADDR);
+			Arc_MainTerm.fb_width = common.framebuffer_width;
+			Arc_MainTerm.fb_height = common.framebuffer_height;
+			Arc_MainTerm.fb_bpp = common.framebuffer_bpp;
+			Arc_MainTerm.fb_pitch = common.framebuffer_pitch;
 
 			break;
 		}

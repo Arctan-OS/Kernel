@@ -49,22 +49,23 @@
 #include <errno.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
-struct ARC_TermMeta main_terminal = { 0 };
-struct ARC_Resource initramfs_res = { .dri_group = 0, .dri_index = 0 };
-static char main_terminal_mem[180 * 120] = { 0 };
+struct ARC_TermMeta Arc_MainTerm = { 0 };
+struct ARC_Resource Arc_InitramfsRes = { .dri_group = 0, .dri_index = 0 };
+struct ARC_VFSNode *Arc_FontFile = NULL;
+static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;
 
-	main_terminal.rx_buf = NULL;
-	main_terminal.tx_buf = NULL;
-	main_terminal.term_width = 180;
-	main_terminal.term_height = 120;
-	main_terminal.term_mem = main_terminal_mem;
-	main_terminal.font_width = 8;
-	main_terminal.font_height = 8;
-	main_terminal.cx = 0;
-	main_terminal.cy = 0;
+	Arc_MainTerm.rx_buf = NULL;
+	Arc_MainTerm.tx_buf = NULL;
+	Arc_MainTerm.term_width = 180;
+	Arc_MainTerm.term_height = 120;
+	Arc_MainTerm.term_mem = Arc_MainTerm_mem;
+	Arc_MainTerm.font_width = 8;
+	Arc_MainTerm.font_height = 8;
+	Arc_MainTerm.cx = 0;
+	Arc_MainTerm.cy = 0;
 
 	ARC_DEBUG(INFO, "Sucessfully entered long mode\n")
 
@@ -75,33 +76,30 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(10);
 
-	Arc_InitializeResource("/initramfs", &initramfs_res, NULL);
-
 	Arc_InitializeVFS();
-	Arc_MountVFS(NULL, "initramfs", &initramfs_res, ARC_VFS_FS_INITRAMFS);
-	struct ARC_VFSNode *font = Arc_OpenFileVFS("/initramfs/boot/FONT.fnt", 0, 0);
-	Arc_ReadFileVFS(0x1, 1, 10, font);
+	Arc_MountVFS(NULL, "initramfs", &Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
+	Arc_FontFile = Arc_OpenFileVFS("/initramfs/boot/FONT.fnt", 0, 0);
 
 	Arc_InitializeSyscall();
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	// Quickly map framebuffer in
-	uint64_t fb_size = main_terminal.fb_width * main_terminal.fb_height * (main_terminal.fb_bpp / 8);
+	uint64_t fb_size = Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8);
 	for (uint64_t i = 0; i < fb_size; i += 0x1000) {
-		Arc_MapPageVMM(ARC_HHDM_TO_PHYS(main_terminal.framebuffer + i), (uintptr_t)(main_terminal.framebuffer + i), ARC_VMM_OVERW_FLAG | 3);
+		Arc_MapPageVMM(ARC_HHDM_TO_PHYS(Arc_MainTerm.framebuffer + i), (uintptr_t)(Arc_MainTerm.framebuffer + i), ARC_VMM_OVERW_FLAG | 3);
 	}
 
 	for (int i = 0; i < 600; i++) {
-		for (int y = 0; y < main_terminal.fb_height; y++) {
-			for (int x = 0; x < main_terminal.fb_width; x++) {
-				*((uint32_t *)main_terminal.framebuffer + (y * main_terminal.fb_width) + x) = (x * y * i / 300) & 0x3FFF;
+		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
+			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {
+				*((uint32_t *)Arc_MainTerm.framebuffer + (y * Arc_MainTerm.fb_width) + x) = (x * y * i / 300) & 0x3FFF;
 			}
 		}
 	}
 
+		Arc_TermDraw(&Arc_MainTerm);
 	for (;;) {
-		Arc_TermDraw(&main_terminal);
 	}
 
 	return 0;

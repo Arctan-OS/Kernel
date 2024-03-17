@@ -259,7 +259,7 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
 				nres->dri_group = res->dri_group;
 				nres->dri_index = res->dri_index + 1; // + 1 for a file driver
 
-				Arc_InitializeResource(mount_path, nres, NULL);
+				Arc_InitializeResource(mount_path, nres, res->args);
 
 				nnode->resource = nres;
 

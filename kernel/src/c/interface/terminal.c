@@ -24,6 +24,8 @@
  *
  * @DESCRIPTION
 */
+#include "fs/vfs.h"
+#include "mm/allocator.h"
 #include <global.h>
 #include <interface/terminal.h>
 #include <arctan.h>
@@ -65,6 +67,10 @@ void Arc_TermDraw(struct ARC_TermMeta *term) {
 		return;
 	}
 
+	size_t size_in_bytes = (term->font_width * term->font_height) / 8;
+
+	uint8_t *data = Arc_SlabAlloc(size_in_bytes);
+
 	for (int y = 0; y < term->term_height; y++) {
 		for (int x = 0; x < term->term_width; x++) {
 			int sx = x * term->font_width;
@@ -72,7 +78,9 @@ void Arc_TermDraw(struct ARC_TermMeta *term) {
 
 			char c = term->term_mem[y * term->term_width + x];
 
-			uint8_t *data = term->font_bmp + (c * term->font_height);
+			memset(data, 0, size_in_bytes);
+			Arc_SeekFileVFS(Arc_FontFile, (c * size_in_bytes), ARC_VFS_SEEK_SET);
+			Arc_ReadFileVFS(data, 1, size_in_bytes, Arc_FontFile);
 
 			for (int i = 0; i < term->font_height; i++) {
 				for (int j = 0; j < term->font_width; j++) {
@@ -83,6 +91,8 @@ void Arc_TermDraw(struct ARC_TermMeta *term) {
 			}
 		}
 	}
+
+	Arc_SlabFree(data);
 }
 
 // Returns error code (0: success, 1: could not enqueue)

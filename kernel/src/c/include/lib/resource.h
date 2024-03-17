@@ -67,6 +67,8 @@ struct ARC_Resource {
 	int dri_group;
 	/// Specific driver function set (supplied on init by caller).
 	int dri_index;
+	/// Additional arguments
+	void *args;
 	/// Driver functions.
 	struct ARC_DriverDef *driver;
 };

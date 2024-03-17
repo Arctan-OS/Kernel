@@ -32,6 +32,8 @@
 #include <stdint.h>
 #include <arctan.h>
 #include <multiboot/multiboot2.h>
+#include <fs/vfs.h>
+#include <lib/resource.h>
 
 #define ARC_HANG for (;;) __asm__("hlt");
 
@@ -76,6 +78,7 @@
 	(a < 0 ? -a : a)
 
 extern struct ARC_BootMeta *Arc_BootMeta;
-extern struct ARC_TermMeta main_terminal;
-
+extern struct ARC_TermMeta Arc_MainTerm;
+extern struct ARC_Resource Arc_InitramfsRes;
+extern struct ARC_VFSNode *Arc_FontFile;
 #endif

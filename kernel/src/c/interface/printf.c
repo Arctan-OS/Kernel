@@ -31,7 +31,7 @@
 void putchar_(char c) {
 	E9_HACK(c);
 
-	Arc_TermPutChar(&main_terminal, c);
+	Arc_TermPutChar(&Arc_MainTerm, c);
 }
 /**
  * @author (c) Eyal Rozenberg <eyalroz1@gmx.com>
