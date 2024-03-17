@@ -39,7 +39,7 @@ extern struct ARC_DriverDef __DRIVERS1_END[];
 extern struct ARC_DriverDef __DRIVERS2_END[];
 extern struct ARC_DriverDef __DRIVERS3_END[];
 
-int Arc_InitializeResource(char *name, struct ARC_Resource *resource) {
+int Arc_InitializeResource(char *name, struct ARC_Resource *resource, void *args) {
 	ARC_DEBUG(INFO, "Initializing resource \"%s\"\n", name);
 
 	resource->name = strdup(name);
@@ -52,7 +52,7 @@ int Arc_InitializeResource(char *name, struct ARC_Resource *resource) {
 	resource->driver = def;
 
 	if (def != NULL) {
-		def->init(resource->args);
+		def->init(args);
 	}
 
 	return 0;

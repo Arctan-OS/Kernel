@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "fs/vfs.h"
 #include <lib/resource.h>
 #include <global.h>
 #include <util.h>
@@ -42,22 +43,48 @@ struct ARC_HeaderCPIO {
 	uint16_t filesize[2];
 }__attribute__((packed));
 
-int initramfs_init() {
-	ARC_DEBUG(INFO, "Hello World from the initramfs driver\n");
+int initramfs_empty() {
+	return 0;
+}
+
+int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
+	ARC_DEBUG(INFO, "Reading file %p into buffer %p (%d %d)\n", file, buffer, size, count);
 
 	return 0;
 }
 
-int initramfs_uninit() {
-	ARC_DEBUG(INFO, "Goodbye World from the initramfs driver\n");
+int initramfs_write() {
+	ARC_DEBUG(INFO, "Read only file system\n");
+
+	return 1;
+}
+
+int initramfs_seek(struct ARC_VFSNode *file, long offset, int whence) {
+	ARC_DEBUG(INFO, "Seeking initramfs file to %ld bytes from %d", offset, whence);
 
 	return 0;
 }
 
-ARC_REGISTER_DRIVER(0, initramfs) = {
+ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.index = 0,
-	.init = initramfs_init,
-	.uninit = initramfs_uninit
+	.init = initramfs_empty,
+	.uninit = initramfs_empty,
+	.open = initramfs_empty,
+	.close = initramfs_empty,
+	.read = initramfs_read,
+	.write = initramfs_write,
+	.seek = initramfs_seek,
+};
+
+ARC_REGISTER_DRIVER(0, initramfs_file) = {
+	.index = 1,
+	.init = initramfs_empty,
+	.uninit = initramfs_empty,
+	.open = initramfs_empty,
+	.close = initramfs_empty,
+	.read = initramfs_read,
+	.write = initramfs_write,
+	.seek = initramfs_seek,
 };
 
 void *Arc_FindFileInitramfs(void *fs, char *filename) {

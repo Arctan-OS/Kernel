@@ -27,16 +27,17 @@
 #ifndef ARC_RESOURCE_H
 #define ARC_RESOURCE_H
 
+#include <fs/vfs.h>
 #include <stddef.h>
 #include <stdint.h>
 
 struct ARC_DriverDef {
 	int index;
-	int (*open)(int flags, uint32_t mode); // FS-specific (filepath = resource->name)
-	int (*write)(void *buffer, size_t size, size_t count);
-	int (*read)(void *buffer, size_t size, size_t count);
-	int (*close)(); // FS-specific
-	int (*seek)(long offset, int whence);
+	int (*open)(struct ARC_VFSNode *file, int flags, uint32_t mode); // FS-specific (filepath = resource->name)
+	int (*write)(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
+	int (*read)(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
+	int (*close)(struct ARC_VFSNode *file); // FS-specific
+	int (*seek)(struct ARC_VFSNode *file, long offset, int whence);
 
 	int (*init)(void *args);
 	int (*uninit)(void *args);
@@ -48,6 +49,7 @@ struct ARC_DriverDef {
 struct ARC_Reference {
 	// Functions for managing this reference.
 	struct ARC_Resource *resource;
+	int (*close)();
 	struct ARC_Reference *prev;
 	struct ARC_Reference *next;
 };
@@ -65,13 +67,11 @@ struct ARC_Resource {
 	int dri_group;
 	/// Specific driver function set (supplied on init by caller).
 	int dri_index;
-	/// Pointer to arguments structure, should only be used on init.
-	void *args;
 	/// Driver functions.
 	struct ARC_DriverDef *driver;
 };
 
-int Arc_InitializeResource(char *name, struct ARC_Resource *resource);
+int Arc_InitializeResource(char *name, struct ARC_Resource *resource, void *args);
 int Arc_UninitializeResource(struct ARC_Resource *resource);
 
 struct ARC_DriverDef *Arc_GetDriverDef(int group, int index);

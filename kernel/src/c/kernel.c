@@ -75,11 +75,12 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(10);
 
-	Arc_InitializeResource("/initramfs", &initramfs_res);
+	Arc_InitializeResource("/initramfs", &initramfs_res, NULL);
 
 	Arc_InitializeVFS();
 	Arc_MountVFS(NULL, "initramfs", &initramfs_res, ARC_VFS_FS_INITRAMFS);
-//	Arc_OpenFileVFS("/initramfs/boot/FONT.fnt", 0, 0);
+	struct ARC_VFSNode *font = Arc_OpenFileVFS("/initramfs/boot/FONT.fnt", 0, 0);
+	Arc_ReadFileVFS(0x1, 1, 10, font);
 
 	Arc_InitializeSyscall();
 

@@ -26,7 +26,7 @@
  * Abstract virtual file system driver. Is able to create and delete virtual
  * file systems for caching files on disk.
 */
-#include "abi-bits/errno.h"
+#include <abi-bits/errno.h>
 #include <lib/resource.h>
 #include <mm/allocator.h>
 #include <fs/vfs.h>
@@ -98,25 +98,41 @@ int Arc_RecursiveFreeNodes(struct ARC_VFSNode *head) {
 	struct ARC_VFSNode *current_node = head->children;
 
 	while (current_node != NULL) {
-		Arc_RecursiveFreeNodes(current_node);
+		count += Arc_RecursiveFreeNodes(current_node);
 		current_node = current_node->next;
-
-		count++;
 	}
 
-	Arc_SlabFree(head->name);
+	// Close all references
+	struct ARC_Reference *current_ref = head->resource->references;
+	while (current_ref != NULL) {
+		void *tmp = current_ref->next;
 
-	// TODO: Close references
+		if (current_ref->close() == 0) {
+			head->resource->ref_count -= 1;
+		}
 
-	// Destroy head->resource
+		Arc_SlabFree(current_ref);
+
+		current_ref = tmp;
+	}
+
+	struct ARC_DriverDef *driver = head->resource->driver;
 
 	if (head->spec != NULL) {
 		Arc_SlabFree(head->spec);
 	}
 
-	Arc_SlabFree(head);
+	if (head->type == ARC_VFS_N_FILE) {
+		Arc_CloseFileVFS(head);
+	} else {
+		Arc_SlabFree(head->name);
+		Arc_SlabFree(head);
+	}
 
-	return 0;
+	// Uninitialize the driver
+	driver->uninit(NULL);
+
+	return count;
 }
 
 int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
@@ -131,9 +147,6 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 }
 
 struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
-	(void)flags;
-	(void)mode;
-
 	ARC_DEBUG(INFO, "Opening %s (%d, %u)\n", filepath, flags, mode);
 
 	// Implement some additional logic for detecting permissions and such
@@ -141,12 +154,21 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
 	size_t max = strlen(filepath);
 	struct ARC_VFSNode *current = &vfs_root;
 
+	struct ARC_VFSNode *mount = NULL;
+	char *mount_path = NULL;
+
 	for (size_t i = 0; i < max; i++) {
 		if (*(filepath + i) == '/') {
 			int j = 0;
 			for (; (*(filepath + i + j + 1) != '/') && (i + j < max); j++);
 
 			char *folder = (filepath + i + 1);
+
+			if (current->type == ARC_VFS_N_MOUNT) {
+				// Keep track of mountpoint
+				mount = current;
+				mount_path = folder;
+			}
 
 			// Interpret dot, dotdot dirs
 			if (strncmp(folder, "..", j) == 0) {
@@ -169,16 +191,89 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
 				child = child->next;
 			}
 
+
 			if (child == NULL) {
 				// We could not find the file / resource in the existing
 				// node tree, ask the relevant FS driver to find it for us
-				ARC_DEBUG(INFO, "Stuck on %s\n", folder);
+				ARC_DEBUG(INFO, "Building out %s\n", folder);
 
 				// Once the FS driver has found our file, we can return it
 				// here. Name should be the disk path the FS driver looking
 				// for
 
-				for (;;);
+				struct ARC_VFSNode *nnode = current;
+
+				// Create a node path down to the file
+				size_t length = strlen(folder);
+				size_t j_ = 0;
+				for (size_t j = j_; j < length; j++) {
+					if (*(folder + j) == '/' && j - j_ > 0) {
+						create_node_graph:;
+
+						struct ARC_VFSNode *nnode_ = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode));
+						memset(nnode_, 0, sizeof(struct ARC_VFSNode));
+
+						char *name = (char *)Arc_SlabAlloc(j - j_);
+						memcpy(name, folder + j_, j - j_);
+
+						nnode_->name = name;
+						nnode_->parent = nnode;
+						nnode_->next = nnode->children;
+						nnode->children = nnode_;
+						nnode_->type = ARC_VFS_N_DIR;
+
+						nnode = nnode_;
+
+						j_ = j + 1;
+					}
+				}
+
+				if (j_ < length) {
+					// Create the node which represents the file
+					goto create_node_graph;
+				}
+
+				if (nnode == NULL) {
+					// Free path that was created to avoid memory leak
+					while (nnode != current) {
+						void *tmp = nnode->parent;
+						Arc_SlabFree(nnode);
+						nnode = tmp;
+					}
+
+					ARC_DEBUG(ERR, "Failed to create node graph to %s\n", filepath);
+					return NULL;
+				}
+
+				// Create the filespec
+				struct ARC_VFSFile *file_spec = (struct ARC_VFSFile *)Arc_SlabAlloc(sizeof(struct ARC_VFSFile));
+				file_spec->node = nnode;
+				nnode->spec = (void *)file_spec;
+				nnode->type = ARC_VFS_N_FILE;
+
+				// Create new resource
+				struct ARC_Resource *res = mount->resource;
+				struct ARC_Resource *nres = (struct ARC_Resource *)Arc_SlabAlloc(sizeof(struct ARC_Resource));
+				memset(nres, 0, sizeof(struct ARC_Resource));
+
+				nres->dri_group = res->dri_group;
+				nres->dri_index = res->dri_index + 1; // + 1 for a file driver
+
+				Arc_InitializeResource(mount_path, nres, NULL);
+
+				nnode->resource = nres;
+
+				if (nres->driver != NULL && nres->driver->open != NULL) {
+					nres->driver->open(nnode, flags, mode);
+				} else {
+					ARC_DEBUG(ERR, "Failed to open file");
+					// TODO: Cleanup
+					return NULL;
+				}
+
+				ARC_DEBUG(INFO, "Opened file %s\n", filepath);
+
+				return nnode;
 			}
 
 			current = child;
@@ -199,7 +294,7 @@ int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode 
 		return 0;
 	}
 
-	return file->resource->driver->read(buffer, size, count);
+	return file->resource->driver->read(buffer, size, count, file);
 }
 
 int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
@@ -211,7 +306,7 @@ int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode
 		return 0;
 	}
 
-	return file->resource->driver->write(buffer, size, count);
+	return file->resource->driver->write(buffer, size, count, file);
 }
 
 int Arc_SeekFileVFS(struct ARC_VFSNode *file, long offset, int whence) {
@@ -219,22 +314,28 @@ int Arc_SeekFileVFS(struct ARC_VFSNode *file, long offset, int whence) {
 		return 1;
 	}
 
-	return file->resource->driver->seek(offset, whence);
+	return file->resource->driver->seek(file, offset, whence);
 }
 
 int Arc_CloseFileVFS(struct ARC_VFSNode *file) {
-	(void)file;
+	if (file->type != ARC_VFS_N_FILE) {
+		ARC_DEBUG(ERR, "Given file is not a file\n");
+		return 1;
+	}
 
 	struct ARC_Resource *res = file->resource;
 
 	if (res->ref_count > 0) {
 		// This resource is still in use, for now do not
 		// close the file
-		ARC_DEBUG(INFO, "VFS Node %p is still in use, cannot close\n", file)
+		ARC_DEBUG(ERR, "VFS Node %p is still in use, cannot close\n", file)
 		return EBUSY;
 	}
 
-	res->driver->close();
+	res->driver->close(file);
+
+	Arc_SlabFree(res->name);
+	Arc_SlabFree(res);
 
 	Arc_SlabFree(file->spec);
 	Arc_SlabFree(file->name);

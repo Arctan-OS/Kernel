@@ -28,6 +28,9 @@ PRODUCT := Arctan
 
 DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
 
+CPPFLAG_DEBUG := -DARC_DEBUG_ENABLE -DARC_E9HACK_ENABLE
+export CPPFLAG_DEBUG
+
 LD := x86_64-pc-arctan-mlibc-ld
 export LD
 CC := @CC@
