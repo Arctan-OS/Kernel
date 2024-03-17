@@ -78,7 +78,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	Arc_InitializeVFS();
 	Arc_MountVFS(NULL, "initramfs", &Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
-	Arc_FontFile = Arc_OpenFileVFS("/initramfs/boot/FONT.fnt", 0, 0);
+	Arc_FontFile = Arc_OpenFileVFS("/initramfs/boot/CGA.F08", 0, 0);
 
 	Arc_InitializeSyscall();
 
@@ -98,8 +98,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
-		Arc_TermDraw(&Arc_MainTerm);
 	for (;;) {
+		Arc_TermDraw(&Arc_MainTerm);
 	}
 
 	return 0;

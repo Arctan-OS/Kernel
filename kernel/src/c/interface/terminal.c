@@ -83,10 +83,13 @@ void Arc_TermDraw(struct ARC_TermMeta *term) {
 			Arc_ReadFileVFS(data, 1, size_in_bytes, Arc_FontFile);
 
 			for (int i = 0; i < term->font_height; i++) {
-				for (int j = 0; j < term->font_width; j++) {
+				int rx = 0;
+				for (int j = term->font_width - 1; j >= 0; j--) {
 					if (((data[i] >> j) & 1) == 1 && c != 0) {
-						*((uint32_t *)term->framebuffer + (i + sy) * term->fb_width + (j + sx)) = 0x00FFFFFF;
+						*((uint32_t *)term->framebuffer + (i + sy) * term->fb_width + (sx + rx)) = 0x00FFFFFF;
 					}
+
+					rx++;
 				}
 			}
 		}
