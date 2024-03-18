@@ -24,6 +24,8 @@
  *
  * @DESCRIPTION
 */
+#include <abi-bits/errno.h>
+#include "lib/perms.h"
 #include <fs/vfs.h>
 #include <mm/allocator.h>
 #include <lib/resource.h>
@@ -85,7 +87,9 @@ int initramfs_empty() {
 }
 
 int initramfs_open(struct ARC_VFSNode *file, int flags, uint32_t mode) {
-	// TODO: Permissions check
+	if (Arc_CheckCurPerms(mode) != 0) {
+		return EPERM;
+	}
 
 	struct ARC_VFSFile *spec = file->spec;
 
@@ -168,6 +172,10 @@ int initramfs_seek(struct ARC_VFSNode *file, long offset, int whence) {
 	return 0;
 }
 
+int initramfs_stat(char *filename) {
+	return 0;
+}
+
 ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.index = 0,
 	.init = initramfs_empty,
@@ -177,6 +185,9 @@ ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.read = initramfs_read,
 	.write = initramfs_write,
 	.seek = initramfs_seek,
+	.stat = initramfs_stat,
+	.mount = initramfs_empty,
+	.unmount = initramfs_empty
 };
 
 ARC_REGISTER_DRIVER(0, initramfs_file) = {
@@ -188,4 +199,7 @@ ARC_REGISTER_DRIVER(0, initramfs_file) = {
 	.read = initramfs_read,
 	.write = initramfs_write,
 	.seek = initramfs_seek,
+	.stat = initramfs_empty,
+	.mount = initramfs_empty,
+	.unmount = initramfs_empty
 };

@@ -32,19 +32,21 @@
 #include <stdint.h>
 
 struct ARC_DriverDef {
-	int index;
+	uint64_t index;
 	int (*open)(struct ARC_VFSNode *file, int flags, uint32_t mode); // FS-specific (filepath = resource->name)
 	int (*write)(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
 	int (*read)(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
 	int (*close)(struct ARC_VFSNode *file); // FS-specific
 	int (*seek)(struct ARC_VFSNode *file, long offset, int whence);
-
+	int (*stat)(char *filename);
+	int (*mount)();
+	int (*unmount)();
 	int (*init)(void *args);
 	int (*uninit)(void *args);
 };
 
 #define ARC_REGISTER_DRIVER(group, name) \
-	static struct ARC_DriverDef __driver__##name __attribute__((used, section(".drivers."#group)))
+	static struct ARC_DriverDef __driver__##name __attribute__((used, section(".drivers."#group), aligned(1)))
 
 struct ARC_Reference {
 	// Functions for managing this reference.
@@ -73,9 +75,9 @@ struct ARC_Resource {
 	struct ARC_DriverDef *driver;
 };
 
-int Arc_InitializeResource(char *name, struct ARC_Resource *resource, void *args);
+struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t dri_index, void *args);
 int Arc_UninitializeResource(struct ARC_Resource *resource);
 
-struct ARC_DriverDef *Arc_GetDriverDef(int group, int index);
+struct ARC_DriverDef *Arc_GetDriverDef(int group, uint64_t index);
 
 #endif

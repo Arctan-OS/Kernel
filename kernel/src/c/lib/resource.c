@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include "abi-bits/errno.h"
+#include <abi-bits/errno.h>
 #include <mm/allocator.h>
 #include <lib/resource.h>
 #include <global.h>
@@ -39,8 +39,17 @@ extern struct ARC_DriverDef __DRIVERS1_END[];
 extern struct ARC_DriverDef __DRIVERS2_END[];
 extern struct ARC_DriverDef __DRIVERS3_END[];
 
-int Arc_InitializeResource(char *name, struct ARC_Resource *resource, void *args) {
+struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t dri_index, void *args) {
 	ARC_DEBUG(INFO, "Initializing resource \"%s\"\n", name);
+
+	struct ARC_Resource *resource = (struct ARC_Resource *)Arc_SlabAlloc(sizeof(struct ARC_Resource));
+
+	if (resource == NULL) {
+		ARC_DEBUG(ERR, "Failed to allocate memory for resource\n");
+		return NULL;
+	}
+
+	memset(resource, 0, sizeof(struct ARC_Resource));
 
 	resource->name = strdup(name);
 
@@ -56,7 +65,7 @@ int Arc_InitializeResource(char *name, struct ARC_Resource *resource, void *args
 		def->init(args);
 	}
 
-	return 0;
+	return resource;
 }
 
 int Arc_UninitializeResource(struct ARC_Resource *resource) {
@@ -127,7 +136,7 @@ int Arc_UnreferenceResource(struct ARC_Reference *reference) {
 }
 
 // TODO: This can most definitely be optimzied
-struct ARC_DriverDef *Arc_GetDriverDef(int group, int index) {
+struct ARC_DriverDef *Arc_GetDriverDef(int group, uint64_t index) {
 	struct ARC_DriverDef *start = NULL;
 	struct ARC_DriverDef *end = NULL;
 

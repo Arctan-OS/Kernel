@@ -82,6 +82,11 @@ struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, str
 	node->spec = (void *)mount;
 
 	// Preform additional physical mount operations
+	if (resource->driver == NULL || resource->driver->mount == NULL || resource->driver->mount() != 0) {
+		ARC_DEBUG(ERR, "Failed to mount \"%s\"\n", name);
+		// TODO: Cleanup
+		return NULL;
+	}
 
 	ARC_DEBUG(INFO, "Mounted %s on %s (0x%"PRIX64") type %d\n", name, mountpoint->resource->name, resource, type);
 
@@ -140,6 +145,8 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 		ARC_DEBUG(INFO, "%s is not a mountpoint\n", mount->name);
 		return EINVAL;
 	}
+
+	mount->resource->driver->unmount();
 
 	Arc_RecursiveFreeNodes(mount);
 
@@ -234,15 +241,7 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
 				}
 
 				if (nnode == NULL) {
-					// Free path that was created to avoid memory leak
-					while (nnode != current) {
-						void *tmp = nnode->parent;
-						Arc_SlabFree(nnode);
-						nnode = tmp;
-					}
-
-					ARC_DEBUG(ERR, "Failed to create node graph to %s\n", filepath);
-					return NULL;
+					goto epic_node_graph_fail;
 				}
 
 				// Create the filespec
@@ -253,27 +252,34 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
 
 				// Create new resource
 				struct ARC_Resource *res = mount->resource;
-				struct ARC_Resource *nres = (struct ARC_Resource *)Arc_SlabAlloc(sizeof(struct ARC_Resource));
-				memset(nres, 0, sizeof(struct ARC_Resource));
-
-				nres->dri_group = res->dri_group;
-				nres->dri_index = res->dri_index + 1; // + 1 for a file driver
-
-				Arc_InitializeResource(mount_path, nres, res->args);
+				struct ARC_Resource *nres = Arc_InitializeResource(mount_path, res->dri_group, res->dri_index, res->args);
 
 				nnode->resource = nres;
 
-				if (nres->driver != NULL && nres->driver->open != NULL) {
-					nres->driver->open(nnode, flags, mode);
-				} else {
-					ARC_DEBUG(ERR, "Failed to open file");
-					// TODO: Cleanup
-					return NULL;
+				int err = 0;
+				if (nres->driver == NULL || nres->driver->open == NULL || (err = nres->driver->open(nnode, flags, mode)) != 0) {
+					ARC_DEBUG(ERR, "Failed to open file (%p %p %d)\n", nres->driver, nres->driver->open, err);
+
+					Arc_UninitializeResource(nres);
+					Arc_SlabFree(file_spec);
+
+					goto epic_node_graph_fail;
 				}
 
 				ARC_DEBUG(INFO, "Opened file %s\n", filepath);
 
 				return nnode;
+
+				epic_node_graph_fail:;
+				// Free path that was created to avoid memory leak
+				while (nnode != current) {
+					void *tmp = nnode->parent;
+					Arc_SlabFree(nnode);
+					nnode = tmp;
+				}
+
+				ARC_DEBUG(ERR, "Failed to create node graph to %s\n", filepath);
+				return NULL;
 			}
 
 			current = child;
@@ -331,6 +337,11 @@ int Arc_CloseFileVFS(struct ARC_VFSNode *file) {
 		ARC_DEBUG(ERR, "VFS Node %p is still in use, cannot close\n", file)
 		return EBUSY;
 	}
+
+	// TODO: Traverse tree upwards, if there are nodes which
+	//       are parents of this file and have no other children
+	//       than this node, remove them as well. Exception: if the
+	//       node is a mountpoint. A mountpoint has to be unmounted
 
 	res->driver->close(file);
 

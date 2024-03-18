@@ -51,19 +51,18 @@ int parse_mbi() {
 		case MULTIBOOT_TAG_TYPE_MODULE: {
 			struct multiboot_tag_module *info = (struct multiboot_tag_module *)tag;
 
-			ARC_DEBUG(INFO, "----------------\n")
+			ARC_DEBUG(INFO, "----------------\n");
 			ARC_DEBUG(INFO, "Found module: %s\n", info->cmdline);
-			ARC_DEBUG(INFO, "\t0x%"PRIX32" -> 0x%"PRIX32" (%d B)\n", info->mod_start, info->mod_end, (info->mod_end - info->mod_start))
+			ARC_DEBUG(INFO, "\t0x%"PRIX32" -> 0x%"PRIX32" (%d B)\n", info->mod_start, info->mod_end, (info->mod_end - info->mod_start));
 
 			if (strcmp(info->cmdline, "arctan-module.kernel.efi") == 0) {
-				ARC_DEBUG(INFO, "\tFound kernel\n")
+				ARC_DEBUG(INFO, "\tFound kernel\n");
 			} else if (strcmp(info->cmdline, "arctan-module.initramfs.cpio") == 0) {
-				ARC_DEBUG(INFO, "\tFound initramfs\n")
-
-				Arc_InitializeResource("/initramfs", &Arc_InitramfsRes, (void *)ARC_PHYS_TO_HHDM(info->mod_start));
+				ARC_DEBUG(INFO, "\tFound initramfs\n");
+				Arc_InitramfsRes = (void *)ARC_PHYS_TO_HHDM(info->mod_start);
 			}
 
-			ARC_DEBUG(INFO, "----------------\n")
+			ARC_DEBUG(INFO, "----------------\n");
 
 			break;
 		}
@@ -72,7 +71,7 @@ int parse_mbi() {
 			struct multiboot_tag_framebuffer *info = (struct multiboot_tag_framebuffer *)tag;
 			struct multiboot_tag_framebuffer_common common = (struct multiboot_tag_framebuffer_common)(info->common);
 
-			ARC_DEBUG(INFO, "Framebuffer 0x%llX (%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp)
+			ARC_DEBUG(INFO, "Framebuffer 0x%llX (%d) %dx%dx%d\n", common.framebuffer_addr, common.framebuffer_type, common.framebuffer_width, common.framebuffer_height, common.framebuffer_bpp);
 
 			Arc_MainTerm.framebuffer = (void *)(common.framebuffer_addr + ARC_HHDM_VADDR);
 			Arc_MainTerm.fb_width = common.framebuffer_width;

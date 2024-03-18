@@ -51,8 +51,8 @@ size_t strlen(char *a) {
 char *strdup(char *a) {
 	size_t len = strlen(a);
 
-	char *b = Arc_SlabAlloc(len);
-	memset(b, 0, len);
+	char *b = Arc_SlabAlloc(len + 1);
+	memset(b, 0, len + 1);
 	memcpy(b, a, len);
 
 	return b;
