@@ -38,7 +38,7 @@ struct ARC_DriverDef {
 	int (*read)(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
 	int (*close)(struct ARC_VFSNode *file); // FS-specific
 	int (*seek)(struct ARC_VFSNode *file, long offset, int whence);
-	int (*stat)(char *filename);
+	int (*stat)(struct ARC_VFSNode *mount, char *filename, struct stat *stat);
 	int (*mount)();
 	int (*unmount)();
 	int (*init)(void *args);

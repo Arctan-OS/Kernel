@@ -60,6 +60,8 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 
 	resource->driver = def;
 	resource->args = args;
+	resource->dri_group = dri_group;
+	resource->dri_index = dri_index;
 
 	if (def != NULL) {
 		def->init(args);

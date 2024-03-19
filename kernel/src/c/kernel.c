@@ -86,6 +86,11 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
+	struct stat st;
+	Arc_StatFileVFS("/initramfs/boot/ANTIQUE.F14", &st);
+
+	ARC_DEBUG(INFO, "%ld\n", st.st_mtim.tv_sec);
+
 	// Quickly map framebuffer in
 	uint64_t fb_size = Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8);
 	for (uint64_t i = 0; i < fb_size; i += 0x1000) {

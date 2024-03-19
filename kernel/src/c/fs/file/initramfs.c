@@ -30,7 +30,9 @@
 #include <mm/allocator.h>
 #include <lib/resource.h>
 #include <global.h>
+#include <time.h>
 #include <util.h>
+#include <sys/stat.h>
 
 #define ARC_NAME_OFFSET (sizeof(struct ARC_HeaderCPIO))
 #define ARC_NAME_SIZE(header) (header->namesize + (header->namesize & 1))
@@ -82,6 +84,21 @@ void *Arc_FindFileInitramfs(void *fs, char *filename) {
 	return NULL;
 }
 
+int initramfs_internal_stat(struct ARC_HeaderCPIO *header, struct stat *stat) {
+	stat->st_uid = header->uid;
+	stat->st_gid = header->gid;
+	stat->st_mode = header->mode;
+	stat->st_dev = header->device;
+	stat->st_ino = header->inode;
+	stat->st_nlink = header->nlink;
+	stat->st_rdev = header->rdev;
+	stat->st_size = ARC_DATA_SIZE(header);
+	stat->st_mtim.tv_nsec = 0;
+	stat->st_mtim.tv_sec = (header->mod_time[0] << 16) | header->mod_time[1];
+
+	return 0;
+}
+
 int initramfs_empty() {
 	return 0;
 }
@@ -103,6 +120,8 @@ int initramfs_open(struct ARC_VFSNode *file, int flags, uint32_t mode) {
 
 	spec->size = (header->filesize[0] << 16) | header->filesize[1];
 	spec->address = (void *)header;
+
+	initramfs_internal_stat(header, &spec->stat);
 
 	return 0;
 }
@@ -172,8 +191,18 @@ int initramfs_seek(struct ARC_VFSNode *file, long offset, int whence) {
 	return 0;
 }
 
-int initramfs_stat(char *filename) {
-	return 0;
+int initramfs_stat(struct ARC_VFSNode *mount, char *filename, struct stat *stat) {
+	if (mount == NULL || filename == NULL || stat == NULL) {
+		return 1;
+	}
+
+	struct ARC_HeaderCPIO *header = Arc_FindFileInitramfs(mount->resource->args, filename);
+
+	if (header == NULL) {
+		return 1;
+	}
+
+	return initramfs_internal_stat(header, stat);
 }
 
 ARC_REGISTER_DRIVER(0, initramfs_super) = {

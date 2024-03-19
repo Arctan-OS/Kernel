@@ -45,6 +45,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/stat.h>
 #include <lib/resource.h>
 
 struct ARC_VFSFile {
@@ -58,6 +59,8 @@ struct ARC_VFSFile {
 	struct ARC_VFSNode *node;
 	/// State required by the file driver.
 	void *state;
+	/// Stat
+	struct stat stat;
 };
 
 struct ARC_VFSMount {
@@ -99,7 +102,6 @@ struct ARC_VFSNode {
  * @return 0: success
  * */
 int Arc_InitializeVFS();
-
 
 /**
  * Create a new mounted device under the given mountpoint.
@@ -162,5 +164,10 @@ int Arc_SeekFileVFS(struct ARC_VFSNode *file, long offset, int whence);
  * @param struct ARC_VFSNode *file - The file to close.
  * */
 int Arc_CloseFileVFS(struct ARC_VFSNode *file);
+
+/**
+ *
+ * */
+int Arc_StatFileVFS(char *filepath, struct stat *stat);
 
 #endif
