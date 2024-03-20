@@ -74,8 +74,20 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 	ARC_DEBUG(INFO, "Uninitializing resource: %s\n", resource->name);
 
 	// Call driver uninitialization function from driver table
-
 	// TODO: Figure out resource->args dillema
+
+	struct ARC_Reference *current_ref = resource->references;
+	while (current_ref != NULL) {
+		void *tmp = current_ref->next;
+
+		// TODO: What if we fail to close?
+		if (current_ref->close != NULL && current_ref->close() == 0) {
+			resource->ref_count -= 1;
+			Arc_SlabFree(current_ref);
+		}
+
+		current_ref = tmp;
+	}
 
 	Arc_SlabFree(resource->name);
 	Arc_SlabFree(resource);

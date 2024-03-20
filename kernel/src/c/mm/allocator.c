@@ -28,6 +28,7 @@
 #include "mm/pmm.h"
 #include <mm/allocator.h>
 #include <global.h>
+#include <util.h>
 
 struct ARC_AllocMeta {
 	struct ARC_FreelistMeta *physical_mem;
@@ -69,6 +70,8 @@ void *Arc_SlabFree(void *address) {
 		// Could not find the list
 		return NULL;
 	}
+
+	memset(address, 0, heap.list_sizes[list]);
 
 	return Arc_ListFree(&heap.lists[list], address);
 }

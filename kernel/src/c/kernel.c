@@ -52,6 +52,10 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_VFSNode *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
+int empty() {
+	return 0;
+}
+
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;
 
@@ -72,24 +76,22 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	parse_mbi();
 	Arc_InitVMM();
-	Arc_InitSlabAllocator(10);
+	Arc_InitSlabAllocator(100);
 
 	// Input Arc_InitramfsRes should be the starting address of the
 	// initramfs
 	Arc_InitramfsRes = Arc_InitializeResource("/initramfs", 0, 0, (void *)Arc_InitramfsRes);
 
 	Arc_InitializeVFS();
-	Arc_MountVFS(NULL, "initramfs", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
-	Arc_FontFile = Arc_OpenFileVFS("/initramfs/boot/ANTIQUE.F14", 0, 0);
+	struct ARC_VFSNode *mount = Arc_MountVFS(NULL, "initramfs", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
+
+	struct ARC_Reference *ref;
+	Arc_FontFile = Arc_OpenFileVFS("/initramfs/boot/ANTIQUE.F14", 0, 0, &ref);
+	ref->close = empty;
 
 	Arc_InitializeSyscall();
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
-
-	struct stat st;
-	Arc_StatFileVFS("/initramfs/boot/ANTIQUE.F14", &st);
-
-	ARC_DEBUG(INFO, "%ld\n", st.st_mtim.tv_sec);
 
 	// Quickly map framebuffer in
 	uint64_t fb_size = Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8);

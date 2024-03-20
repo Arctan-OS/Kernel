@@ -38,16 +38,35 @@ static const struct ARC_Resource root_res = { .name = "/" };
 static struct ARC_VFSNode vfs_root = { 0 };
 
 int vfs_destroy_node_graph(struct ARC_VFSNode *start, struct ARC_VFSNode *stop) {
-	ARC_DEBUG(INFO, "Destroy node graph from %p to %p\n", start, stop);
+	ARC_DEBUG(INFO, "Destroying node graph from %p to %p\n", start, stop);
+
 	while (start != stop) {
-		void *tmp = start->parent;
+		struct ARC_VFSNode *tmp = start->parent;
+
+		if (start->type == ARC_VFS_N_MOUNT) {
+			ARC_DEBUG(INFO, "Node \"%s\" %p is a mountpoint\n", start->name, start);
+			return -1;
+		}
+
+		struct ARC_VFSNode *prev = start->prev;
+		struct ARC_VFSNode *next = start->next;
+
+		if (prev == NULL) {
+			start->parent->children = next;
+		} else {
+			prev->next = next;
+
+			if (next != NULL) {
+				next->prev = prev;
+			}
+		}
 
 		if (Arc_SlabFree(start) != start) {
 			return 1;
 		}
-
 		start = (struct ARC_VFSNode *)tmp;
 	}
+
 
 	return 0;
 }
@@ -181,53 +200,6 @@ int vfs_create_node_graph(char *filepath, struct ARC_VFSNode **node) {
 	return 1;
 }
 
-int vfs_recursive_free_nodes(struct ARC_VFSNode *head) {
-	int count = 0;
-
-	if (head == NULL) {
-		return count;
-	}
-
-	struct ARC_VFSNode *current_node = head->children;
-
-	while (current_node != NULL) {
-		count += vfs_recursive_free_nodes(current_node);
-		current_node = current_node->next;
-	}
-
-	// Close all references
-	struct ARC_Reference *current_ref = head->resource->references;
-	while (current_ref != NULL) {
-		void *tmp = current_ref->next;
-
-		if (current_ref->close() == 0) {
-			head->resource->ref_count -= 1;
-		}
-
-		Arc_SlabFree(current_ref);
-
-		current_ref = tmp;
-	}
-
-	struct ARC_DriverDef *driver = head->resource->driver;
-
-	if (head->spec != NULL) {
-		Arc_SlabFree(head->spec);
-	}
-
-	if (head->type == ARC_VFS_N_FILE) {
-		Arc_CloseFileVFS(head);
-	} else {
-		Arc_SlabFree(head->name);
-		Arc_SlabFree(head);
-	}
-
-	// Uninitialize the driver
-	driver->uninit(NULL);
-
-	return count;
-}
-
 int Arc_InitializeVFS() {
 	vfs_root.name = (char *)root;
 	vfs_root.children = NULL;
@@ -235,7 +207,8 @@ int Arc_InitializeVFS() {
 	vfs_root.parent = NULL;
 	vfs_root.resource = (struct ARC_Resource *)&root_res;
 	vfs_root.type = ARC_VFS_N_ROOT;
-	vfs_root.spec = NULL;
+	vfs_root.file = NULL;
+	vfs_root.mount = NULL;
 
 	ARC_DEBUG(INFO, "Created VFS root\n");
 
@@ -262,7 +235,6 @@ struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, str
 	node->next = mountpoint->children;
 	node->prev = NULL;
 	mountpoint->children = node;
-	node->resource = resource;
 	node->children = NULL;
 	node->parent = mountpoint;
 
@@ -270,7 +242,8 @@ struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, str
 	mount->fs_type = type;
 	mount->node = node;
 
-	node->spec = (void *)mount;
+	node->mount = mount;
+	node->file = NULL;
 
 	// Preform additional physical mount operations
 	if (resource->driver == NULL || resource->driver->mount == NULL || resource->driver->mount() != 0) {
@@ -284,21 +257,46 @@ struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, str
 	return node;
 }
 
-
 int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 	if (mount->type != ARC_VFS_N_MOUNT) {
-		ARC_DEBUG(INFO, "%s is not a mountpoint\n", mount->name);
+		ARC_DEBUG(ERR, "\"%s\" is not a mountpoint\n", mount->name);
 		return EINVAL;
 	}
 
-	mount->resource->driver->unmount();
+	if (mount->resource->ref_count > 0) {
+		ARC_DEBUG(ERR, "Mount is still in use\n");
+		return EBUSY;
+	}
 
-	vfs_recursive_free_nodes(mount);
+	ARC_DEBUG(INFO, "Unmounting \"%s\" (%p)\n", mount->name, mount);
+
+	// All nodes under this node should be freed, no need to
+	// traverse them
+
+	mount->resource->driver->unmount();
+	mount->resource->driver->uninit(NULL);
+
+	struct ARC_VFSNode *next = mount->next;
+	struct ARC_VFSNode *prev = mount->prev;
+
+	if (prev == NULL) {
+		mount->parent->children = next;
+	} else {
+		prev->next = next;
+
+		if (next != NULL) {
+			next->prev = prev;
+		}
+	}
+
+	Arc_SlabFree(mount->mount);
+	Arc_SlabFree(mount->name);
+	Arc_UninitializeResource(mount->resource);
 
 	return 0;
 }
 
-struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
+struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, void **reference) {
 	ARC_DEBUG(INFO, "Opening %s (%d, %u)\n", filepath, flags, mode);
 
 	// Implement some additional logic for detecting permissions and such
@@ -324,7 +322,8 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
 		// Create the filespec
 		struct ARC_VFSFile *file_spec = (struct ARC_VFSFile *)Arc_SlabAlloc(sizeof(struct ARC_VFSFile));
 		file_spec->node = node;
-		node->spec = (void *)file_spec;
+		node->file = (void *)file_spec;
+		node->mount = mount->mount;
 		node->type = ARC_VFS_N_FILE;
 
 		// Create new resource
@@ -340,6 +339,8 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
 			Arc_SlabFree(file_spec);
 
 			vfs_destroy_node_graph(node, current);
+
+			return NULL;
 		}
 
 		ARC_DEBUG(INFO, "Opened file %s\n", filepath);
@@ -349,6 +350,11 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode) {
 		ARC_DEBUG(INFO, "Failed to traverse node graph (%d)\n", unknown_start);
 		return NULL;
 	}
+
+	*reference = Arc_ReferenceResource(node->resource);
+
+	// TODO: Find a better way to do this
+	mount->resource->ref_count += 1;
 
 	// We can assume we found the file inside of the node tree,
 	// and that node is the node that we are looking for
@@ -387,7 +393,7 @@ int Arc_SeekFileVFS(struct ARC_VFSNode *file, long offset, int whence) {
 	return file->resource->driver->seek(file, offset, whence);
 }
 
-int Arc_CloseFileVFS(struct ARC_VFSNode *file) {
+int Arc_CloseFileVFS(struct ARC_VFSNode *file, void *reference) {
 	if (file->type != ARC_VFS_N_FILE) {
 		ARC_DEBUG(ERR, "Given file is not a file\n");
 		return 1;
@@ -395,40 +401,25 @@ int Arc_CloseFileVFS(struct ARC_VFSNode *file) {
 
 	struct ARC_Resource *res = file->resource;
 
-	if (res->ref_count > 0) {
-		// This resource is still in use, for now do not
-		// close the file
-		ARC_DEBUG(ERR, "VFS Node %p is still in use, cannot close\n", file)
-		return EBUSY;
+	if (res->ref_count > 1) {
+		// Close the given reference, file is still in use
+		// do not close it
+		Arc_UnreferenceResource(reference);
+		file->mount->node->resource->ref_count -= 1;
+
+		return 0;
 	}
 
-	// TODO: Traverse tree upwards, if there are nodes which
-	//       are parents of this file and have no other children
-	//       than this node, remove them as well. Exception: if the
-	//       node is a mountpoint. A mountpoint has to be unmounted
+	file->mount->node->resource->ref_count = 0;
 
 	res->driver->close(file);
 
-	Arc_SlabFree(res->name);
-	Arc_SlabFree(res);
+	Arc_UninitializeResource(res);
 
-	Arc_SlabFree(file->spec);
+	Arc_SlabFree(file->file);
 	Arc_SlabFree(file->name);
 
-	struct ARC_VFSNode *prev = file->prev;
-	struct ARC_VFSNode *next = file->next;
-
-	if (prev == NULL) {
-		file->parent->children = next;
-	} else {
-		prev->next = next;
-
-		if (next != NULL) {
-			next->prev = prev;
-		}
-	}
-
-	Arc_SlabFree(file);
+	vfs_destroy_node_graph(file, &vfs_root);
 
 	return 0;
 }
@@ -445,7 +436,7 @@ int Arc_StatFileVFS(char *filepath, struct stat *stat) {
 	}
 
 	if (err == strlen(filepath)) {
-		struct ARC_VFSFile *spec = (struct ARC_VFSFile *) node->spec;
+		struct ARC_VFSFile *spec = (struct ARC_VFSFile *) node->file;
 		memcpy(stat, &spec->stat, sizeof(struct stat));
 		err = 0;
 	} else {

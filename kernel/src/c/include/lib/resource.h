@@ -77,7 +77,8 @@ struct ARC_Resource {
 
 struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t dri_index, void *args);
 int Arc_UninitializeResource(struct ARC_Resource *resource);
-
+struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource);
+int Arc_UnreferenceResource(struct ARC_Reference *reference);
 struct ARC_DriverDef *Arc_GetDriverDef(int group, uint64_t index);
 
 #endif

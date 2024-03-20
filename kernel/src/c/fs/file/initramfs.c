@@ -108,7 +108,7 @@ int initramfs_open(struct ARC_VFSNode *file, int flags, uint32_t mode) {
 		return EPERM;
 	}
 
-	struct ARC_VFSFile *spec = file->spec;
+	struct ARC_VFSFile *spec = file->file;
 
 	struct ARC_HeaderCPIO *header = Arc_FindFileInitramfs(file->resource->args, file->resource->name);
 
@@ -127,7 +127,7 @@ int initramfs_open(struct ARC_VFSNode *file, int flags, uint32_t mode) {
 }
 
 int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
-	struct ARC_VFSFile *spec = file->spec;
+	struct ARC_VFSFile *spec = file->file;
 
 	if (spec->address == NULL) {
 		return 0;
@@ -158,7 +158,7 @@ int initramfs_write() {
 }
 
 int initramfs_seek(struct ARC_VFSNode *file, long offset, int whence) {
-	struct ARC_VFSFile *spec = file->spec;
+	struct ARC_VFSFile *spec = file->file;
 
 	switch (whence) {
 	case ARC_VFS_SEEK_SET: {
