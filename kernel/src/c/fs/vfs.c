@@ -37,7 +37,10 @@ static const char *root = "\0";
 static const struct ARC_Resource root_res = { .name = "/" };
 static struct ARC_VFSNode vfs_root = { 0 };
 
-int vfs_destroy_node_graph(struct ARC_VFSNode *start, struct ARC_VFSNode *stop) {
+// TODO: Functions like open, close, read, write, etc... need code to
+//       modify the status of the file
+
+static int vfs_destroy_node_graph(struct ARC_VFSNode *start, struct ARC_VFSNode *stop) {
 	ARC_DEBUG(INFO, "Destroying node graph from %p to %p\n", start, stop);
 
 	while (start != stop) {
@@ -64,16 +67,17 @@ int vfs_destroy_node_graph(struct ARC_VFSNode *start, struct ARC_VFSNode *stop) 
 		if (Arc_SlabFree(start) != start) {
 			return 1;
 		}
+
 		start = (struct ARC_VFSNode *)tmp;
 	}
-
 
 	return 0;
 }
 
-size_t vfs_traverse_node_graph(char *filepath, struct ARC_VFSNode **_mount, struct ARC_VFSNode **_node, char **_mount_path) {
-	if (filepath == NULL) {
-		ARC_DEBUG(ERR, "Given filepath is NULL\n");
+// TODO: Resolve links
+static size_t vfs_traverse_node_graph(char *filepath, struct ARC_VFSNode **_mount, struct ARC_VFSNode **_node, char **_mount_path) {
+	if (filepath == NULL || _mount == NULL) {
+		ARC_DEBUG(ERR, "Either filepath or _node are NULL, cannot continue\n");
 		return -1;
 	}
 
@@ -91,8 +95,13 @@ size_t vfs_traverse_node_graph(char *filepath, struct ARC_VFSNode **_mount, stru
 
 			if (node->type == ARC_VFS_N_MOUNT) {
 				// Keep track of mountpoint
-				*_mount = node;
-				*_mount_path = folder;
+				if (_mount != NULL) {
+					*_mount = node;
+				}
+
+				if (_mount_path != NULL) {
+					*_mount_path = folder;
+				}
 			}
 
 			// Interpret dot, dotdot dirs
@@ -131,7 +140,7 @@ size_t vfs_traverse_node_graph(char *filepath, struct ARC_VFSNode **_mount, stru
 	return max;
 }
 
-int vfs_create_node_graph(char *filepath, struct ARC_VFSNode **node) {
+static int vfs_create_node_graph(char *filepath, struct ARC_VFSNode **node) {
 	if (*node == NULL) {
 		ARC_DEBUG(ERR, "Cannot create node graph, given node is NULL\n");
 		return 1;
@@ -333,6 +342,8 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, vo
 		node->resource = nres;
 		int err = 0;
 		if (nres->driver == NULL || nres->driver->open == NULL || (err = nres->driver->open(node, flags, mode)) != 0) {
+			// TODO: Check for O_CREAT, if 1: make the file
+
 			ARC_DEBUG(ERR, "Failed to open file (%p %p %d)\n", nres->driver, nres->driver->open, err);
 
 			Arc_UninitializeResource(nres);
@@ -350,6 +361,7 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, vo
 		ARC_DEBUG(INFO, "Failed to traverse node graph (%d)\n", unknown_start);
 		return NULL;
 	}
+
 
 	*reference = Arc_ReferenceResource(node->resource);
 
@@ -449,4 +461,83 @@ int Arc_StatFileVFS(char *filepath, struct stat *stat) {
 	}
 
 	return err;
+}
+
+// TODO: Test
+int Arc_VFSCreate(char *path, size_t unknown, uint32_t mode, int type) {
+	if (*path != '/') {
+		ARC_DEBUG(ERR, "Path is no absolute\n");
+		return 1;
+	}
+
+	ARC_DEBUG(INFO, "Creating \"%s\" (%d %d)\n", path, mode, path);
+
+	struct ARC_VFSNode *node = NULL;
+	struct ARC_VFSNode *last_known = NULL;
+	struct ARC_VFSNode *mount = NULL;
+	char *mount_path = NULL;
+
+	if (unknown < 0) {
+		// Not an error, traverse
+		unknown = vfs_traverse_node_graph(path, &mount, &node, &mount_path);
+	}
+
+	if (unknown < 0) {
+		// Now we have an error
+	}
+
+	last_known = node;
+
+	if (unknown < strlen(path) && vfs_create_node_graph(path + unknown, &node) != 0) {
+		// Failed to create node graph
+	}
+
+	node->type = type;
+
+	struct ARC_Resource *res = mount->resource;
+
+	switch (type) {
+	case ARC_VFS_N_FILE: {
+		struct ARC_VFSFile *spec = (struct ARC_VFSFile *)Arc_SlabAlloc(sizeof(struct ARC_VFSFile));
+
+		if (spec == NULL) {
+			vfs_destroy_node_graph(node, &vfs_root);
+			return 1;
+		}
+
+		spec->node = node;
+		node->mount = mount->mount;
+		node->file = spec;
+
+		// Create new resource
+		struct ARC_Resource *nres = Arc_InitializeResource(mount_path, res->dri_group, res->dri_index, res->args);
+
+		node->resource = nres;
+
+		break;
+	}
+
+	case ARC_VFS_N_DIR: {
+		break;
+	}
+	}
+
+	// Ask the mount driver to create the file for us
+	if (res == NULL || res->driver == NULL || res->driver->create == NULL || res->driver->create(path, mode) != 0) {
+		// Fail
+		vfs_destroy_node_graph(node, last_known);
+		return 1;
+	}
+
+	return 0;
+}
+
+int Arc_VFSRemove(char *path) {
+	// TODO: Implement
+	return 0;
+}
+
+int Arc_VFSLink(char *a, char *b) {
+	// TODO: Implement
+	return 0;
 }

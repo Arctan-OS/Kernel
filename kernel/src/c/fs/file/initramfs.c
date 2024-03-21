@@ -216,7 +216,10 @@ ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.seek = initramfs_seek,
 	.stat = initramfs_stat,
 	.mount = initramfs_empty,
-	.unmount = initramfs_empty
+	.unmount = initramfs_empty,
+	.create = initramfs_write,
+	.remove = initramfs_write,
+	.link = initramfs_write,
 };
 
 ARC_REGISTER_DRIVER(0, initramfs_file) = {
@@ -230,5 +233,8 @@ ARC_REGISTER_DRIVER(0, initramfs_file) = {
 	.seek = initramfs_seek,
 	.stat = initramfs_empty,
 	.mount = initramfs_empty,
-	.unmount = initramfs_empty
+	.unmount = initramfs_empty,
+	.create = initramfs_write,
+	.remove = initramfs_write,
+	.link = initramfs_write,
 };

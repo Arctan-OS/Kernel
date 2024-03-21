@@ -86,7 +86,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	struct ARC_VFSNode *mount = Arc_MountVFS(NULL, "initramfs", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
 
 	struct ARC_Reference *ref;
-	Arc_FontFile = Arc_OpenFileVFS("/initramfs/boot/ANTIQUE.F14", 0, 0, &ref);
+	Arc_FontFile = Arc_OpenFileVFS("/initramfs/boot/CGA.F14", 0, 0, &ref);
 	ref->close = empty;
 
 	Arc_InitializeSyscall();

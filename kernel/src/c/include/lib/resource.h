@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// TODO: Split this up
 struct ARC_DriverDef {
 	uint64_t index;
 	int (*open)(struct ARC_VFSNode *file, int flags, uint32_t mode); // FS-specific (filepath = resource->name)
@@ -41,6 +42,9 @@ struct ARC_DriverDef {
 	int (*stat)(struct ARC_VFSNode *mount, char *filename, struct stat *stat);
 	int (*mount)();
 	int (*unmount)();
+	int (*create)(char *path, uint32_t mode);
+	int (*remove)(char *path);
+	int (*link)(struct ARC_VFSNode *a, struct ARC_VFSNode *b);
 	int (*init)(void *args);
 	int (*uninit)(void *args);
 };
