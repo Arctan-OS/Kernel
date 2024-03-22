@@ -31,23 +31,30 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// TODO: Split this up
+#define ARC_DRIVER_IDEN_SUPER 0x5245505553 // "SUPER" little endian
+
 struct ARC_DriverDef {
 	uint64_t index;
+	// Specific
+	uint64_t identifer;
+	void *driver;
+	// Generic
+	int (*init)(void *args);
+	int (*uninit)(void *args);
 	int (*open)(struct ARC_VFSNode *file, int flags, uint32_t mode); // FS-specific (filepath = resource->name)
 	int (*write)(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
 	int (*read)(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file);
 	int (*close)(struct ARC_VFSNode *file); // FS-specific
 	int (*seek)(struct ARC_VFSNode *file, long offset, int whence);
 	int (*stat)(struct ARC_VFSNode *mount, char *filename, struct stat *stat);
-	int (*mount)();
-	int (*unmount)();
+}__attribute__((packed));
+
+struct ARC_SuperDriverDef {
 	int (*create)(char *path, uint32_t mode);
 	int (*remove)(char *path);
+	int (*rename)(char *a, char *b);
 	int (*link)(struct ARC_VFSNode *a, struct ARC_VFSNode *b);
-	int (*init)(void *args);
-	int (*uninit)(void *args);
-};
+}__attribute__((packed));
 
 #define ARC_REGISTER_DRIVER(group, name) \
 	static struct ARC_DriverDef __driver__##name __attribute__((used, section(".drivers."#group), aligned(1)))

@@ -254,13 +254,6 @@ struct ARC_VFSNode *Arc_MountVFS(struct ARC_VFSNode *mountpoint, char *name, str
 	node->mount = mount;
 	node->file = NULL;
 
-	// Preform additional physical mount operations
-	if (resource->driver == NULL || resource->driver->mount == NULL || resource->driver->mount() != 0) {
-		ARC_DEBUG(ERR, "Failed to mount \"%s\"\n", name);
-		// TODO: Cleanup
-		return NULL;
-	}
-
 	ARC_DEBUG(INFO, "Mounted %s on %s (0x%"PRIX64") type %d\n", name, mountpoint->resource->name, resource, type);
 
 	return node;
@@ -282,9 +275,6 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 	// All nodes under this node should be freed, no need to
 	// traverse them
 
-	mount->resource->driver->unmount();
-	mount->resource->driver->uninit(NULL);
-
 	struct ARC_VFSNode *next = mount->next;
 	struct ARC_VFSNode *prev = mount->prev;
 
@@ -301,6 +291,7 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 	Arc_SlabFree(mount->mount);
 	Arc_SlabFree(mount->name);
 	Arc_UninitializeResource(mount->resource);
+	Arc_SlabFree(mount);
 
 	return 0;
 }
@@ -510,7 +501,7 @@ int Arc_VFSCreate(char *path, size_t unknown, uint32_t mode, int type) {
 		node->file = spec;
 
 		// Create new resource
-		struct ARC_Resource *nres = Arc_InitializeResource(mount_path, res->dri_group, res->dri_index, res->args);
+		struct ARC_Resource *nres = Arc_InitializeResource(mount_path, res->dri_group, res->dri_index + 1, res->args);
 
 		node->resource = nres;
 
@@ -522,14 +513,28 @@ int Arc_VFSCreate(char *path, size_t unknown, uint32_t mode, int type) {
 	}
 	}
 
-	// Ask the mount driver to create the file for us
-	if (res == NULL || res->driver == NULL || res->driver->create == NULL || res->driver->create(path, mode) != 0) {
-		// Fail
-		vfs_destroy_node_graph(node, last_known);
-		return 1;
+	if (res == NULL || res->driver == NULL) {
+		goto epic_fail;
+	}
+
+	struct ARC_DriverDef *def = res->driver;
+
+	if (def->identifer != ARC_DRIVER_IDEN_SUPER || def->driver == NULL) {
+		goto epic_fail;
+	}
+
+	struct ARC_SuperDriverDef *super = (struct ARC_SuperDriverDef *)def->driver;
+
+	if (super->create == NULL || super->create(path, mode) != 0) {
+		goto epic_fail;
 	}
 
 	return 0;
+
+	epic_fail:;
+	// Fail
+	vfs_destroy_node_graph(node, last_known);
+	return 1;
 }
 
 int Arc_VFSRemove(char *path) {
@@ -538,6 +543,11 @@ int Arc_VFSRemove(char *path) {
 }
 
 int Arc_VFSLink(char *a, char *b) {
+	// TODO: Implement
+	return 0;
+}
+
+int Arc_VFSRename(char *a, char *b) {
 	// TODO: Implement
 	return 0;
 }

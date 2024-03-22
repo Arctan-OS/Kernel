@@ -205,6 +205,13 @@ int initramfs_stat(struct ARC_VFSNode *mount, char *filename, struct stat *stat)
 	return initramfs_internal_stat(header, stat);
 }
 
+struct ARC_SuperDriverDef initramfs_super_spec = {
+	.create = initramfs_empty,
+	.remove = initramfs_empty,
+	.link = initramfs_empty,
+	.rename = initramfs_empty,
+};
+
 ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.index = 0,
 	.init = initramfs_empty,
@@ -215,11 +222,8 @@ ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.write = initramfs_write,
 	.seek = initramfs_seek,
 	.stat = initramfs_stat,
-	.mount = initramfs_empty,
-	.unmount = initramfs_empty,
-	.create = initramfs_write,
-	.remove = initramfs_write,
-	.link = initramfs_write,
+	.identifer = ARC_DRIVER_IDEN_SUPER,
+	.driver = (void *)&initramfs_super_spec,
 };
 
 ARC_REGISTER_DRIVER(0, initramfs_file) = {
@@ -232,9 +236,4 @@ ARC_REGISTER_DRIVER(0, initramfs_file) = {
 	.write = initramfs_write,
 	.seek = initramfs_seek,
 	.stat = initramfs_empty,
-	.mount = initramfs_empty,
-	.unmount = initramfs_empty,
-	.create = initramfs_write,
-	.remove = initramfs_write,
-	.link = initramfs_write,
 };
