@@ -103,14 +103,24 @@ int initramfs_empty() {
 	return 0;
 }
 
-int initramfs_open(struct ARC_VFSNode *file, int flags, uint32_t mode) {
+int initramfs_init(struct ARC_Resource *res, void *args) {
+	res->driver_state = args;
+
+	return 0;
+}
+
+int initramfs_uninit() {
+	return 0;
+}
+
+int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
 	if (Arc_CheckCurPerms(mode) != 0) {
 		return EPERM;
 	}
 
-	struct ARC_VFSFile *spec = file->file;
+	struct ARC_VFSFile *spec = res->vfs_state;
 
-	struct ARC_HeaderCPIO *header = Arc_FindFileInitramfs(file->resource->args, file->resource->name);
+	struct ARC_HeaderCPIO *header = Arc_FindFileInitramfs(res->driver_state, path);
 
 	if (header == NULL) {
 		ARC_DEBUG(ERR, "Failed to open file\n");
@@ -126,8 +136,8 @@ int initramfs_open(struct ARC_VFSNode *file, int flags, uint32_t mode) {
 	return 0;
 }
 
-int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
-	struct ARC_VFSFile *spec = file->file;
+int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Resource *res) {
+	struct ARC_VFSFile *spec = res->vfs_state;
 
 	if (spec->address == NULL) {
 		return 0;
@@ -157,8 +167,8 @@ int initramfs_write() {
 	return 1;
 }
 
-int initramfs_seek(struct ARC_VFSNode *file, long offset, int whence) {
-	struct ARC_VFSFile *spec = file->file;
+int initramfs_seek(struct ARC_Resource *res, long offset, int whence) {
+	struct ARC_VFSFile *spec = res->vfs_state;
 
 	switch (whence) {
 	case ARC_VFS_SEEK_SET: {
@@ -191,12 +201,12 @@ int initramfs_seek(struct ARC_VFSNode *file, long offset, int whence) {
 	return 0;
 }
 
-int initramfs_stat(struct ARC_VFSNode *mount, char *filename, struct stat *stat) {
-	if (mount == NULL || filename == NULL || stat == NULL) {
+int initramfs_stat(struct ARC_Resource *res, char *filename, struct stat *stat) {
+	if (res == NULL || filename == NULL || stat == NULL) {
 		return 1;
 	}
 
-	struct ARC_HeaderCPIO *header = Arc_FindFileInitramfs(mount->resource->args, filename);
+	struct ARC_HeaderCPIO *header = Arc_FindFileInitramfs(res->driver_state, filename);
 
 	if (header == NULL) {
 		return 1;
@@ -210,30 +220,29 @@ struct ARC_SuperDriverDef initramfs_super_spec = {
 	.remove = initramfs_empty,
 	.link = initramfs_empty,
 	.rename = initramfs_empty,
+	.stat = initramfs_stat,
 };
 
 ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.index = 0,
-	.init = initramfs_empty,
-	.uninit = initramfs_empty,
+	.init = initramfs_init,
+	.uninit = initramfs_uninit,
 	.open = initramfs_open,
 	.close = initramfs_empty,
 	.read = initramfs_read,
 	.write = initramfs_write,
 	.seek = initramfs_seek,
-	.stat = initramfs_stat,
 	.identifer = ARC_DRIVER_IDEN_SUPER,
 	.driver = (void *)&initramfs_super_spec,
 };
 
 ARC_REGISTER_DRIVER(0, initramfs_file) = {
 	.index = 1,
-	.init = initramfs_empty,
-	.uninit = initramfs_empty,
+	.init = initramfs_init,
+	.uninit = initramfs_uninit,
 	.open = initramfs_open,
 	.close = initramfs_empty,
 	.read = initramfs_read,
 	.write = initramfs_write,
 	.seek = initramfs_seek,
-	.stat = initramfs_empty,
 };

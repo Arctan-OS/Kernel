@@ -28,5 +28,6 @@
 
 int Arc_CheckCurPerms(int perms) {
 	// You can do whatever you want
+	(void)perms;
 	return 0;
 }

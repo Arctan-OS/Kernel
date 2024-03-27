@@ -59,12 +59,11 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 	struct ARC_DriverDef *def = Arc_GetDriverDef(resource->dri_group, resource->dri_index);
 
 	resource->driver = def;
-	resource->args = args;
 	resource->dri_group = dri_group;
 	resource->dri_index = dri_index;
 
 	if (def != NULL) {
-		def->init(args);
+		def->init(resource, args);
 	} else {
 		ARC_DEBUG(INFO, "Driver has no initialization function\n")
 	}
@@ -76,7 +75,6 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 	ARC_DEBUG(INFO, "Uninitializing resource: %s\n", resource->name);
 
 	// Call driver uninitialization function from driver table
-	// TODO: Figure out who owns resource->args
 
 	struct ARC_Reference *current_ref = resource->references;
 	while (current_ref != NULL) {
@@ -91,7 +89,7 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 		current_ref = tmp;
 	}
 
-	resource->driver->uninit(resource->args);
+	resource->driver->uninit(resource);
 
 	Arc_SlabFree(resource->name);
 	Arc_SlabFree(resource);

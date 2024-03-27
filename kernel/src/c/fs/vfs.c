@@ -328,11 +328,14 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, vo
 
 		// Create new resource
 		struct ARC_Resource *res = mount->resource;
-		struct ARC_Resource *nres = Arc_InitializeResource(mount_path, res->dri_group, res->dri_index, res->args);
+		struct ARC_Resource *nres = Arc_InitializeResource(mount_path, res->dri_group, res->dri_index, res->driver_state);
 
 		node->resource = nres;
 		int err = 0;
-		if (nres->driver == NULL || nres->driver->open == NULL || (err = nres->driver->open(node, flags, mode)) != 0) {
+
+		nres->vfs_state = (void *)file_spec;
+
+		if (nres->driver == NULL || nres->driver->open == NULL || (err = nres->driver->open(nres, mount_path, flags, mode)) != 0) {
 			// TODO: Check for O_CREAT, if 1: make the file
 
 			ARC_DEBUG(ERR, "Failed to open file (%p %p %d)\n", nres->driver, nres->driver->open, err);
@@ -353,7 +356,6 @@ struct ARC_VFSNode *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, vo
 		return NULL;
 	}
 
-
 	*reference = Arc_ReferenceResource(node->resource);
 
 	// TODO: Find a better way to do this
@@ -373,7 +375,9 @@ int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode 
 		return 0;
 	}
 
-	return file->resource->driver->read(buffer, size, count, file);
+	file->resource->vfs_state = (void *)file->file;
+
+	return file->resource->driver->read(buffer, size, count, file->resource);
 }
 
 int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *file) {
@@ -385,7 +389,9 @@ int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode
 		return 0;
 	}
 
-	return file->resource->driver->write(buffer, size, count, file);
+	file->resource->vfs_state = (void *)file->file;
+
+	return file->resource->driver->write(buffer, size, count, file->resource);
 }
 
 int Arc_SeekFileVFS(struct ARC_VFSNode *file, long offset, int whence) {
@@ -393,7 +399,9 @@ int Arc_SeekFileVFS(struct ARC_VFSNode *file, long offset, int whence) {
 		return 1;
 	}
 
-	return file->resource->driver->seek(file, offset, whence);
+	file->resource->vfs_state = (void *)file->file;
+
+	return file->resource->driver->seek(file->resource, offset, whence);
 }
 
 int Arc_CloseFileVFS(struct ARC_VFSNode *file, void *reference) {
@@ -403,6 +411,7 @@ int Arc_CloseFileVFS(struct ARC_VFSNode *file, void *reference) {
 	}
 
 	struct ARC_Resource *res = file->resource;
+	res->vfs_state = (void *)file->file;
 
 	if (res->ref_count > 1) {
 		// Close the given reference, file is still in use
@@ -415,7 +424,7 @@ int Arc_CloseFileVFS(struct ARC_VFSNode *file, void *reference) {
 
 	file->mount->node->resource->ref_count = 0;
 
-	res->driver->close(file);
+	res->driver->close(file->resource);
 
 	Arc_UninitializeResource(res);
 
@@ -448,7 +457,9 @@ int Arc_StatFileVFS(char *filepath, struct stat *stat) {
 			return -1;
 		}
 
-		err = mount->resource->driver->stat(mount, filepath, stat);
+		struct ARC_SuperDriverDef *super = mount->resource->driver->driver;
+
+		err = super->stat(mount->resource, filepath, stat);
 	}
 
 	return err;
@@ -501,7 +512,7 @@ int Arc_VFSCreate(char *path, size_t unknown, uint32_t mode, int type) {
 		node->file = spec;
 
 		// Create new resource
-		struct ARC_Resource *nres = Arc_InitializeResource(mount_path, res->dri_group, res->dri_index + 1, res->args);
+		struct ARC_Resource *nres = Arc_InitializeResource(mount_path, res->dri_group, res->dri_index + 1, res->driver_state);
 
 		node->resource = nres;
 
@@ -539,15 +550,20 @@ int Arc_VFSCreate(char *path, size_t unknown, uint32_t mode, int type) {
 
 int Arc_VFSRemove(char *path) {
 	// TODO: Implement
+	(void)path;
 	return 0;
 }
 
 int Arc_VFSLink(char *a, char *b) {
 	// TODO: Implement
+	(void)a;
+	(void)b;
 	return 0;
 }
 
 int Arc_VFSRename(char *a, char *b) {
 	// TODO: Implement
+	(void)a;
+	(void)b;
 	return 0;
 }
