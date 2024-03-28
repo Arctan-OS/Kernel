@@ -49,7 +49,7 @@
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
 struct ARC_Resource *Arc_InitramfsRes = NULL;
-struct ARC_VFSNode *Arc_FontFile = NULL;
+struct ARC_VFSFile *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
 int empty() {
@@ -80,10 +80,11 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	// Input Arc_InitramfsRes should be the starting address of the
 	// initramfs
-	Arc_InitramfsRes = Arc_InitializeResource("/initramfs", 0, 0, (void *)Arc_InitramfsRes);
+	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)Arc_InitramfsRes);
 
 	Arc_InitializeVFS();
-	Arc_MountVFS(NULL, "initramfs", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
+	Arc_MountVFS("/", "initramfs", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
+
 
 	struct ARC_Reference *ref = NULL;
 	Arc_FontFile = Arc_OpenFileVFS("/initramfs/boot/ANTIQUE.F14", 0, 0, &ref);

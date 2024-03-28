@@ -25,7 +25,7 @@
  * @DESCRIPTION
 */
 #include <abi-bits/errno.h>
-#include "lib/perms.h"
+#include <lib/perms.h>
 #include <fs/vfs.h>
 #include <mm/allocator.h>
 #include <lib/resource.h>
@@ -53,7 +53,12 @@ struct ARC_HeaderCPIO {
 	uint16_t filesize[2];
 }__attribute__((packed));
 
-void *Arc_FindFileInitramfs(void *fs, char *filename) {
+struct internal_driver_state {
+	struct ARC_Resource *resource;
+	void *initramfs_base;
+};
+
+void *initramfs_find_file(void *fs, char *filename) {
 	if (fs == NULL || filename == NULL) {
 		ARC_DEBUG(ERR, "Either fs %p or filename %p is NULL\n", fs, filename);
 		return NULL;
@@ -104,23 +109,45 @@ int initramfs_empty() {
 }
 
 int initramfs_init(struct ARC_Resource *res, void *args) {
-	res->driver_state = args;
+	struct internal_driver_state *state = (struct internal_driver_state *)Arc_SlabAlloc(sizeof(struct internal_driver_state));
+
+	state->initramfs_base = args;
+	state->resource = res;
+	res->driver_state = state;
 
 	return 0;
 }
 
-int initramfs_uninit() {
+int initramfs_file_init(struct ARC_Resource *res, void *args) {
+	struct internal_driver_state *org_state = (struct internal_driver_state *)args;
+	struct internal_driver_state *state = (struct internal_driver_state *)Arc_SlabAlloc(sizeof(struct internal_driver_state));
+
+	state->initramfs_base = org_state->initramfs_base;
+	state->resource = res;
+	res->driver_state = state;
+
+	return 0;
+}
+
+int initramfs_uninit(struct ARC_Resource *res) {
+	Arc_SlabFree(res->driver_state);
+
 	return 0;
 }
 
 int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
+	if (res == NULL) {
+		return EINVAL;
+	}
+
 	if (Arc_CheckCurPerms(mode) != 0) {
 		return EPERM;
 	}
 
 	struct ARC_VFSFile *spec = res->vfs_state;
 
-	struct ARC_HeaderCPIO *header = Arc_FindFileInitramfs(res->driver_state, path);
+	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
+	struct ARC_HeaderCPIO *header = initramfs_find_file(state->initramfs_base, path);
 
 	if (header == NULL) {
 		ARC_DEBUG(ERR, "Failed to open file\n");
@@ -128,8 +155,9 @@ int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint32_t mod
 		return 1;
 	}
 
+	state->initramfs_base = (void *)header;
+
 	spec->size = (header->filesize[0] << 16) | header->filesize[1];
-	spec->address = (void *)header;
 
 	initramfs_internal_stat(header, &spec->stat);
 
@@ -137,15 +165,22 @@ int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint32_t mod
 }
 
 int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Resource *res) {
-	struct ARC_VFSFile *spec = res->vfs_state;
-
-	if (spec->address == NULL) {
+	if (res == NULL || res->driver_state == NULL) {
 		return 0;
 	}
 
-	struct ARC_HeaderCPIO *header = (struct ARC_HeaderCPIO *)spec->address;
+	struct ARC_VFSFile *spec = res->vfs_state;
 
-	uint8_t *data = (uint8_t *)(spec->address + ARC_DATA_OFFSET(header));
+	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
+	void *address = state->initramfs_base;
+
+	if (address == NULL) {
+		return 0;
+	}
+
+	struct ARC_HeaderCPIO *header = (struct ARC_HeaderCPIO *)address;
+
+	uint8_t *data = (uint8_t *)(address + ARC_DATA_OFFSET(header));
 
 	// Copy file data to buffer
 	for (size_t i = 0; i < size * count; i++) {
@@ -206,7 +241,9 @@ int initramfs_stat(struct ARC_Resource *res, char *filename, struct stat *stat) 
 		return 1;
 	}
 
-	struct ARC_HeaderCPIO *header = Arc_FindFileInitramfs(res->driver_state, filename);
+	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
+
+	struct ARC_HeaderCPIO *header = initramfs_find_file(state->initramfs_base, filename);
 
 	if (header == NULL) {
 		return 1;
@@ -227,7 +264,7 @@ ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.index = 0,
 	.init = initramfs_init,
 	.uninit = initramfs_uninit,
-	.open = initramfs_open,
+	.open = initramfs_empty,
 	.close = initramfs_empty,
 	.read = initramfs_read,
 	.write = initramfs_write,
@@ -238,7 +275,7 @@ ARC_REGISTER_DRIVER(0, initramfs_super) = {
 
 ARC_REGISTER_DRIVER(0, initramfs_file) = {
 	.index = 1,
-	.init = initramfs_init,
+	.init = initramfs_file_init,
 	.uninit = initramfs_uninit,
 	.open = initramfs_open,
 	.close = initramfs_empty,

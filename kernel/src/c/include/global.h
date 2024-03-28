@@ -80,6 +80,6 @@
 extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta Arc_MainTerm;
 extern struct ARC_Resource *Arc_InitramfsRes;
-extern struct ARC_VFSNode *Arc_FontFile;
+extern struct ARC_VFSFile *Arc_FontFile;
 
 #endif

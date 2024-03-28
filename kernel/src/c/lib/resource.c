@@ -40,7 +40,7 @@ extern struct ARC_DriverDef __DRIVERS2_END[];
 extern struct ARC_DriverDef __DRIVERS3_END[];
 
 struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t dri_index, void *args) {
-	ARC_DEBUG(INFO, "Initializing resource \"%s\"\n", name);
+	ARC_DEBUG(INFO, "Initializing resource \"%s\" (%d, %d)\n", name, dri_group, dri_index);
 
 	struct ARC_Resource *resource = (struct ARC_Resource *)Arc_SlabAlloc(sizeof(struct ARC_Resource));
 
@@ -56,7 +56,7 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 	// Set open, close, read, write, and seek pointers
 	// Call driver initialization function from driver table
 
-	struct ARC_DriverDef *def = Arc_GetDriverDef(resource->dri_group, resource->dri_index);
+	struct ARC_DriverDef *def = Arc_GetDriverDef(dri_group, dri_index);
 
 	resource->driver = def;
 	resource->dri_group = dri_group;

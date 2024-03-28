@@ -4,11 +4,20 @@
 
 int strcmp(char *a, char *b) {
 	int sum = 0;
+	size_t max = strlen(b);
+
 	while (*a != 0) {
-		sum += *a - *b;
+		char c = 0;
+
+		if (max > 0) {
+			c = *b;
+			b++;
+		}
+
+		sum += *a - c;
 
 		a++;
-		b++;
+		max--;
 	}
 
 	return sum;
