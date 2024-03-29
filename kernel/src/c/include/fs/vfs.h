@@ -35,6 +35,7 @@
 #define ARC_VFS_N_DIR   2
 #define ARC_VFS_N_MOUNT 3
 #define ARC_VFS_N_ROOT  4
+#define ARC_VFS_N_LINK  5
 
 #define ARC_VFS_FS_EXT2      1
 #define ARC_VFS_FS_INITRAMFS 2
@@ -51,8 +52,6 @@
 struct ARC_VFSFile {
 	/// Current offset into the file.
 	size_t offset;
-	/// Size of the file.
-	size_t size;
 	/// Pointer to the parent VFS node.
 	struct ARC_VFSNode *node;
 	/// Stat
@@ -82,6 +81,8 @@ struct ARC_VFSNode {
 	char *name;
 	// Stat
 	struct stat stat;
+	/// Pointer to the link.
+	struct ARC_VFSNode *link;
 	/// Pointer to the mount structure this node is or is under.
 	struct ARC_VFSMount *mount;
 	/// Pointer to the parent of the current node.
@@ -195,5 +196,10 @@ int Arc_CloseFileVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference);
  * @return zero on success.
  * */
 int Arc_StatFileVFS(char *filepath, struct stat *stat);
+
+int Arc_VFSCreate(char *filepath, uint32_t mode, int type);
+int Arc_VFSRemove(char *filepath);
+int Arc_VFSLink(char *a, char *b);
+int Arc_VFSRename(char *a, char *b);
 
 #endif

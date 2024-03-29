@@ -58,7 +58,7 @@ struct internal_driver_state {
 	void *initramfs_base;
 };
 
-void *initramfs_find_file(void *fs, char *filename) {
+static void *initramfs_find_file(void *fs, char *filename) {
 	if (fs == NULL || filename == NULL) {
 		ARC_DEBUG(ERR, "Either fs %p or filename %p is NULL\n", fs, filename);
 		return NULL;
@@ -89,7 +89,7 @@ void *initramfs_find_file(void *fs, char *filename) {
 	return NULL;
 }
 
-int initramfs_internal_stat(struct ARC_HeaderCPIO *header, struct stat *stat) {
+static int initramfs_internal_stat(struct ARC_HeaderCPIO *header, struct stat *stat) {
 	stat->st_uid = header->uid;
 	stat->st_gid = header->gid;
 	stat->st_mode = header->mode;
@@ -104,11 +104,11 @@ int initramfs_internal_stat(struct ARC_HeaderCPIO *header, struct stat *stat) {
 	return 0;
 }
 
-int initramfs_empty() {
+static int initramfs_empty() {
 	return 0;
 }
 
-int initramfs_init(struct ARC_Resource *res, void *args) {
+static int initramfs_init(struct ARC_Resource *res, void *args) {
 	struct internal_driver_state *state = (struct internal_driver_state *)Arc_SlabAlloc(sizeof(struct internal_driver_state));
 
 	state->initramfs_base = args;
@@ -118,7 +118,7 @@ int initramfs_init(struct ARC_Resource *res, void *args) {
 	return 0;
 }
 
-int initramfs_file_init(struct ARC_Resource *res, void *args) {
+static int initramfs_file_init(struct ARC_Resource *res, void *args) {
 	struct internal_driver_state *org_state = (struct internal_driver_state *)args;
 	struct internal_driver_state *state = (struct internal_driver_state *)Arc_SlabAlloc(sizeof(struct internal_driver_state));
 
@@ -129,13 +129,13 @@ int initramfs_file_init(struct ARC_Resource *res, void *args) {
 	return 0;
 }
 
-int initramfs_uninit(struct ARC_Resource *res) {
+static int initramfs_uninit(struct ARC_Resource *res) {
 	Arc_SlabFree(res->driver_state);
 
 	return 0;
 }
 
-int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
+static int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
 	if (res == NULL) {
 		return EINVAL;
 	}
@@ -157,14 +157,12 @@ int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint32_t mod
 
 	state->initramfs_base = (void *)header;
 
-	spec->size = (header->filesize[0] << 16) | header->filesize[1];
-
 	initramfs_internal_stat(header, &spec->stat);
 
 	return 0;
 }
 
-int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Resource *res) {
+static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Resource *res) {
 	if (res == NULL || res->driver_state == NULL) {
 		return 0;
 	}
@@ -186,7 +184,7 @@ int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Resource 
 	for (size_t i = 0; i < size * count; i++) {
 		uint8_t value = 0;
 
-		if (i + spec->offset < spec->size) {
+		if (i + spec->offset < spec->node->stat.st_size) {
 			value = *((uint8_t *)(data + spec->offset + i));
 		}
 
@@ -196,18 +194,25 @@ int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Resource 
 	return count;
 }
 
-int initramfs_write() {
+static int initramfs_write() {
 	ARC_DEBUG(ERR, "Read only file system\n");
 
 	return 1;
 }
 
-int initramfs_seek(struct ARC_Resource *res, long offset, int whence) {
+static int initramfs_seek(struct ARC_Resource *res, long offset, int whence) {
+	if (res == NULL) {
+		return 1;
+	}
+
 	struct ARC_VFSFile *spec = res->vfs_state;
+	size_t size = spec->node->stat.st_size;
 
 	switch (whence) {
 	case ARC_VFS_SEEK_SET: {
-		spec->offset = offset;
+		if (offset < size) {
+			spec->offset = offset;
+		}
 
 		return 0;
 	}
@@ -215,15 +220,15 @@ int initramfs_seek(struct ARC_Resource *res, long offset, int whence) {
 	case ARC_VFS_SEEK_CUR: {
 		spec->offset += offset;
 
-		if (spec->offset >= spec->size) {
-			spec->offset = spec->size;
+		if (spec->offset >= size) {
+			spec->offset = size;
 		}
 
 		return 0;
 	}
 
 	case ARC_VFS_SEEK_END: {
-		spec->offset = spec->size - offset - 1;
+		spec->offset = size - offset - 1;
 
 		if (spec->offset < 0) {
 			spec->offset = 0;
@@ -236,7 +241,7 @@ int initramfs_seek(struct ARC_Resource *res, long offset, int whence) {
 	return 0;
 }
 
-int initramfs_stat(struct ARC_Resource *res, char *filename, struct stat *stat) {
+static int initramfs_stat(struct ARC_Resource *res, char *filename, struct stat *stat) {
 	if (res == NULL || filename == NULL || stat == NULL) {
 		return 1;
 	}

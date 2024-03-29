@@ -72,6 +72,11 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 }
 
 int Arc_UninitializeResource(struct ARC_Resource *resource) {
+	if (resource == NULL) {
+		ARC_DEBUG(ERR, "Resource is NULL, cannot uninitialize\n");
+		return 1;
+	}
+
 	ARC_DEBUG(INFO, "Uninitializing resource: %s\n", resource->name);
 
 	// Call driver uninitialization function from driver table
@@ -98,6 +103,11 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 }
 
 struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource) {
+	if (resource == NULL) {
+		ARC_DEBUG(ERR, "Resource is NULL, cannot reference\n");
+		return NULL;
+	}
+
 	// Lock reference lock
 
 	struct ARC_Reference *ref = (struct ARC_Reference *)Arc_SlabAlloc(sizeof(struct ARC_Reference));
@@ -122,6 +132,7 @@ reference_fall:
 
 int Arc_UnreferenceResource(struct ARC_Reference *reference) {
 	if (reference == NULL) {
+		ARC_DEBUG(ERR, "Resource is NULL, cannot unreference\n");
 		return EINVAL;
 	}
 
