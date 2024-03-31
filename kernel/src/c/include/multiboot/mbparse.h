@@ -29,6 +29,6 @@
 
 #include <global.h>
 
-int parse_mbi(void);
+int Arc_ParseMBI(void);
 
 #endif

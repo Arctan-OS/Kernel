@@ -71,30 +71,24 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	ARC_DEBUG(INFO, "Sucessfully entered long mode\n")
 
-	install_gdt();
-	install_idt();
+	Arc_InstallGDT();
+	Arc_InstallIDT();
 
-	parse_mbi();
+	Arc_ParseMBI();
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(100);
+
+	Arc_InitializeVFS();
 
 	// Input Arc_InitramfsRes should be the starting address of the
 	// initramfs
 	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)Arc_InitramfsRes);
-
-	Arc_InitializeVFS();
 	Arc_MountVFS("/", "initramfs", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
-
-	struct ARC_Reference *ref = NULL;
-	Arc_FontFile = Arc_OpenFileVFS("/initramfs/boot/ANTIQUE.F14", 0, 0, &ref);
-	ref->close = empty;
 
 	Arc_VFSLink("/initramfs/boot/ANTIQUE.F14", "/font.fnt");
 
-	struct ARC_VFSFile *tmp = Arc_FontFile;
-
-	struct ARC_Reference *ref2 = NULL;
-	Arc_FontFile = Arc_OpenFileVFS("/font.fnt", 0, 0, &ref2);
+	struct ARC_Reference *ref = NULL;
+	Arc_FontFile = Arc_OpenFileVFS("/font.fnt", 0, 0, &ref);
 	ref->close = empty;
 
 	Arc_InitializeSyscall();

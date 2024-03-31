@@ -29,6 +29,6 @@
 #ifndef ARC_ARCH_X86_64_GDT_H
 #define ARC_ARCH_X86_64_GDT_H
 
-void install_gdt();
+void Arc_InstallGDT();
 
 #endif

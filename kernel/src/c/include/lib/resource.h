@@ -81,7 +81,7 @@ struct ARC_DriverDef {
 }__attribute__((packed));
 
 struct ARC_SuperDriverDef {
-	int (*create)(char *path, uint32_t mode);
+	int (*create)(char *path, uint32_t mode, int type);
 	int (*remove)(char *path);
 	int (*link)(char *a, char *b);
 	/// Rename the file.

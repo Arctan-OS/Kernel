@@ -56,7 +56,7 @@ void set_gdt_gate(int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t 
 }
 
 extern void _install_gdt();
-void install_gdt() {
+void Arc_InstallGDT() {
 	set_gdt_gate(0, 0, 0, 0, 0);
 	set_gdt_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xA); // Kernel Code 64
 	set_gdt_gate(2, 0, 0xFFFFFFFF, 0x92, 0xC); // Kernel Data 32 / 64

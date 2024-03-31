@@ -474,12 +474,16 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 
 // TODO: Handle potential relative path
 struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, struct ARC_Reference **reference) {
-	if (filepath == NULL || reference == NULL) {
+	if (filepath == NULL) {
 		ARC_DEBUG(ERR, "No filepath or reference fillable provided\n");
 		return NULL;
 	}
 
 	ARC_DEBUG(INFO, "Opening file \"%s\"\n", filepath);
+
+	if (reference == NULL) {
+		ARC_DEBUG(WARN, "No reference given, opening file contextually\n");
+	}
 
 	if (filepath[0] != '/') {
 		ARC_DEBUG(ERR, "\"%s\" is not absolute, cannot open (for now)\n", filepath);
@@ -500,6 +504,8 @@ struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, st
 		ARC_DEBUG(ERR, "Failed to allocate file descriptor\n");
 		goto end;
 	}
+
+	memset(file, 0, sizeof(struct ARC_VFSFile));
 
 	struct ARC_VFSNode *node = args.trace->node;
 
@@ -559,7 +565,9 @@ struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, st
  	// TODO: Account for already open files and existing stat
 
 	// Create reference
-	*reference = Arc_ReferenceResource(node->resource);
+	if (reference != NULL) {
+		*reference = Arc_ReferenceResource(node->resource);
+	}
 
 	// Link
 	file->node = node;
@@ -682,12 +690,21 @@ int Arc_StatFileVFS(char *filepath, struct stat *stat) {
 	return 0;
 }
 
-int Arc_VFSCreate(char *filepath, uint32_t mode, int type) {
+int Arc_VFSCreate(char *filepath, uint32_t mode, int type, struct ARC_VFSNode **node_) {
+	if (filepath == NULL || type == ARC_VFS_NULL) {
+		return -1;
+	}
+	ARC_DEBUG(INFO, "Creating file \"%s\" (%d, %d)\n", filepath, mode, type);
+
 	struct internal_traverse_args args = { 0 };
 	int ret = vfs_traverse_node_graph(filepath, NULL, &args);
 
 	if (ret == 0) {
 		// Node is already in VFS, return 0
+		if (node_ != NULL) {
+			*node_ = args.trace->node;
+		}
+
 		vfs_pop_trace(args.trace);
 		vfs_free_trace(args.trace);
 
@@ -697,6 +714,17 @@ int Arc_VFSCreate(char *filepath, uint32_t mode, int type) {
 	if (ret < 0) {
 		// Failed to traverse node graph
 		return ret;
+	}
+
+	if (args.mount != NULL && args.mount->resource != NULL && args.mount->resource->driver != NULL) {
+		struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)args.mount->resource->driver->driver;
+		ret = def->create(filepath, mode, type);
+
+		if (ret != 0) {
+			// Could not create the node on the filesystem,
+			// it will not persist after vfs is destroyed
+			// TODO: Implement handling
+		}
 	}
 
 	ret = vfs_create_node_graph(filepath, &args, type);
@@ -710,6 +738,13 @@ int Arc_VFSCreate(char *filepath, uint32_t mode, int type) {
 
 	// Set times
 	node->stat.st_mode = mode;
+
+	if (node_ != NULL) {
+		*node_ = node;
+	}
+
+	vfs_pop_trace(args.trace);
+	vfs_free_trace(args.trace);
 
 	return 0;
 }
@@ -765,6 +800,9 @@ int Arc_VFSLink(char *a, char *b) {
 	int ret_a = vfs_traverse_node_graph(a, NULL, &args_a);
 	int ret_b = vfs_traverse_node_graph(b, NULL, &args_b);
 
+	struct ARC_VFSNode *node_a = args_a.trace->node;
+	struct ARC_VFSNode *node_b = args_b.trace->node;
+
 	if (ret_a < 0 || ret_b < 0) {
 		// Looking up A or B has failed, cannot continue
 		goto epic_fail;
@@ -772,13 +810,22 @@ int Arc_VFSLink(char *a, char *b) {
 
 	if (ret_a == 1) {
 		// Source to link to does not exist
-		// TODO: Open it so it exists in VFS context
-		goto epic_fail;
+		// Open it so it exists in VFS context
+		struct ARC_VFSFile *file = Arc_OpenFileVFS(a, 0, 0, NULL);
+
+		// Could not open the file
+		if (file == NULL) {
+			goto epic_fail;
+		}
+
+		node_a = file->node;
+
+		// We do not need the file descriptor
+		Arc_SlabFree(file);
 	}
 
 	if (ret_b == 1) {
-		// NOTE: Probably should have a custom type for hard links
-		ret_b = vfs_create_node_graph(b, &args_b, ARC_VFS_N_LINK);
+		ret_b = Arc_VFSCreate(b, node_a->stat.st_mode, ARC_VFS_N_LINK, &node_b);
 	}
 
 	if (ret_b != 0) {
@@ -786,8 +833,13 @@ int Arc_VFSLink(char *a, char *b) {
 		goto epic_fail;
 	}
 
-	args_b.trace->node->link = args_a.trace->node;
-	ARC_DEBUG(INFO, "Created link\n");
+	node_b->link = node_a;
+	ARC_DEBUG(INFO, "Created link (%p -> %p)\n", node_b, node_a);
+
+	vfs_pop_trace(args_a.trace);
+	vfs_pop_trace(args_b.trace);
+	vfs_free_trace(args_a.trace);
+	vfs_free_trace(args_b.trace);
 
 	return 0;
 
@@ -804,7 +856,7 @@ int Arc_VFSLink(char *a, char *b) {
 
 int Arc_VFSRename(char *a, char *b) {
 	// TODO: Implement
-	(void)a;
 	(void)b;
+	(void)a;
 	return 0;
 }

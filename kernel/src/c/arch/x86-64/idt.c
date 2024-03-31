@@ -250,7 +250,7 @@ extern void _idt_stub_31_();
 
 extern void _idt_stub_33_();
 
-void install_idt() {
+void Arc_InstallIDT() {
 	install_idt_gate(0, (uintptr_t)&_idt_stub_0_, 0x08, 0x8E);
 	install_idt_gate(1, (uintptr_t)&_idt_stub_1_, 0x08, 0x8E);
 	install_idt_gate(2, (uintptr_t)&_idt_stub_2_, 0x08, 0x8E);

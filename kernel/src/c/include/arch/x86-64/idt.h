@@ -28,6 +28,6 @@
 #ifndef IDT_H
 #define IDT_H
 
-void install_idt();
+void Arc_InstallIDT();
 
 #endif

@@ -197,7 +197,7 @@ int Arc_CloseFileVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference);
  * */
 int Arc_StatFileVFS(char *filepath, struct stat *stat);
 
-int Arc_VFSCreate(char *filepath, uint32_t mode, int type);
+int Arc_VFSCreate(char *filepath, uint32_t mode, int type, struct ARC_VFSNode **node_);
 int Arc_VFSRemove(char *filepath);
 int Arc_VFSLink(char *a, char *b);
 int Arc_VFSRename(char *a, char *b);

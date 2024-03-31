@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include "arctan.h"
+#include <arctan.h>
 #include <global.h>
 #include <multiboot/mbparse.h>
 #include <multiboot/multiboot2.h>
@@ -32,7 +32,7 @@
 #include <mm/pmm.h>
 #include <util.h>
 
-int parse_mbi() {
+int Arc_ParseMBI() {
 	struct multiboot_tag *tag = (struct multiboot_tag *)(Arc_BootMeta->mb2i + ARC_HHDM_VADDR);
 	struct multiboot_tag *end = (struct multiboot_tag *)(tag + tag->type);
 
