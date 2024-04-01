@@ -374,6 +374,10 @@ static int vfs_create_node_graph(char *filepath, struct internal_traverse_args *
 	return 0;
 }
 
+static int vfs_migrate_node(struct ARC_VFSNode *node, struct ARC_VFSMount *mount, char *mountpath) {
+	return 0;
+}
+
 int Arc_InitializeVFS() {
 	vfs_root.name = (char *)root;
 	vfs_root.children = NULL;
@@ -473,6 +477,7 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 }
 
 // TODO: Handle potential relative path
+// TODO: Opening links that exist on physical filesystem
 struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, struct ARC_Reference **reference) {
 	if (filepath == NULL) {
 		ARC_DEBUG(ERR, "No filepath or reference fillable provided\n");
@@ -567,6 +572,7 @@ struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, st
 	// Create reference
 	if (reference != NULL) {
 		*reference = Arc_ReferenceResource(node->resource);
+		node->ref_count++;
 	}
 
 	// Link
@@ -574,6 +580,7 @@ struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, st
 
 	// Note mount file
 	node->mount->open_files++;
+	mount->ref_count++;
 
 	ARC_DEBUG(INFO, "Opened file (node: %p, fd: %p)\n", node, file);
 
@@ -651,9 +658,10 @@ int Arc_CloseFileVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference) 
 	}
 
 	Arc_UnreferenceResource(reference);
+	file->node->ref_count--;
 	Arc_SlabFree(file);
 
-	if (reference->resource->ref_count > 0) {
+	if (file->node->ref_count > 0) {
 		// Some other files are still using this file,
 		// no need to close it, just free the given file
 		// descriptor
@@ -855,8 +863,67 @@ int Arc_VFSLink(char *a, char *b) {
 }
 
 int Arc_VFSRename(char *a, char *b) {
-	// TODO: Implement
-	(void)b;
-	(void)a;
+	if (a == NULL || b == NULL) {
+		return -1;
+	}
+
+	struct internal_traverse_args args_a = { 0 };
+	int ret_a = vfs_traverse_node_graph(a, NULL, &args_a);
+
+	if (ret_a < 0) {
+		return -2;
+	}
+
+	struct ARC_VFSNode *node_a = args_a.trace->node;
+
+	vfs_pop_trace(args_a.trace);
+	vfs_free_trace(args_a.trace);
+
+	if (ret_a == 1) {
+		struct ARC_VFSFile *file = Arc_OpenFileVFS(a, 0, 0, NULL);
+		node_a = file->node;
+		Arc_SlabFree(file);
+	}
+
+	struct internal_traverse_args args_b = { 0 };
+	int ret_b = vfs_traverse_node_graph(b, NULL, &args_b);
+
+	if (ret_b < 0) {
+		b_trace_error:;
+		vfs_pop_trace(args_b.trace);
+		vfs_free_trace(args_b.trace);
+
+		return -2;
+	}
+
+	if (ret_b == 1) {
+		ret_b = vfs_create_node_graph(b, &args_b, node_a->type);
+	}
+
+	if (ret_b != 0) {
+		goto b_trace_error;
+	}
+
+	struct ARC_VFSNode *node_b = args_b.trace->next->node;
+
+	vfs_pop_trace(args_b.trace);
+	vfs_destroy_node(args_b.trace->node);
+	vfs_free_trace(args_b.trace);
+
+	// Node_a is the node that we want to move
+	// Node_b is now the parent directory of where we
+	// want to move to
+
+	if (node_a->mount != node_b->mount && vfs_migrate_node(node_a, node_b->mount, args_b.mountpath) != 0) {
+		// Failed to physically migrate A to B
+	}
+
+	if (node_b->children != NULL) {
+		node_b->children->prev = node_a;
+		node_a->next = node_b->children;
+	}
+
+	node_b->children = node_a;
+
 	return 0;
 }
