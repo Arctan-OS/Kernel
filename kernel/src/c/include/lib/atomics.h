@@ -1,17 +1,50 @@
+/**
+ * @file atomics.h
+ *
+ * @author awewsomegamer <awewsomegamer@gmail.com>
+ *
+ * @LICENSE
+ * Arctan - Operating System Kernel
+ * Copyright (C) 2023-2024 awewsomegamer
+ *
+ * This file is part of Arctan.
+ *
+ * Arctan is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; version 2
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ * @DESCRIPTION
+*/
 #ifndef ARC_LIB_ATOMICS_H
 #define ARC_LIB_ATOMICS_H
 
 #include <stdint.h>
 #include <stdatomic.h>
 
-struct ARC_GenericSpinlock {
-	uint32_t lock;
-	uint64_t code;
-}__attribute__((packed));
+typedef uint64_t ARC_GenericSpinlock;
+
+
+struct ARC_QLock {
+	ARC_GenericSpinlock lock;
+	uint64_t *next;
+	uint64_t *last;
+};
 
 #define ARC_GENERIC_LOCK(__lock__) \
 	while (atomic_flag_test_and_set_explicit(__lock__, memory_order_acquire)) __builtin_ia32_pause();
 #define ARC_GENERIC_UNLOCK(__lock__) \
 	while (atomic_flag_clear_explicit(__lock__, memory_order_release));
+
+int Arc_QLock(struct ARC_QLock *lock);
+int Arc_QUnlock(struct ARC_QLock *lock);
 
 #endif
