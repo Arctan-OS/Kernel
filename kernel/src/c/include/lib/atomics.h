@@ -30,19 +30,18 @@
 #include <stdint.h>
 #include <stdatomic.h>
 
-typedef uint64_t ARC_GenericSpinlock;
-
+typedef _Atomic uint64_t ARC_GenericSpinlock;
 
 struct ARC_QLock {
 	ARC_GenericSpinlock lock;
-	uint64_t *next;
-	uint64_t *last;
+	void *next;
+	void *last;
 };
 
 #define ARC_GENERIC_LOCK(__lock__) \
 	while (atomic_flag_test_and_set_explicit(__lock__, memory_order_acquire)) __builtin_ia32_pause();
 #define ARC_GENERIC_UNLOCK(__lock__) \
-	while (atomic_flag_clear_explicit(__lock__, memory_order_release));
+	atomic_flag_clear_explicit(__lock__, memory_order_release)
 
 int Arc_QLock(struct ARC_QLock *lock);
 int Arc_QUnlock(struct ARC_QLock *lock);

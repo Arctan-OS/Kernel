@@ -28,17 +28,28 @@
 #include <lib/atomics.h>
 #include <util.h>
 
-int Arc_QLockInit(struct ARC_QLock **head) {
-	*head = Arc_SlabAlloc(sizeof(struct ARC_QLock));
+struct internal_qlock_node {
+	uint64_t tid;
+	struct internal_qlock_node *next;
+};
 
-	if (*head == NULL) {
+int Arc_QLockInit(struct ARC_QLock **lock) {
+	*lock = Arc_SlabAlloc(sizeof(struct ARC_QLock));
+
+	if (*lock == NULL) {
 		return 1;
 	}
 
-	memset(*head, 0, sizeof(struct ARC_QLock));
+	memset(*lock, 0, sizeof(struct ARC_QLock));
 
 	// Queue lock header is now created, Arc_QLock
 	// Arc_QUnlock, and Arc_QYield can now be called
+
+	return 0;
+}
+
+int Arc_QLockInitStatic(struct ARC_QLock **head) {
+	memset(*head, 0, sizeof(struct ARC_QLock));
 
 	return 0;
 }
@@ -47,26 +58,28 @@ int Arc_QLock(struct ARC_QLock *head) {
 	// Mutex Lock
 	//   Yield if head is locked
 
-	uint64_t *next = (uint64_t *)Arc_SlabAlloc(sizeof(uint64_t));
+	register struct internal_qlock_node *next = (struct internal_qlock_node *)Arc_SlabAlloc(sizeof(struct internal_qlock_node));
 
 	if (next == NULL) {
 		// Mutex Unlock
 		return 1;
 	}
 
-	*next = 0;
+	memset(next, 0, sizeof(struct internal_qlock_node));
 
-	if (head->last != NULL) {
-		*(head->last) = (uint64_t)next;
+	next->tid = 0; // get_current_thread_id();
+
+	if (head->last == NULL) {
+		((struct internal_qlock_node *)head->last)->next = next;
 	} else {
-		head->next = next;
+		head->last = next;
 	}
 
 	head->last = next;
 
 	// Mutex Unlock
 
-	// Yield while head->next != next
+	// Yield to head->next while head->next != next
 
 	return 0;
 }
@@ -74,7 +87,9 @@ int Arc_QLock(struct ARC_QLock *head) {
 int Arc_QUnlock(struct ARC_QLock *head) {
 	// Mutex Lock
 
-	uint64_t *next = (uint64_t *)*(head->next);
+	struct internal_qlock_node *next = ((struct internal_qlock_node *)head->next)->next;
+
+	// if (head->next->tid != get_current_thread_id()) { return 1; }
 
 	Arc_SlabFree(head->next);
 
