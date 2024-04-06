@@ -48,8 +48,8 @@ int Arc_QLockInit(struct ARC_QLock **lock) {
 	return 0;
 }
 
-int Arc_QLockInitStatic(struct ARC_QLock **head) {
-	memset(*head, 0, sizeof(struct ARC_QLock));
+int Arc_QLockInitStatic(struct ARC_QLock *head) {
+	memset(head, 0, sizeof(struct ARC_QLock));
 
 	return 0;
 }
@@ -70,9 +70,9 @@ int Arc_QLock(struct ARC_QLock *head) {
 	next->tid = 0; // get_current_thread_id();
 
 	if (head->last == NULL) {
-		((struct internal_qlock_node *)head->last)->next = next;
+		head->next = next;
 	} else {
-		head->last = next;
+		((struct internal_qlock_node *)head->last)->next = next;
 	}
 
 	head->last = next;

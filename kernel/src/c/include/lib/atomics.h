@@ -45,5 +45,7 @@ struct ARC_QLock {
 
 int Arc_QLock(struct ARC_QLock *lock);
 int Arc_QUnlock(struct ARC_QLock *lock);
+int Arc_QLockInit(struct ARC_QLock **lock);
+int Arc_QLockInitStatic(struct ARC_QLock *head);
 
 #endif
