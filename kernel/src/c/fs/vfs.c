@@ -26,6 +26,7 @@
  * Abstract virtual file system driver. Is able to create and delete virtual
  * file systems for caching files on disk.
 */
+#include "lib/atomics.h"
 #include <abi-bits/errno.h>
 #include <lib/resource.h>
 #include <mm/allocator.h>
@@ -215,6 +216,7 @@ static int vfs_traverse_node_graph(char *filepath, struct ARC_VFSNode *start_nod
 	node->ref_count++;
 
 	size_t max = strlen(filepath);
+	int64_t tid = 0;
 
 	for (size_t i = 0; i < max; i++) {
 		if (filepath[i] != '/') {
@@ -230,6 +232,14 @@ static int vfs_traverse_node_graph(char *filepath, struct ARC_VFSNode *start_nod
 			// No component, continue on
 			continue;
 		}
+
+		tid = Arc_QLock(&node->branch_lock);
+
+		if (tid == -2) {
+			ARC_DEBUG(ERR, "Failed to lock\n");
+		}
+
+		Arc_QYield(&node->branch_lock, tid);
 
 		char *component = (char *)(filepath + i + 1);
 
@@ -264,6 +274,14 @@ static int vfs_traverse_node_graph(char *filepath, struct ARC_VFSNode *start_nod
 			return 1;
 		}
 
+		tid = Arc_QLock(&child->branch_lock);
+
+		if (tid == -2) {
+			ARC_DEBUG(ERR, "Failed to hand over lock\n");
+		}
+
+		Arc_QUnlock(&node->branch_lock);
+
 		// Move to next node, lock it
 		node = child;
 		node->ref_count++;
@@ -297,7 +315,6 @@ static int vfs_create_node_graph(char *filepath, struct internal_traverse_args *
 
 	ARC_DEBUG(INFO, "Creating node graph for \"%s\"\n", filepath);
 
-
 	struct ARC_SuperDriverDef *mnt_superdef = NULL;
 
 	if (args->mount != NULL && args->mount->resource != NULL && args->mount->resource->driver != NULL) {
@@ -307,6 +324,7 @@ static int vfs_create_node_graph(char *filepath, struct internal_traverse_args *
 	struct ARC_VFSNode *node = args->trace->node;
 
 	size_t max = strlen(filepath);
+	int64_t tid = 0;
 
 	for (size_t i = args->success; i < max; i++) {
 		if (filepath[i] != '/') {
@@ -321,6 +339,16 @@ static int vfs_create_node_graph(char *filepath, struct internal_traverse_args *
 		}
 
 		char *component = (char *)(filepath + i + 1);
+
+		// Lock the current node
+		tid = Arc_QLock(&node->branch_lock);
+
+		if (tid == -2) {
+			// Epic fail
+			ARC_DEBUG(ERR, "Failed to lock\n");
+		}
+
+		Arc_QYield(&node->branch_lock, tid);
 
 		// Interpret .. and . dirs
 		if (strncmp(component, "..", j) == 0) {
@@ -365,12 +393,26 @@ static int vfs_create_node_graph(char *filepath, struct internal_traverse_args *
 		latest->node = _node;
 		args->trace = latest;
 
+		// Hand over lock
+		tid = Arc_QLock(&_node->branch_lock);
+
+		if (tid == -2) {
+			ARC_DEBUG(ERR, "Failed to hand over lock\n");
+		}
+
+		Arc_QUnlock(&node->branch_lock);
+
+		// Move down
 		node = _node;
 		node->ref_count++;
 	}
 
 	node->type = type;
 
+	return 0;
+}
+
+static int vfs_rebranch_graph() {
 	return 0;
 }
 
@@ -386,6 +428,9 @@ int Arc_InitializeVFS() {
 	vfs_root.resource = (struct ARC_Resource *)&root_res;
 	vfs_root.type = ARC_VFS_N_ROOT;
 	vfs_root.mount = NULL;
+
+	Arc_QLockStaticInit(&vfs_root.branch_lock);
+	Arc_MutexStaticInit(&vfs_root.property_lock);
 
 	ARC_DEBUG(INFO, "Created VFS root\n");
 

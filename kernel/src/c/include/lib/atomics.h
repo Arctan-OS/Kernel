@@ -30,11 +30,21 @@
 #include <stdint.h>
 #include <stdatomic.h>
 
-typedef _Atomic uint64_t ARC_GenericSpinlock;
+/// Generic spinlock
+typedef _Atomic int ARC_GenericSpinlock;
 
+/// Generic mutex
+typedef _Atomic int ARC_GenericMutex;
+
+/**
+ * Queue lock structure
+ * */
 struct ARC_QLock {
-	ARC_GenericSpinlock lock;
+	/// Synchronization lock for the queue
+	ARC_GenericMutex lock;
+	/// Pointer to the current owner of the lock
 	void *next;
+	/// Pointer to the last element in the queue
 	void *last;
 };
 
@@ -43,9 +53,63 @@ struct ARC_QLock {
 #define ARC_GENERIC_UNLOCK(__lock__) \
 	atomic_flag_clear_explicit(__lock__, memory_order_release)
 
-int Arc_QLock(struct ARC_QLock *lock);
-int Arc_QUnlock(struct ARC_QLock *lock);
+/**
+ * Initialize dynamic qlock
+ *
+ * Allocate and zero a lock, return it in the
+ * given doubly pointer.
+ * */
 int Arc_QLockInit(struct ARC_QLock **lock);
-int Arc_QLockInitStatic(struct ARC_QLock *head);
+
+/**
+ * Uninitialize dynamic qlock
+ *
+ * Deallocate the given lock.
+ * */
+int Arc_QLockUninit(struct ARC_QLock *lock);
+
+/**
+ * Initialize static qlock.
+ * */
+int Arc_QLockStaticInit(struct ARC_QLock *head);
+
+/**
+ * Enqueue calling thread.
+ *
+ * Enqueue the calling thread into the provided lock.
+ *
+ * @struct ARC_QLock *lock - The lock into which the calling thread should be enqueued.
+ * @return tid of the current thread upon success (>= 0), -1: thread owns lock, -2: failed
+ * to enqueue thread.
+ * */
+int64_t Arc_QLock(struct ARC_QLock *lock);
+
+/**
+ * Yield current thread to lock owner thread.
+ *
+ * If the provided tid is not equivalent to
+ * lock->next->tid, then the scheduler will be
+ * asked to yield the calling thread to the thread
+ * which owns the lock.
+ * */
+void Arc_QYield(struct ARC_QLock *lock, int64_t tid);
+
+/**
+ * Dequeue current lock owner.
+ *
+ * Dequeues the current lock owner, which should
+ * be the caller.
+ *
+ * @param struct ARC_QLock *lock - Lock from which to dequeue current thread.
+ * @return 0: upon succes, 1: upon current lock owner tid and calling thread tid
+ * mismatch.
+ * */
+int Arc_QUnlock(struct ARC_QLock *lock);
+
+int Arc_MutexInit(ARC_GenericMutex **mutex);
+int Arc_MutexUninit(ARC_GenericMutex *mutex);
+int Arc_MutexStaticInit(ARC_GenericMutex *mutex);
+int Arc_MutexLock(ARC_GenericMutex *mutex);
+int Arc_MutexUnlock(ARC_GenericMutex *mutex);
 
 #endif

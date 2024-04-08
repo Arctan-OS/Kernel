@@ -157,7 +157,7 @@ static int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint3
 
 	state->initramfs_base = (void *)header;
 
-	initramfs_internal_stat(header, &spec->stat);
+	initramfs_internal_stat(header, &spec->node->stat);
 
 	return 0;
 }

@@ -48,14 +48,17 @@
 #include <stdint.h>
 #include <sys/stat.h>
 #include <lib/resource.h>
+#include <lib/atomics.h>
 
 struct ARC_VFSFile {
 	/// Current offset into the file.
 	size_t offset;
 	/// Pointer to the parent VFS node.
 	struct ARC_VFSNode *node;
-	/// Stat
-	struct stat stat;
+	/// Mode the file was opened with.
+	uint32_t mode;
+	/// Flags the file was opened with.
+	int flags;
 };
 
 struct ARC_VFSMount {
@@ -71,6 +74,11 @@ struct ARC_VFSMount {
  * A single node in a VFS tree.
  * */
 struct ARC_VFSNode {
+	/// Lock on branching of this node (link, parent, children, next, prev, name)
+	struct ARC_QLock branch_lock;
+	/// Lock on the properties of this node (type, mount, stat)
+	ARC_GenericMutex property_lock;
+
 	/// Pointer to the device. References can be found through consulting resource.
 	struct ARC_Resource *resource;
 	/// The type of node.

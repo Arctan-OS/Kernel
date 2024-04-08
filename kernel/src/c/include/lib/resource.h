@@ -30,15 +30,14 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include <lib/atomics.h>
 
 #define ARC_DRIVER_IDEN_SUPER 0x5245505553 // "SUPER" little endian
 
 struct ARC_Resource {
-	int lock; // TODO: Implement lock system
 
 	struct ARC_Reference *references;
-	int ref_count;
-	int ref_lock; // Reference specific lock
+	uint64_t ref_count;
 
 	/// State managed by driver, owned by resource.
 	void *driver_state;
