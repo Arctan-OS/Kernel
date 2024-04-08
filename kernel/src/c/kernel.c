@@ -59,10 +59,11 @@ int empty() {
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;
 
+
 	Arc_MainTerm.rx_buf = NULL;
 	Arc_MainTerm.tx_buf = NULL;
 	Arc_MainTerm.term_width = 180;
-	Arc_MainTerm.term_height = 120;
+	Arc_MainTerm.term_height = 25;
 	Arc_MainTerm.term_mem = Arc_MainTerm_mem;
 	Arc_MainTerm.font_width = 8;
 	Arc_MainTerm.font_height = 14;
@@ -73,8 +74,10 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	Arc_InstallGDT();
 	Arc_InstallIDT();
-
 	Arc_ParseMBI();
+
+	Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
+
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(100);
 

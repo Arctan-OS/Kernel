@@ -34,6 +34,7 @@
 void Arc_TermPutChar(struct ARC_TermMeta *term, char c) {
 	if (term->cy >= term->term_height) {
 		memcpy(term->term_mem, term->term_mem + term->term_width, (term->term_height - 1) * term->term_width);
+		memset(term->term_mem + (term->term_height - 1) * term->term_width, 0, term->term_width);
 		term->cy = term->term_height - 1;
 	}
 
