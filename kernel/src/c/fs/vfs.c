@@ -484,12 +484,25 @@ struct ARC_VFSNode *Arc_MountVFS(char *mountpath, char *name, struct ARC_Resourc
 	node->name = strdup(name);
 	node->parent = mountpoint;
 
+	// TODO: Think this out, if the mount->parent is
+	//       vfs_root, then no new traverse operations
+	//       may be initiated from root until we have
+	//       finished unmounting
+
+        // Lock
+	int64_t tid = Arc_QLock(&mountpoint->branch_lock);
+	Arc_QYield(&mountpoint->branch_lock, tid);
+
 	if (mountpoint->children != NULL) {
 		mountpoint->children->prev = node;
 	}
 
 	node->next = mountpoint->children;
 	mountpoint->children = node;
+
+	// Unlock
+	Arc_QUnlock(&mountpoint->branch_lock);
+
 	node->type = ARC_VFS_N_MOUNT;
 	node->resource = resource;
 
@@ -512,11 +525,21 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 		return 1;
 	}
 
+	// TODO: Think this out, if the mount->parent is
+	//       vfs_root, then no new traverse operations
+	//       may be initiated from root until we have
+	//       finished unmounting
+
+	int64_t tid = Arc_QLock(&mount->parent->branch_lock);
+	Arc_QYield(&mount->parent->branch_lock, tid);
+
 	// Destroy all nodes under mount
 	vfs_destroy_subtrees(mount);
 
 	// Destroy mount
 	vfs_destroy_node(mount);
+
+	Arc_QLock(&mount->parent->branch_lock);
 
 	return 0;
 }
@@ -599,13 +622,18 @@ struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, st
 
 		struct ARC_Resource *nres = Arc_InitializeResource(filepath, res->dri_group, res->dri_index + 1, res->driver_state);
 
+		Arc_MutexLock(&nres->vfs_state_mutex);
 		nres->vfs_state = file;
 		node->resource = nres;
 
 		if (nres->driver->open(nres, args.mountpath, flags, mode) != 0) {
 			ARC_DEBUG(ERR, "Driver failed to open file\n");
+			Arc_MutexUnlock(&nres->vfs_state_mutex);
+
 			goto node_graph_fail;
 		}
+
+		Arc_MutexUnlock(&nres->vfs_state_mutex);
 	}
 
 	// struct ARC_SuperDriverDef *def = res->driver->driver;
@@ -646,13 +674,15 @@ int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile 
 		return 0;
 	}
 
-	// Lock
 	struct ARC_Resource *res = file->node->resource;
+	// Lock
+	Arc_MutexLock(&res->vfs_state_mutex);
 	struct ARC_VFSFile *tmp = res->vfs_state;
 	res->vfs_state = file;
 	int ret = res->driver->read(buffer, size, count, res);
 	res->vfs_state = tmp;
 	// Unlock
+	Arc_MutexUnlock(&res->vfs_state_mutex);
 
 	return ret;
 }
@@ -666,13 +696,15 @@ int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile
 		return 0;
 	}
 
-	// Lock
 	struct ARC_Resource *res = file->node->resource;
+	// Lock
+	Arc_MutexLock(&res->vfs_state_mutex);
 	struct ARC_VFSFile *tmp = res->vfs_state;
 	res->vfs_state = file;
 	int ret = res->driver->write(buffer, size, count, res);
 	res->vfs_state = tmp;
 	// Unlock
+	Arc_MutexUnlock(&res->vfs_state_mutex);
 
 	return ret;
 }
@@ -685,13 +717,15 @@ int Arc_SeekFileVFS(struct ARC_VFSFile *file, long offset, int whence) {
 
 	struct ARC_VFSNode *node = file->node;
 
-	// Lock
 	struct ARC_Resource *res = node->resource;
+	// Lock
+	Arc_MutexLock(&res->vfs_state_mutex);
 	struct ARC_VFSFile *tmp = res->vfs_state;
 	res->vfs_state = file;
 	int ret = res->driver->seek(res, offset, whence);
 	res->vfs_state = tmp;
 	// Unlock
+	Arc_MutexUnlock(&res->vfs_state_mutex);
 
 	return ret;
 }
@@ -743,6 +777,7 @@ int Arc_StatFileVFS(char *filepath, struct stat *stat) {
 	return 0;
 }
 
+// TODO: Double check
 int Arc_VFSCreate(char *filepath, uint32_t mode, int type, struct ARC_VFSNode **node_) {
 	if (filepath == NULL || type == ARC_VFS_NULL) {
 		return -1;
@@ -802,6 +837,7 @@ int Arc_VFSCreate(char *filepath, uint32_t mode, int type, struct ARC_VFSNode **
 	return 0;
 }
 
+// TODO: Double check
 int Arc_VFSRemove(char *filepath) {
 	if (filepath == NULL) {
 		return 1;
@@ -840,6 +876,7 @@ int Arc_VFSRemove(char *filepath) {
 	return ret;
 }
 
+// TODO: Double check
 int Arc_VFSLink(char *a, char *b) {
 	if (a == NULL || b == NULL) {
 		return 1;
@@ -907,6 +944,7 @@ int Arc_VFSLink(char *a, char *b) {
 	return 1;
 }
 
+// TODO: Double check this
 int Arc_VFSRename(char *a, char *b) {
 	if (a == NULL || b == NULL) {
 		return -1;

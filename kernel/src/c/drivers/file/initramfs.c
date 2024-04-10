@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "lib/atomics.h"
 #include <abi-bits/errno.h>
 #include <lib/perms.h>
 #include <fs/vfs.h>
@@ -146,16 +147,24 @@ static int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint3
 
 	struct ARC_VFSFile *spec = res->vfs_state;
 
+	// Lock dri_state
+	Arc_MutexLock(&res->dri_state_mutex);
+
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
 	struct ARC_HeaderCPIO *header = initramfs_find_file(state->initramfs_base, path);
 
 	if (header == NULL) {
 		ARC_DEBUG(ERR, "Failed to open file\n");
+		// Unlock dri_state
+		Arc_MutexUnlock(&res->dri_state_mutex);
 
 		return 1;
 	}
 
 	state->initramfs_base = (void *)header;
+
+	// Unlock dri_state
+	Arc_MutexUnlock(&res->dri_state_mutex);
 
 	initramfs_internal_stat(header, &spec->node->stat);
 

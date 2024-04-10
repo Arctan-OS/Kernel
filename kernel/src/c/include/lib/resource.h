@@ -35,13 +35,18 @@
 #define ARC_DRIVER_IDEN_SUPER 0x5245505553 // "SUPER" little endian
 
 struct ARC_Resource {
+	ARC_GenericMutex prop_mutex;
 
 	struct ARC_Reference *references;
+
+	ARC_GenericMutex ref_count_mutex;
 	uint64_t ref_count;
 
 	/// State managed by driver, owned by resource.
+	ARC_GenericMutex dri_state_mutex;
 	void *driver_state;
 	/// External swappable state.
+	ARC_GenericMutex vfs_state_mutex;
 	void *vfs_state;
 
 	/// Dynamically allocated name.
@@ -58,6 +63,7 @@ struct ARC_Reference {
 	// Functions for managing this reference.
 	struct ARC_Resource *resource;
 	int (*close)();
+	ARC_GenericMutex branch_mutex;
 	struct ARC_Reference *prev;
 	struct ARC_Reference *next;
 };
