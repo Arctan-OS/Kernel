@@ -52,7 +52,7 @@
 
 struct ARC_VFSFile {
 	/// Current offset into the file.
-	size_t offset;
+	long offset;
 	/// Pointer to the parent VFS node.
 	struct ARC_VFSNode *node;
 	/// Mode the file was opened with.

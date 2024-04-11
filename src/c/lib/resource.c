@@ -40,7 +40,7 @@ extern struct ARC_DriverDef __DRIVERS2_END[];
 extern struct ARC_DriverDef __DRIVERS3_END[];
 
 struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t dri_index, void *args) {
-	ARC_DEBUG(INFO, "Initializing resource \"%s\" (%d, %d)\n", name, dri_group, dri_index);
+	ARC_DEBUG(INFO, "Initializing resource \"%s\" (%d, %lu)\n", name, dri_group, dri_index);
 
 	struct ARC_Resource *resource = (struct ARC_Resource *)Arc_SlabAlloc(sizeof(struct ARC_Resource));
 

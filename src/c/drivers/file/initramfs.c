@@ -137,6 +137,8 @@ static int initramfs_uninit(struct ARC_Resource *res) {
 }
 
 static int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
+	(void)flags;
+
 	if (res == NULL) {
 		return EINVAL;
 	}
@@ -193,7 +195,7 @@ static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Re
 	for (size_t i = 0; i < size * count; i++) {
 		uint8_t value = 0;
 
-		if (i + spec->offset < spec->node->stat.st_size) {
+		if (i + spec->offset < (size_t)spec->node->stat.st_size) {
 			value = *((uint8_t *)(data + spec->offset + i));
 		}
 
@@ -215,7 +217,7 @@ static int initramfs_seek(struct ARC_Resource *res, long offset, int whence) {
 	}
 
 	struct ARC_VFSFile *spec = res->vfs_state;
-	size_t size = spec->node->stat.st_size;
+	long size = spec->node->stat.st_size;
 
 	switch (whence) {
 	case ARC_VFS_SEEK_SET: {

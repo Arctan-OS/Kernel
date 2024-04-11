@@ -37,11 +37,7 @@ CC := @CC@
 export CC
 
 .PHONY: all
-all: kernel bootstrap
-
-.PHONY: bootstrap
-bootstrap:
-	$(MAKE) -C bootstrap
+all: kernel
 
 .PHONY: kernel
 kernel:

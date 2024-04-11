@@ -113,7 +113,7 @@ static struct ARC_VFSNode *vfs_destroy_node_graph_upto(struct ARC_VFSNode *start
 	return NULL;
 }
 
-static struct ARC_VFSNode *vfs_destroy_node_graph_inclusive(struct ARC_VFSNode *start, struct ARC_VFSNode *stop) {
+__attribute__((unused)) static struct ARC_VFSNode *vfs_destroy_node_graph_inclusive(struct ARC_VFSNode *start, struct ARC_VFSNode *stop) {
 	// Destroy the node graph UPTO and uncluding stop
 	struct ARC_VFSNode *node = vfs_destroy_node_graph_upto(start, stop);
 
@@ -149,7 +149,7 @@ static int vfs_destroy_subtrees(struct ARC_VFSNode *top) {
 	return count;
 }
 
-static int vfs_push_trace(struct internal_traverse_trace *trace) {
+__attribute__((unused)) static int vfs_push_trace(struct internal_traverse_trace *trace) {
 	int i = 0;
 
 	struct internal_traverse_trace *cur = trace;
@@ -412,11 +412,15 @@ static int vfs_create_node_graph(char *filepath, struct internal_traverse_args *
 	return 0;
 }
 
-static int vfs_rebranch_graph() {
+__attribute__((unused)) static int vfs_rebranch_graph() {
 	return 0;
 }
 
 static int vfs_migrate_node(struct ARC_VFSNode *node, struct ARC_VFSMount *mount, char *mountpath) {
+	(void)node;
+	(void)mount;
+	(void)mountpath;
+
 	return 0;
 }
 

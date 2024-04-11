@@ -156,10 +156,12 @@ int Arc_MutexStaticInit(ARC_GenericMutex *mutex) {
 
 int Arc_MutexLock(ARC_GenericMutex *mutex) {
 	// Atomically lock and yield if it is locked
+	(void)mutex;
 	return 0;
 }
 
 int Arc_MutexUnlock(ARC_GenericMutex *mutex) {
 	// Atomically unlock
+	(void)mutex;
 	return 0;
 }
