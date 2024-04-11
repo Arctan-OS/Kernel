@@ -24,30 +24,27 @@
 # *
 # * @DESCRIPTION
 #*/
-PRODUCT := Arctan
+PRODUCT := kernel.elf
 
-DISCARDABLE := \( ! -path "./initramfs" -and \( -name "*.o" -or -name "*.elf" -or -name "*.iso" \) \)
+CFILES := $(shell find ./src/c/ -type f -name "*.c")
+ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 
-CPPFLAG_DEBUG := -DARC_DEBUG_ENABLE -DARC_E9HACK_ENABLE
-export CPPFLAG_DEBUG
+OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-LD := x86_64-pc-arctan-mlibc-ld
-export LD
-CC := @CC@
-export CC
+CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include -I $(ARC_ROOT)/initramfs/include
+CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
+		  -fno-lto -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
+		  -Wextra -ffreestanding -fPIE
 
-.PHONY: all
-all: kernel
+LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -static -nostdlib -pie -o $(PRODUCT)
 
-.PHONY: kernel
-kernel:
-	$(MAKE) -C kernel
+NASMFLAGS := -f elf64
 
-.PHONY: clean
-clean:
-#	find . -type f $(DISCARDABLE) -delete
-#	rm -rf iso
+all: $(OFILES)
+	$(LD) $(LDFLAGS) $(OFILES)
 
-.PHONY: documentation
-documentation:
-	doxygen Doxyfile
+src/c/%.o: src/c/%.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+src/asm/%.o: src/asm/%.asm
+	nasm $(NASMFLAGS) $< -o $@
