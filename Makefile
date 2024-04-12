@@ -26,12 +26,28 @@
 #*/
 PRODUCT := kernel.elf
 
+CPP_DEBUG_FLAG := -DARC_DEBUG_ENABLE
+CPP_E9HACK_FLAG := -DARC_E9HACK_ENABLE
+
+ifeq (,$(wildcard ./e9hack.enable))
+	# Disable E9HACK
+	CPP_SERIAL_FLAG :=
+endif
+
+ifeq (,$(wildcard ./debug.enable))
+	# Disable debugging
+	CPP_DEBUG_FLAG :=
+else
+	# Must set serial flag if debugging
+	CPP_E9HACK_FLAG := -DARC_E9HACK_ENABLE
+endif
+
 CFILES := $(shell find ./src/c/ -type f -name "*.c")
 ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include -I $(ARC_ROOT)/initramfs/include
+CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include -I $(ARC_ROOT)/initramfs/include $(CPP_DEBUG_FLAG) $(CPP_E9HACK_FLAG)
 CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
 		  -fno-lto -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
 		  -Wextra -ffreestanding -fPIE
