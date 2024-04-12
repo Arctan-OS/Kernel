@@ -40,6 +40,7 @@ LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -static -nostdlib -pie -
 
 NASMFLAGS := -f elf64
 
+.PHONY: all
 all: $(OFILES)
 	$(LD) $(LDFLAGS) $(OFILES)
 
