@@ -27,28 +27,49 @@
 #ifndef ARC_ARCTAN_H
 #define ARC_ARCTAN_H
 
-#define ARC_HHDM_VADDR   0xFFFFC00000000000 // 192 TiB
+#include <stdint.h>
+
+#define ARC_HHDM_VADDR Arc_BootMeta->hhdm_vaddr
 #define ARC_PHYS_TO_HHDM(physical) ((uintptr_t)(physical) + (uintptr_t)ARC_HHDM_VADDR)
 #define ARC_HHDM_TO_PHYS(hhdm) ((uintptr_t)(hhdm) - (uintptr_t)ARC_HHDM_VADDR)
 
-#include <stdint.h>
-#include <stddef.h>
+#define ARC_BOOTPROC_ARCTAN 1
+#define ARC_BOOTPROC_MB2    2
+#define ARC_BOOTPROC_LBP    3
 
 struct ARC_KernMeta {
 
 }__attribute__((packed));
 
+struct ARC_MMap {
+	int type;
+	uint64_t base;
+	uint64_t len;
+}__attribute__((packed));
+
 struct ARC_BootMeta {
-	/// Physical address of MBI2 structure
-	void *mb2i __attribute__((aligned(8)));
-	/// Physical pointer to the state of the bootstrapper's PMM (of type struct ARC_FreelsitMeta)
-	void *pmm_state __attribute__((aligned(8)));
-	uint64_t highest_address __attribute__((aligned(8)));
-	void *kernel_elf __attribute__((aligned(8)));
-	void *initramfs __attribute__((aligned(8)));
-	uint32_t initramfs_size __attribute__((aligned(8)));
-	/// State of the last kernel
-	struct Arc_KernMeta *state __attribute__((aligned(8)));
+	/// The boot protocol used.
+	int boot_proc;
+	/// Pointer to the physical address of the bootloader information.
+	uint64_t boot_info;
+	/// Physical pointer to the state of the bootstrapper's PMM (of type struct ARC_FreelsitMeta).
+	uint64_t pmm_state;
+	/// The highest physical address.
+	uint64_t highest_address;
+	/// Pointer to the base of the kernel module.
+	uint64_t kernel_elf;
+	/// Pointer to the base of the initramfs module.
+	uint64_t initramfs;
+	/// The size of the initramfs module.
+	uint32_t initramfs_size;
+	/// State of the last kernel.
+	uint64_t state;
+	/// Beginning of the HHDM (vaddr).
+	uint64_t hhdm_vaddr;
+	/// Arctan specific memory map (paddr).
+	uint64_t arc_mmap;
+	/// Length of arc_mmap.
+	int arc_mmap_len;
 }__attribute__((packed));
 
 #endif

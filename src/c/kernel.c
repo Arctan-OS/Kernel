@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <interface/printf.h>
 #include <arch/x86-64/ctrl_regs.h>
-#include <multiboot/mbparse.h>
+#include <boot/parse.h>
 
 #include <arch/x86-64/idt.h>
 #include <arch/x86-64/gdt.h>
@@ -59,7 +59,6 @@ int empty() {
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_BootMeta = boot_meta;
 
-
 	Arc_MainTerm.rx_buf = NULL;
 	Arc_MainTerm.tx_buf = NULL;
 	Arc_MainTerm.term_width = 180;
@@ -74,18 +73,20 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	Arc_InstallGDT();
 	Arc_InstallIDT();
-	Arc_ParseMBI();
+	Arc_ParseBootInfo();
 
-	Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
+	if (Arc_MainTerm.framebuffer != NULL) {
+		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
+	}
+
+	Arc_InitPMM((struct ARC_MMap *)boot_meta->arc_mmap, boot_meta->arc_mmap_len);
 
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(100);
 
 	Arc_InitializeVFS();
 
-	// Input Arc_InitramfsRes should be the starting address of the
-	// initramfs
-	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)Arc_InitramfsRes);
+	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)ARC_PHYS_TO_HHDM(boot_meta->initramfs));
 	Arc_MountVFS("/", "initramfs", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
 
 	Arc_VFSLink("/initramfs/boot/ANTIQUE.F14", "/font.fnt");

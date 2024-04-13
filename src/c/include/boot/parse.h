@@ -1,5 +1,5 @@
 /**
- * @file pmm.h
+ * @file parse.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,16 +24,9 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_MM_PMM_H
-#define ARC_MM_PMM_H
+#ifndef ARC_BOOT_PARSE_H
+#define ARC_BOOT_PARSE_H
 
-#include <mm/freelist.h>
-#include <global.h>
-
-void *Arc_AllocPMM();
-void *Arc_ContiguousAllocPMM(size_t objects);
-void *Arc_FreePMM(void *address);
-void *Arc_ContiguousFreePMM(void *address, size_t objects);
-void Arc_InitPMM(struct ARC_MMap *mmap, int entries);
+int Arc_ParseBootInfo();
 
 #endif

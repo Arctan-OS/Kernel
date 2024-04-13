@@ -99,6 +99,8 @@ static int slab_init_lists(int i, size_t size, size_t object_size) {
 }
 
 int Arc_InitSlabAllocator(size_t init_page_count) {
+	ARC_DEBUG(INFO, "Initializing SLAB allocator (%d)\n", init_page_count);
+
 	slab_init_lists(0, init_page_count, 16);
 	slab_init_lists(1, init_page_count, 32);
 	slab_init_lists(2, init_page_count, 64);

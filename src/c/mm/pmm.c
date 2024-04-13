@@ -67,7 +67,7 @@ void *Arc_ContiguousFreePMM(void *address, size_t objects) {
 	return Arc_ListContiguousFree(arc_physical_mem, address, objects);
 }
 
-void Arc_InitPMM(struct multiboot_tag_mmap *mmap) {
+void Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 	arc_physical_mem = (struct ARC_FreelistMeta *)(Arc_BootMeta->pmm_state + ARC_HHDM_VADDR);
 
 	ARC_DEBUG(INFO, "Bootstrap allocator: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
@@ -92,13 +92,11 @@ void Arc_InitPMM(struct multiboot_tag_mmap *mmap) {
 		current = current->next;
 	}
 
-	int entry_count = (mmap->size - sizeof(struct multiboot_tag)) / mmap->entry_size;
+	for (int i = 0; i < entries; i++) {
+		struct ARC_MMap entry = mmap[i];
 
-	for (int i = 0; i < entry_count; i++) {
-		struct multiboot_mmap_entry entry = mmap->entries[i];
-
-		uintptr_t entry_base = (uintptr_t)(entry.addr + ARC_HHDM_VADDR);
-		uintptr_t entry_ciel = (uintptr_t)(entry.addr + entry.len + ARC_HHDM_VADDR);
+		uintptr_t entry_base = (uintptr_t)(entry.base + ARC_HHDM_VADDR);
+		uintptr_t entry_ciel = (uintptr_t)(entry.base + entry.len + ARC_HHDM_VADDR);
 
 		if (i == 0) {
 			// We want to keep this entry intact, for now
@@ -134,4 +132,6 @@ void Arc_InitPMM(struct multiboot_tag_mmap *mmap) {
 
 		ARC_DEBUG(INFO, "MMAP entry %d has been successfully linked into freelist\n", i);
 	}
+
+	ARC_DEBUG(INFO, "Finished setting up kernel PMM\n");
 }

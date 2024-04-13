@@ -28,12 +28,11 @@
 #define ARC_GLOBAL_H
 
 #include <interface/terminal.h>
-#include <inttypes.h>
-#include <stdint.h>
 #include <arctan.h>
-#include <multiboot/multiboot2.h>
+#include <boot/multiboot2.h>
 #include <fs/vfs.h>
 #include <lib/resource.h>
+#include <inttypes.h>
 
 #define ARC_HANG for (;;) __asm__("hlt");
 

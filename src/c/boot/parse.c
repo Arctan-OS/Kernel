@@ -1,5 +1,5 @@
 /**
- * @file mbparse.h
+ * @file parse.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,11 +24,21 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_MULTIBOOT_MBPARSE_H
-#define ARC_MULTIBOOT_MBPARSE_H
-
+#include <boot/parse.h>
+#include <boot/mb2.h>
 #include <global.h>
 
-int Arc_ParseMBI(void);
+int Arc_ParseBootInfo() {
+	ARC_DEBUG(INFO, "Parsing boot information\n");
 
-#endif
+	switch (Arc_BootMeta->boot_proc) {
+	case ARC_BOOTPROC_MB2: {
+		Arc_ParseMB2I();
+		break;
+	}
+	}
+
+	ARC_DEBUG(INFO, "Finished parsing boot information\n");
+
+	return 0;
+}
