@@ -27,7 +27,6 @@
 #include <arctan.h>
 #include <global.h>
 #include <mm/freelist.h>
-#include <multiboot/multiboot2.h>
 #include <mm/pmm.h>
 #include <stdint.h>
 
