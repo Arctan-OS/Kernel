@@ -37,6 +37,7 @@ void memset(void *a, uint8_t value, size_t size);
 void memcpy(void *a, void *b, size_t size);
 size_t strlen(char *a);
 char *strdup(char *a);
+char *strndup(char *a, size_t n);
 long strtol(char *string, char **end, int base);
 
 #endif

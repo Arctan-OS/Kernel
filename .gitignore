@@ -3,5 +3,6 @@
 
 docs/
 .cache/
+.editorconfig
 
 compile_commands.json

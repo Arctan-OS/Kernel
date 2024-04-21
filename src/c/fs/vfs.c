@@ -26,7 +26,7 @@
  * Abstract virtual file system driver. Is able to create and delete virtual
  * file systems for caching files on disk.
 */
-#include "abi-bits/stat.h"
+#include <abi-bits/stat.h>
 #include <lib/atomics.h>
 #include <abi-bits/errno.h>
 #include <lib/resource.h>
@@ -49,8 +49,13 @@ struct vfs_traverse_info {
 	char *mountpath;
 	/// Mode to create new nodes with.
 	uint32_t mode;
-	/// Type of node to create. ARC_VFS_NULL to disable node creation.
+	/// Type of node to create.
 	int type;
+	/// Creation level (0: no creation, 1: create node graph, 2: create node graph and physical files)
+#define VFS_NO_CREAT 0
+#define VFS_GR_CREAT 1
+#define VFS_FS_CREAT 2
+	int create_level;
 };
 
 int vfs_stat2type(struct stat stat) {
@@ -98,7 +103,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 	size_t last_div = 0;
 	for (size_t i = 0; i < max; i++) {
-		if (filepath[i] != '/' && i != max - 1) {
+		if (filepath[i] != '/' && i != max -1) {
 			continue;
 		}
 
@@ -109,13 +114,12 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		}
 
 		char *component = (char *)(filepath + last_div);
-		last_div = i;
 
 		if (*component == '/') {
 			component++;
-			component_length--;
 		}
 
+		last_div = i;
 		if (node->type == ARC_VFS_N_MOUNT) {
 			info->mount = node;
 			info->mountpath = component;
@@ -142,9 +146,15 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		}
 
 		if (child == NULL) {
+			if (info->create_level == VFS_NO_CREAT) {
+				// No creation desired by caller
+				ARC_DEBUG(ERR, "VFS_NO_CREAT specified\n");
+				return i;
+			}
+
 			// Next node down does not exist in node graph
 			// Create it
-			struct ARC_VFSNode *new = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode *));
+			struct ARC_VFSNode *new = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode));
 
 			if (new == NULL) {
 				ARC_DEBUG(ERR, "Cannot allocate next node\n");
@@ -152,22 +162,23 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 			memset(new, 0, sizeof(struct ARC_VFSNode));
 
-			// TODO: Hacky, should make a strndup
-			char c = component[component_length];
-			component[component_length] = 0;
-			new->name = strdup(component);
-			component[component_length] = c;
+			new->name = strndup(component, component_length);
 
 			new->mount = info->mount->mount;
 			new->next = node->children;
 
 			new->type = ARC_VFS_N_DIR;
-
 			if (i == max - 1) {
 				// This is the last component, we need to create
 				// it with the specified type
 				new->type = info->type;
 			}
+
+			if (node->children != NULL) {
+				node->children->prev = new;
+			}
+			node->children = new;
+			child = new;
 
 			if (info->mount != NULL) {
 				struct ARC_Resource *res = info->mount->resource;
@@ -175,26 +186,27 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 				if (def->stat(res, info->mountpath, &new->stat) != 0) {
 					ARC_DEBUG(ERR, "Failed to stat %s\n", info->mountpath);
+					if (info->create_level != VFS_FS_CREAT) {
+						ARC_DEBUG(ERR, "VFS_FS_CREAT not allowed\n");
+
+						Arc_QUnlock(&node->branch_lock);
+
+						return i;
+					}
+
 					// Since all mountpaths exist in VFS, we do not need to be
 					// concerened with the situation where a path such as:
 					// /path/to/thing/that/exists.txt where path and
 					// thing are mountpoints causes this case to break. As
 					// we can be sure that we will not try to create
 					// /to/thing/that/exists.txt (as /path/to/thing is present)
-					if (info->type != ARC_VFS_NULL) {
-						def->create(info->mountpath, info->mode, info->type);
+					if (def->create(info->mountpath, info->mode, info->type) != 0) {
+						ARC_DEBUG(ERR, "VFS_FS_CREAT failed\n");
 					}
 				} else {
 					new->type = vfs_stat2type(new->stat);
 				}
 			}
-
-			if (node->children != NULL) {
-				node->children->prev = new;
-			}
-
-			node->children = new;
-			child = new;
 		}
 
 		tid = Arc_QLock(&child->branch_lock);
@@ -211,29 +223,94 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 	return 0;
 }
 
+int Arc_InitializeVFS() {
+	vfs_root.name = (char *)root;
+	vfs_root.resource = (struct ARC_Resource *)&root_res;
+	vfs_root.type = ARC_VFS_N_ROOT;
+
+	Arc_QLockStaticInit(&vfs_root.branch_lock);
+	Arc_MutexStaticInit(&vfs_root.property_lock);
+
+	ARC_DEBUG(INFO, "Created VFS root\n");
+
+	return 0;
+}
+
 int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
+	if (mountpoint == NULL || resource == NULL || fs_type == ARC_VFS_NULL) {
+		return EINVAL;
+	}
+
+	struct vfs_traverse_info info = { 0 };
+	if (*mountpoint == '/') {
+		info.start = &vfs_root;
+	} else {
+		// info.start = current_working_directory();
+	}
+	info.create_level = VFS_GR_CREAT;
+
+	if (vfs_traverse(mountpoint, &info, 0) != 0) {
+		ARC_DEBUG(ERR, "Failed to traverse graph\n");
+		return -1;
+	}
+
+	struct ARC_VFSNode *mount = info.node;
+
+	if (mount->type != ARC_VFS_N_DIR) {
+		ARC_DEBUG(ERR, "%s is not a directory (or already mounted)\n", mountpoint);
+		return -1;
+	}
+
+	Arc_MutexLock(&mount->property_lock);
+
+	mount->type = ARC_VFS_N_MOUNT;
+	mount->resource = resource;
+
+	Arc_MutexUnlock(&mount->property_lock);
+
 	return 0;
 }
 
 int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
+	if (mount == NULL || mount->type != ARC_VFS_N_MOUNT) {
+		return EINVAL;
+	}
+
+	int64_t tid = Arc_QLock(&mount->branch_lock);
+	if (tid < 0 && tid != -1) {
+		ARC_DEBUG(ERR, "Lock error!\n");
+		return -1;
+	}
+	Arc_QYield(&mount->branch_lock, tid);
+
+	if (Arc_MutexLock(&mount->property_lock) != 0) {
+		ARC_DEBUG(ERR, "Lock error!\n");
+		return -1;
+	}
+
+
+
 	return 0;
 }
 
 // TODO: Don't signal return type through sign of int link_depth
 // link_depth >> 31 = 0: void *ret = struct ARC_VFSFile *
 // link_depth >> 31 = 1: void *ret = struct ARC_VFSNode *
-int Arc_OpenVFS(char *path, struct ARC_VFSNode *start, int flags, uint32_t mode, int link_depth, void **ret) {
+int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 	(void)flags;
 
 	if (path == NULL) {
 		return EINVAL;
 	}
 
+	struct vfs_traverse_info info = { 0 };
 	if (*path == '/') {
-		start = &vfs_root;
+		info.start = &vfs_root;
+	} else {
+		// info.start = current_working_directory();
 	}
 
-	struct vfs_traverse_info info = { .start = start };
+	info.create_level = 1;
 
 	if (vfs_traverse(path, &info, link_depth) != 0) {
 		// Error
@@ -262,16 +339,18 @@ int Arc_OpenVFS(char *path, struct ARC_VFSNode *start, int flags, uint32_t mode,
 	return 0;
 }
 
-int Arc_CreateVFS(struct ARC_VFSNode *start, char *path, uint32_t mode, int type) {
+int Arc_CreateVFS(char *path, uint32_t mode, int type) {
 	if (path == NULL) {
 		return EINVAL;
 	}
 
+	struct vfs_traverse_info info = { .mode = mode, .type = type, .create_level = VFS_FS_CREAT };
 	if (*path == '/') {
-		start = &vfs_root;
+		info.start = &vfs_root;
+	} else {
+		// info.start = get_current_directory();
 	}
 
-	struct vfs_traverse_info info = { .start = start, .mode = mode, .type = type };
 	vfs_traverse(path, &info, 0);
 
 	Arc_MutexLock(&info.node->property_lock);
@@ -280,3 +359,7 @@ int Arc_CreateVFS(struct ARC_VFSNode *start, char *path, uint32_t mode, int type
 
 	return 0;
 }
+
+#undef VFS_NO_CREAT
+#undef VFS_GR_CREAT
+#undef VFS_FS_CREAT

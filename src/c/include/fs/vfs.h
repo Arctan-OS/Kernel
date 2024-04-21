@@ -145,7 +145,7 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount);
  * @param struct ARC_Reference **reference - A reference to the resource.
  * @return A non-NULL pointer on success.
  * */
-int Arc_OpenVFS(char *path, struct ARC_VFSNode *start, int flags, uint32_t mode, int link_depth, void **ret);
+int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret);
 
 /**
  * Read the given file.
@@ -206,7 +206,8 @@ int Arc_CloseVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference);
  * */
 int Arc_StatVFS(char *filepath, struct stat *stat);
 
-int Arc_VFSCreate(struct ARC_VFSNode *start, char *filepath, uint32_t mode, int type);
+int Arc_CreateVFS(char *path, uint32_t mode, int type);
+
 int Arc_VFSRemove(char *filepath);
 int Arc_VFSLink(char *a, char *b);
 int Arc_VFSRename(char *a, char *b);

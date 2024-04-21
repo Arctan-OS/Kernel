@@ -51,7 +51,9 @@ void *Arc_SlabAlloc(size_t size) {
 		}
 	}
 
-	return Arc_ListAlloc(&heap.lists[i]);
+	void *a = Arc_ListAlloc(&heap.lists[i]);
+
+	return a;
 }
 
 void *Arc_SlabFree(void *address) {
@@ -68,6 +70,7 @@ void *Arc_SlabFree(void *address) {
 
 	if (list == -1) {
 		// Could not find the list
+		ARC_DEBUG(INFO, "Failed to free %p\n", address);
 		return NULL;
 	}
 

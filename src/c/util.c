@@ -67,6 +67,14 @@ char *strdup(char *a) {
 	return b;
 }
 
+char *strndup(char *a, size_t n) {
+	char *b = Arc_SlabAlloc(n + 1);
+	memset(b, 0, n + 1);
+	memcpy(b, a, n);
+
+	return b;
+}
+
 static const char *NUMBERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 long strtol(char *string, char **end, int base) {
