@@ -55,6 +55,8 @@ struct ARC_VFSFile {
 	long offset;
 	/// Pointer to the parent VFS node.
 	struct ARC_VFSNode *node;
+	/// Reference
+	struct ARC_Reference *reference;
 	/// Mode the file was opened with.
 	uint32_t mode;
 	/// Flags the file was opened with.
@@ -121,8 +123,7 @@ int Arc_InitializeVFS();
  * @param int type - The type of the file system.
  * @return A non-NULL pointer to the VFS node that describes the mounted device.
  * */
-struct ARC_VFSNode *Arc_MountVFS(char *mountpoint, char *name, struct ARC_Resource *resource, int type);
-
+int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type);
 
 /**
  * Unmounts the given mountpoint
@@ -144,7 +145,7 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount);
  * @param struct ARC_Reference **reference - A reference to the resource.
  * @return A non-NULL pointer on success.
  * */
-struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, struct ARC_Reference **reference);
+int Arc_OpenVFS(char *path, struct ARC_VFSNode *start, int flags, uint32_t mode, int link_depth, void **ret);
 
 /**
  * Read the given file.
@@ -158,7 +159,7 @@ struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, st
  * @param struct ARC_VFSNode *file - The file to read.
  * @return The number of words read.
  * */
-int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file);
+int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file);
 
 /**
  * Write to the given file.
@@ -172,7 +173,7 @@ int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile 
  * @param struct ARC_VFSNode *file - The file to write.
  * @return The number of words written.
  * */
-int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file);
+int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file);
 
 /**
  * Change the offset in the given file.
@@ -182,7 +183,7 @@ int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile
  * @param int whence - The position from which to apply the offset to.
  * @return zero on success.
  * */
-int Arc_SeekFileVFS(struct ARC_VFSFile *file, long offset, int whence);
+int Arc_SeekVFS(struct ARC_VFSFile *file, long offset, int whence);
 
 /**
  * Close the given file in the VFS.
@@ -191,7 +192,7 @@ int Arc_SeekFileVFS(struct ARC_VFSFile *file, long offset, int whence);
  * @param struct ARC_Reference *reference - The reference which is closing the file.
  * @return zero on success.
  * */
-int Arc_CloseFileVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference);
+int Arc_CloseVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference);
 
 /**
  * Get the status of a file
@@ -203,9 +204,9 @@ int Arc_CloseFileVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference);
  * @param struct stat *stat - The place where to put the information.
  * @return zero on success.
  * */
-int Arc_StatFileVFS(char *filepath, struct stat *stat);
+int Arc_StatVFS(char *filepath, struct stat *stat);
 
-int Arc_VFSCreate(char *filepath, uint32_t mode, int type, struct ARC_VFSNode **node_);
+int Arc_VFSCreate(struct ARC_VFSNode *start, char *filepath, uint32_t mode, int type);
 int Arc_VFSRemove(char *filepath);
 int Arc_VFSLink(char *a, char *b);
 int Arc_VFSRename(char *a, char *b);

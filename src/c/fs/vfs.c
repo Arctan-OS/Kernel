@@ -26,7 +26,8 @@
  * Abstract virtual file system driver. Is able to create and delete virtual
  * file systems for caching files on disk.
 */
-#include "lib/atomics.h"
+#include "abi-bits/stat.h"
+#include <lib/atomics.h>
 #include <abi-bits/errno.h>
 #include <lib/resource.h>
 #include <mm/allocator.h>
@@ -38,230 +39,102 @@ static const char *root = "\0";
 static const struct ARC_Resource root_res = { .name = "/" };
 static struct ARC_VFSNode vfs_root = { 0 };
 
-// TODO: Functions like open, close, read, write, etc... need code to
-//       modify the status of the file
-// TODO: Internal functions (vfs_*) need to access the physical file
-//       system to create / remove directories and files
-
-struct internal_traverse_trace {
+struct vfs_traverse_info {
+	struct ARC_VFSNode *start;
+	/// The sought after nodes.
 	struct ARC_VFSNode *node;
-	struct internal_traverse_trace *next;
-};
-
-struct internal_traverse_args {
-	/// Nodes traveresed to get to target.
-	struct internal_traverse_trace *trace;
-        /// Node at the end of the trace.
-	struct internal_traverse_trace *last_node;
-	/// Mountpoint.
+	/// Node that node is mounted on.
 	struct ARC_VFSNode *mount;
-	/// Absolute path relative to mountpoint.
+	/// Path to node from the mountpoint.
 	char *mountpath;
-	/// Number of characters reached before return (equal to strlen(filepath) means last_node = target node).
-	size_t success;
+	/// Mode to create new nodes with.
+	uint32_t mode;
+	/// Type of node to create. ARC_VFS_NULL to disable node creation.
+	int type;
 };
 
-static int vfs_destroy_node(struct ARC_VFSNode *node) {
-	// Destroy the node
-	if (node->children != NULL || node->ref_count > 0) {
-		// Cannot free node, other nodes / operations depend on it
-		return 1;
-	}
-
-	Arc_UninitializeResource(node->resource);
-
-	if (node->type == ARC_VFS_N_MOUNT) {
-		Arc_SlabFree(node->mount);
-	}
-
-	// Update links of parent
-	if (node->parent->children != NULL) {
-		if (node->prev == NULL) {
-			node->parent->children = node->next;
-		} else {
-			node->prev->next = node->next;
+int vfs_stat2type(struct stat stat) {
+	switch (stat.st_mode & S_IFMT) {
+		case S_IFDIR: {
+			return ARC_VFS_N_DIR;
 		}
 
-		if (node->next != NULL) {
-			node->next->prev = node->prev;
+		case S_IFLNK: {
+			return ARC_VFS_N_LINK;
+		}
+
+		case S_IFREG: {
+			return ARC_VFS_N_FILE;
+		}
+
+		default: {
+			return ARC_VFS_NULL;
 		}
 	}
+}
 
-	Arc_SlabFree(node->name);
-	Arc_SlabFree(node);
-
+int vfs_create_node() {
 	return 0;
 }
 
-static struct ARC_VFSNode *vfs_destroy_node_graph_upto(struct ARC_VFSNode *start, struct ARC_VFSNode *stop) {
-	// Destroy the node graph UPTO stop (don't destroy stop)
-	while (start != stop) {
-		struct ARC_VFSNode *tmp = start->parent;
-
-		if (start->type == ARC_VFS_N_MOUNT) {
-			// Ensure that we do not destroy a mount
-			return stop;
-		}
-
-		if (vfs_destroy_node(start) != 0) {
-			return start;
-		}
-
-		start = tmp;
-	}
-
-	return NULL;
+int create_link(struct ARC_VFSNode *node, int link_depth) {
+	return 0;
 }
 
-__attribute__((unused)) static struct ARC_VFSNode *vfs_destroy_node_graph_inclusive(struct ARC_VFSNode *start, struct ARC_VFSNode *stop) {
-	// Destroy the node graph UPTO and uncluding stop
-	struct ARC_VFSNode *node = vfs_destroy_node_graph_upto(start, stop);
-
-	if (node != NULL) {
-		return node;
+int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth) {
+	if (filepath == NULL || info == NULL || info->start == NULL) {
+		return EINVAL;
 	}
-
-	if (vfs_destroy_node(stop) != 0) {
-		return stop;
-	}
-
-	return NULL;
-}
-
-static int vfs_destroy_subtrees(struct ARC_VFSNode *top) {
-	if (top->ref_count > 0) {
-		return 0;
-	}
-
-	int count = 0;
-
-	struct ARC_VFSNode *children = top->children;
-	while (children != NULL) {
-		count += vfs_destroy_subtrees(children);
-		children = children->next;
-	}
-
-	// Free the node
-	Arc_UninitializeResource(top->resource);
-
-	Arc_SlabFree(top->name);
-
-	return count;
-}
-
-__attribute__((unused)) static int vfs_push_trace(struct internal_traverse_trace *trace) {
-	int i = 0;
-
-	struct internal_traverse_trace *cur = trace;
-
-	while (cur != NULL) {
-		cur->node->ref_count--;
-		i++;
-		cur = cur->next;
-	}
-
-	return i;
-}
-
-static int vfs_pop_trace(struct internal_traverse_trace *trace) {
-	int i = 0;
-
-	while (trace != NULL) {
-		trace->node->ref_count--;
-		i++;
-		trace = trace->next;
-	}
-
-	return i;
-}
-
-static int vfs_free_trace(struct internal_traverse_trace *trace) {
-	int i = 0;
-
-	while (trace != NULL) {
-		struct internal_traverse_trace *tmp = trace->next;
-		Arc_SlabFree(trace);
-		i++;
-		trace= tmp;
-	}
-
-	return i;
-}
-
-// TODO: Resolve links
-static int vfs_traverse_node_graph(char *filepath, struct ARC_VFSNode *start_node, struct internal_traverse_args *args) {
-	if (start_node == NULL) {
-		start_node = &vfs_root;
-	}
-
-	if (args == NULL) {
-		return -1;
-	}
-
-	// Create first link of trace
-	struct internal_traverse_trace *latest = (struct internal_traverse_trace *)Arc_SlabAlloc(sizeof(struct internal_traverse_trace));
-
-	if (latest == NULL) {
-		return -2;
-	}
-
-	memset(latest, 0, sizeof(struct internal_traverse_trace));
-	latest->node = start_node;
-	args->trace = latest;
-	args->last_node = latest;
-
-	struct ARC_VFSNode *node = start_node;
-
-	// Lock starting node
-	node->ref_count++;
 
 	size_t max = strlen(filepath);
-	int64_t tid = 0;
 
+	struct ARC_VFSNode *node = info->start;
+	node->ref_count++; // TODO: Atomize
+
+	int64_t tid = Arc_QLock(&node->branch_lock);
+	if (tid < 0 && tid != -1) {
+		 ARC_DEBUG(ERR, "Lock error!\n");
+	}
+
+	size_t last_div = 0;
 	for (size_t i = 0; i < max; i++) {
-		if (filepath[i] != '/') {
-			// Component, continue on
+		if (filepath[i] != '/' && i != max - 1) {
 			continue;
 		}
 
-		// Reached a divisor, check length of component
-		size_t j = 0;
-		for (; (j + i) < max - 1 && filepath[i + j + 1] != '/'; j++);
+		size_t component_length = i - last_div;
 
-		if (j - i <= 0) {
-			// No component, continue on
+		if (component_length <= 0) {
 			continue;
 		}
 
-		tid = Arc_QLock(&node->branch_lock);
+		char *component = (char *)(filepath + last_div);
+		last_div = i;
 
-		if (tid == -2) {
-			ARC_DEBUG(ERR, "Failed to lock\n");
+		if (*component == '/') {
+			component++;
+			component_length--;
+		}
+
+		if (node->type == ARC_VFS_N_MOUNT) {
+			info->mount = node;
+			info->mountpath = component;
 		}
 
 		Arc_QYield(&node->branch_lock, tid);
 
-		char *component = (char *)(filepath + i + 1);
-
-		if (node->type == ARC_VFS_N_MOUNT) {
-			// Last node was a mount, take notes
-			args->mount = node;
-			args->mountpath = component;
-		}
-
-		// Interpret .. and . dirs
-		if (strncmp(component, "..", j) == 0) {
+		if (strncmp(component, "..", component_length) == 0) {
+			// .. dir, go up one
 			node = node->parent == NULL ? node : node->parent;
 			continue;
-		} else if (strncmp(component, ".", j) == 0) {
+		} else if (strncmp(component, ".", component_length) == 0) {
+			// . dir, skip
 			continue;
 		}
 
 		struct ARC_VFSNode *child = node->children;
-
 		while (child != NULL) {
-			if (strncmp(component, child->name, j) == 0) {
-				// Found next component
+			if (strncmp(component, child->name, 0) == 0) {
 				break;
 			}
 
@@ -269,748 +142,141 @@ static int vfs_traverse_node_graph(char *filepath, struct ARC_VFSNode *start_nod
 		}
 
 		if (child == NULL) {
-			// Could not find next component
-			args->success = i;
-			return 1;
+			// Next node down does not exist in node graph
+			// Create it
+			struct ARC_VFSNode *new = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode *));
+
+			if (new == NULL) {
+				ARC_DEBUG(ERR, "Cannot allocate next node\n");
+			}
+
+			memset(new, 0, sizeof(struct ARC_VFSNode));
+
+			// TODO: Hacky, should make a strndup
+			char c = component[component_length];
+			component[component_length] = 0;
+			new->name = strdup(component);
+			component[component_length] = c;
+
+			new->mount = info->mount->mount;
+			new->next = node->children;
+
+			new->type = ARC_VFS_N_DIR;
+
+			if (i == max - 1) {
+				// This is the last component, we need to create
+				// it with the specified type
+				new->type = info->type;
+			}
+
+			if (info->mount != NULL) {
+				struct ARC_Resource *res = info->mount->resource;
+				struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)res->driver->driver;
+
+				if (def->stat(res, info->mountpath, &new->stat) != 0) {
+					ARC_DEBUG(ERR, "Failed to stat %s\n", info->mountpath);
+					// Since all mountpaths exist in VFS, we do not need to be
+					// concerened with the situation where a path such as:
+					// /path/to/thing/that/exists.txt where path and
+					// thing are mountpoints causes this case to break. As
+					// we can be sure that we will not try to create
+					// /to/thing/that/exists.txt (as /path/to/thing is present)
+					if (info->type != ARC_VFS_NULL) {
+						def->create(info->mountpath, info->mode, info->type);
+					}
+				} else {
+					new->type = vfs_stat2type(new->stat);
+				}
+			}
+
+			if (node->children != NULL) {
+				node->children->prev = new;
+			}
+
+			node->children = new;
+			child = new;
 		}
 
 		tid = Arc_QLock(&child->branch_lock);
-
-		if (tid == -2) {
-			ARC_DEBUG(ERR, "Failed to hand over lock\n");
+		if (tid < 0 && tid != -1) {
+			ARC_DEBUG(ERR, "Lock error!\n");
 		}
-
 		Arc_QUnlock(&node->branch_lock);
 
-		// Move to next node, lock it
+		node->ref_count--; // TODO: Atomize
 		node = child;
-		node->ref_count++;
-
-		// Add a new point to the trace
-		latest = (struct internal_traverse_trace *)Arc_SlabAlloc(sizeof(struct internal_traverse_trace));
-
-		if (latest == NULL) {
-			goto epic_fail;
-		}
-
-		memset(latest, 0, sizeof(struct internal_traverse_trace));
-
-		latest->next = args->trace;
-		latest->node = node;
-		args->trace = latest;
+		node->ref_count++; // TODO: Atomize
 	}
-
-	return 0;
-
-	epic_fail:;
-	// TODO: Account for this condition
-	return -2;
-}
-
-static int vfs_create_node_graph(char *filepath, struct internal_traverse_args *args, int type) {
-	if (filepath == NULL || args == NULL) {
-		ARC_DEBUG(ERR, "Invalid filepath or args provided\n");
-		return -1;
-	}
-
-	ARC_DEBUG(INFO, "Creating node graph for \"%s\"\n", filepath);
-
-	struct ARC_SuperDriverDef *mnt_superdef = NULL;
-
-	if (args->mount != NULL && args->mount->resource != NULL && args->mount->resource->driver != NULL) {
-		mnt_superdef = (struct ARC_SuperDriverDef *)args->mount->resource->driver->driver;
-	}
-
-	struct ARC_VFSNode *node = args->trace->node;
-
-	size_t max = strlen(filepath);
-	int64_t tid = 0;
-
-	for (size_t i = args->success; i < max; i++) {
-		if (filepath[i] != '/') {
-			continue;
-		}
-
-		size_t j = 0;
-		for (; (j + i) < max - 1 && filepath[i + j + 1] != '/'; j++);
-
-		if (j - i <= 0) {
-			continue;
-		}
-
-		char *component = (char *)(filepath + i + 1);
-
-		// Lock the current node
-		tid = Arc_QLock(&node->branch_lock);
-
-		if (tid == -2) {
-			// Epic fail
-			ARC_DEBUG(ERR, "Failed to lock\n");
-		}
-
-		Arc_QYield(&node->branch_lock, tid);
-
-		// Interpret .. and . dirs
-		if (strncmp(component, "..", j) == 0) {
-			node = node->parent == NULL ? node : node->parent;
-			continue;
-		} else if (strncmp(component, ".", j) == 0) {
-			continue;
-		}
-
-		struct ARC_VFSNode *_node = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode));
-
-		if (_node == NULL) {
-			args->success = i;
-			return -2;
-		}
-
-		memset(_node, 0, sizeof(struct ARC_VFSNode));
-
-		_node->type = ARC_VFS_N_DIR;
-		_node->parent = node;
-
-		if (node->children != NULL) {
-			_node->next = node->children;
-		}
-		node->children = _node;
-
-		_node->mount = node->mount;
-
-		char c = filepath[j + i + 1];
-		filepath[j + i + 1] = 0;
-
-		_node->name = strdup(component);
-
-		if (mnt_superdef != NULL) {
-			mnt_superdef->stat(args->mount->resource, filepath + args->success + 1, &_node->stat);
-		}
-
-		filepath[j + i + 1] = c;
-
-		struct internal_traverse_trace *latest = (struct internal_traverse_trace *)Arc_SlabAlloc(sizeof(struct internal_traverse_trace));
-		latest->next = args->trace;
-		latest->node = _node;
-		args->trace = latest;
-
-		// Hand over lock
-		tid = Arc_QLock(&_node->branch_lock);
-
-		if (tid == -2) {
-			ARC_DEBUG(ERR, "Failed to hand over lock\n");
-		}
-
-		Arc_QUnlock(&node->branch_lock);
-
-		// Move down
-		node = _node;
-		node->ref_count++;
-	}
-
-	node->type = type;
 
 	return 0;
 }
 
-__attribute__((unused)) static int vfs_rebranch_graph() {
+int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 	return 0;
-}
-
-static int vfs_migrate_node(struct ARC_VFSNode *node, struct ARC_VFSMount *mount, char *mountpath) {
-	(void)node;
-	(void)mount;
-	(void)mountpath;
-
-	return 0;
-}
-
-int Arc_InitializeVFS() {
-	vfs_root.name = (char *)root;
-	vfs_root.children = NULL;
-	vfs_root.next = NULL;
-	vfs_root.parent = NULL;
-	vfs_root.resource = (struct ARC_Resource *)&root_res;
-	vfs_root.type = ARC_VFS_N_ROOT;
-	vfs_root.mount = NULL;
-
-	Arc_QLockStaticInit(&vfs_root.branch_lock);
-	Arc_MutexStaticInit(&vfs_root.property_lock);
-
-	ARC_DEBUG(INFO, "Created VFS root\n");
-
-	return 0;
-}
-
-struct ARC_VFSNode *Arc_MountVFS(char *mountpath, char *name, struct ARC_Resource *resource, int type) {
-	if (mountpath == NULL || name == NULL || resource == NULL || type == ARC_VFS_NULL) {
-		ARC_DEBUG(ERR, "Insufficient arguments (mountpath, name, resource, or type)\n");
-		return NULL;
-	}
-
-	struct internal_traverse_args args = { 0 };
-
-	int ret = vfs_traverse_node_graph(mountpath, NULL, &args);
-
-	if (ret == 1) {
-		ARC_DEBUG(ERR, "Could not find path \"%s\"\n", mountpath);
-		return NULL;
-	}
-
-	struct ARC_VFSNode *mountpoint = args.last_node->node;
-
-	if (mountpoint == NULL) {
-		ARC_DEBUG(ERR, "No mountpoint found\n");
-		return NULL;
-	}
-
-	struct ARC_VFSNode *node = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode));
-
-	if (node == NULL) {
-		ARC_DEBUG(ERR, "Could not allocate node\n");
-		return NULL;
-	}
-
-	struct ARC_VFSMount *mount = (struct ARC_VFSMount *)Arc_SlabAlloc(sizeof(struct ARC_VFSMount));
-
-	if (mount == NULL) {
-		ARC_DEBUG(ERR, "Could not allocate mount structure\n");
-		Arc_SlabFree(node);
-		return NULL;
-	}
-
-	memset(node, 0, sizeof(struct ARC_VFSNode));
-
-	mount->node = node;
-	mount->fs_type = type;
-
-	node->mount = mount;
-
-	node->name = strdup(name);
-	node->parent = mountpoint;
-
-	// TODO: Think this out, if the mount->parent is
-	//       vfs_root, then no new traverse operations
-	//       may be initiated from root until we have
-	//       finished unmounting
-
-        // Lock
-	int64_t tid = Arc_QLock(&mountpoint->branch_lock);
-	Arc_QYield(&mountpoint->branch_lock, tid);
-
-	if (mountpoint->children != NULL) {
-		mountpoint->children->prev = node;
-	}
-
-	node->next = mountpoint->children;
-	mountpoint->children = node;
-
-	// Unlock
-	Arc_QUnlock(&mountpoint->branch_lock);
-
-	node->type = ARC_VFS_N_MOUNT;
-	node->resource = resource;
-
-	vfs_pop_trace(args.trace);
-	vfs_free_trace(args.trace);
-
-	ARC_DEBUG(INFO, "Mounted \"%s\" (res: %p) on \"%s\"\n", name, resource, mountpath);
-
-	return node;
 }
 
 int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
-	if (mount->type != ARC_VFS_N_MOUNT) {
-		ARC_DEBUG(ERR, "Given node is not a mount\n");
-		return EINVAL;
-	}
-
-	if (mount->mount->open_files > 0 || mount->ref_count > 0) {
-		ARC_DEBUG(ERR, "Mount is still in use\n");
-		return 1;
-	}
-
-	// TODO: Think this out, if the mount->parent is
-	//       vfs_root, then no new traverse operations
-	//       may be initiated from root until we have
-	//       finished unmounting
-
-	int64_t tid = Arc_QLock(&mount->parent->branch_lock);
-	Arc_QYield(&mount->parent->branch_lock, tid);
-
-	// Destroy all nodes under mount
-	vfs_destroy_subtrees(mount);
-
-	// Destroy mount
-	vfs_destroy_node(mount);
-
-	Arc_QLock(&mount->parent->branch_lock);
-
 	return 0;
 }
 
-// TODO: Handle potential relative path
-// TODO: Opening links that exist on physical filesystem
-struct ARC_VFSFile *Arc_OpenFileVFS(char *filepath, int flags, uint32_t mode, struct ARC_Reference **reference) {
-	if (filepath == NULL) {
-		ARC_DEBUG(ERR, "No filepath or reference fillable provided\n");
-		return NULL;
-	}
+// TODO: Don't signal return type through sign of int link_depth
+// link_depth >> 31 = 0: void *ret = struct ARC_VFSFile *
+// link_depth >> 31 = 1: void *ret = struct ARC_VFSNode *
+int Arc_OpenVFS(char *path, struct ARC_VFSNode *start, int flags, uint32_t mode, int link_depth, void **ret) {
+	(void)flags;
 
-	ARC_DEBUG(INFO, "Opening file \"%s\"\n", filepath);
-
-	if (reference == NULL) {
-		ARC_DEBUG(WARN, "No reference given, opening file contextually\n");
-	}
-
-	if (filepath[0] != '/') {
-		ARC_DEBUG(ERR, "\"%s\" is not absolute, cannot open (for now)\n", filepath);
-		return NULL;
-	}
-
-	struct internal_traverse_args args = { 0 };
-	int ret = vfs_traverse_node_graph(filepath, NULL, &args);
-
-	if (ret < 0) {
-		ARC_DEBUG(ERR, "Could not traverse node graph\n");
-		return NULL;
-	}
-
-	struct ARC_VFSFile *file = (struct ARC_VFSFile *)Arc_SlabAlloc(sizeof(struct ARC_VFSFile));
-
-	if (file == NULL) {
-		ARC_DEBUG(ERR, "Failed to allocate file descriptor\n");
-		goto end;
-	}
-
-	memset(file, 0, sizeof(struct ARC_VFSFile));
-
-	struct ARC_VFSNode *node = args.trace->node;
-
-	if (node->type == ARC_VFS_N_LINK && node->link != NULL) {
-		ARC_DEBUG(INFO, "Found node is a link to %p\n", node->link);
-		node = node->link;
-	}
-
-	struct ARC_VFSNode *mount = args.mount;
-	struct ARC_Resource *res = mount->resource;
-
-	if (ret == 1) {
-		// Create path to node
-		struct ARC_VFSNode *last = node;
-		int ret = vfs_create_node_graph(filepath, &args, ARC_VFS_N_FILE);
-		node = args.trace->node;
-
-		if (ret == -2) {
-			node_graph_fail:;
-			ARC_DEBUG(INFO, "Failed to create node graph\n");
-
-			vfs_pop_trace(args.trace);
-			vfs_free_trace(args.trace);
-
-			Arc_SlabFree(file);
-
-			vfs_destroy_node_graph_upto(node, last);
-
-			return NULL;
-		} else if (ret == -1) {
-			Arc_SlabFree(file);
-			file = NULL;
-
-			goto end;
-		}
-
-		if (mount == NULL || res == NULL) {
-			ARC_DEBUG(INFO, "Failed to find mount information\n");
-			goto node_graph_fail;
-		}
-
-		struct ARC_Resource *nres = Arc_InitializeResource(filepath, res->dri_group, res->dri_index + 1, res->driver_state);
-
-		Arc_MutexLock(&nres->vfs_state_mutex);
-		nres->vfs_state = file;
-		node->resource = nres;
-
-		if (nres->driver->open(nres, args.mountpath, flags, mode) != 0) {
-			ARC_DEBUG(ERR, "Driver failed to open file\n");
-			Arc_MutexUnlock(&nres->vfs_state_mutex);
-
-			goto node_graph_fail;
-		}
-
-		Arc_MutexUnlock(&nres->vfs_state_mutex);
-	}
-
-	// struct ARC_SuperDriverDef *def = res->driver->driver;
-	// struct stat stat;
-	// def->stat(res, args.mountpath, &stat);
- 	// TODO: Check permissions, ensure user has perms to open file with requested flags
- 	// TODO: Account for already open files and existing stat
-
-	// Create reference
-	if (reference != NULL) {
-		*reference = Arc_ReferenceResource(node->resource);
-		node->ref_count++;
-	}
-
-	// Link
-	file->node = node;
-
-	// Note mount file
-	node->mount->open_files++;
-	mount->ref_count++;
-
-	ARC_DEBUG(INFO, "Opened file (node: %p, fd: %p)\n", node, file);
-
-	end:;
-	// Free up trace
-	vfs_pop_trace(args.trace);
-	vfs_free_trace(args.trace);
-
-	return file;
-}
-
-int Arc_ReadFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file) {
-	if (buffer == NULL || file == NULL) {
-		return 0;
-	}
-
-	if (size == 0 || count == 0) {
-		return 0;
-	}
-
-	struct ARC_Resource *res = file->node->resource;
-	// Lock
-	Arc_MutexLock(&res->vfs_state_mutex);
-	struct ARC_VFSFile *tmp = res->vfs_state;
-	res->vfs_state = file;
-	int ret = res->driver->read(buffer, size, count, res);
-	res->vfs_state = tmp;
-	// Unlock
-	Arc_MutexUnlock(&res->vfs_state_mutex);
-
-	return ret;
-}
-
-int Arc_WriteFileVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file) {
-	if (buffer == NULL || file == NULL) {
-		return 0;
-	}
-
-	if (size == 0 || count == 0) {
-		return 0;
-	}
-
-	struct ARC_Resource *res = file->node->resource;
-	// Lock
-	Arc_MutexLock(&res->vfs_state_mutex);
-	struct ARC_VFSFile *tmp = res->vfs_state;
-	res->vfs_state = file;
-	int ret = res->driver->write(buffer, size, count, res);
-	res->vfs_state = tmp;
-	// Unlock
-	Arc_MutexUnlock(&res->vfs_state_mutex);
-
-	return ret;
-}
-
-int Arc_SeekFileVFS(struct ARC_VFSFile *file, long offset, int whence) {
-	if (file == NULL) {
-		ARC_DEBUG(INFO, "No file given (seek)\n");
+	if (path == NULL) {
 		return EINVAL;
 	}
 
-	struct ARC_VFSNode *node = file->node;
-
-	struct ARC_Resource *res = node->resource;
-	// Lock
-	Arc_MutexLock(&res->vfs_state_mutex);
-	struct ARC_VFSFile *tmp = res->vfs_state;
-	res->vfs_state = file;
-	int ret = res->driver->seek(res, offset, whence);
-	res->vfs_state = tmp;
-	// Unlock
-	Arc_MutexUnlock(&res->vfs_state_mutex);
-
-	return ret;
-}
-
-int Arc_CloseFileVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference) {
-	if (file == NULL || reference == NULL) {
-		ARC_DEBUG(ERR, "File or reference is NULL\n");
-		return EINVAL;
+	if (*path == '/') {
+		start = &vfs_root;
 	}
 
-	Arc_UnreferenceResource(reference);
-	file->node->ref_count--;
-	Arc_SlabFree(file);
+	struct vfs_traverse_info info = { .start = start };
 
-	if (file->node->ref_count > 0) {
-		// Some other files are still using this file,
-		// no need to close it, just free the given file
-		// descriptor
-		return 0;
-	}
-
-	// This file is no longer used, this resource can be
-	// uninitialized
-	Arc_UninitializeResource(reference->resource);
-
-	// Try to destroy the tree up to the root (don't destroy it
-	// even if you can)
-	vfs_destroy_node_graph_upto(file->node, &vfs_root);
-
-	return 0;
-}
-
-int Arc_StatFileVFS(char *filepath, struct stat *stat) {
-	struct internal_traverse_args args = { 0 };
-	int ret = vfs_traverse_node_graph(filepath, NULL, &args);
-
-	if (ret < 0) {
-		return ret;
-	}
-
-	struct ARC_Resource *res = args.mount->resource;
-	struct ARC_SuperDriverDef *super_def = (struct ARC_SuperDriverDef *)res->driver->driver;
-
-	super_def->stat(res, args.mountpath, stat);
-
-	vfs_pop_trace(args.trace);
-	vfs_free_trace(args.trace);
-
-	return 0;
-}
-
-// TODO: Double check
-int Arc_VFSCreate(char *filepath, uint32_t mode, int type, struct ARC_VFSNode **node_) {
-	if (filepath == NULL || type == ARC_VFS_NULL) {
-		return -1;
-	}
-	ARC_DEBUG(INFO, "Creating file \"%s\" (%d, %d)\n", filepath, mode, type);
-
-	struct internal_traverse_args args = { 0 };
-	int ret = vfs_traverse_node_graph(filepath, NULL, &args);
-
-	if (ret == 0) {
-		// Node is already in VFS, return 0
-		if (node_ != NULL) {
-			*node_ = args.trace->node;
-		}
-
-		vfs_pop_trace(args.trace);
-		vfs_free_trace(args.trace);
-
-		return 0;
-	}
-
-	if (ret < 0) {
-		// Failed to traverse node graph
-		return ret;
-	}
-
-	if (args.mount != NULL && args.mount->resource != NULL && args.mount->resource->driver != NULL) {
-		struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)args.mount->resource->driver->driver;
-		ret = def->create(filepath, mode, type);
-
-		if (ret != 0) {
-			// Could not create the node on the filesystem,
-			// it will not persist after vfs is destroyed
-			// TODO: Implement handling
-		}
-	}
-
-	ret = vfs_create_node_graph(filepath, &args, type);
-
-	if (ret != 0) {
+	if (vfs_traverse(path, &info, link_depth) != 0) {
 		// Error
-		return ret;
 	}
 
-	struct ARC_VFSNode *node = args.trace->node;
+	struct ARC_VFSNode *node = info.node;
 
-	// Set times
-	node->stat.st_mode = mode;
-
-	if (node_ != NULL) {
-		*node_ = node;
+	if (((link_depth >> 31) & 1) == 1) {
+		*ret = (void *)node;
+		return 0;
 	}
 
-	vfs_pop_trace(args.trace);
-	vfs_free_trace(args.trace);
+	// TODO: Check perms
+
+	struct ARC_VFSFile *desc = (struct ARC_VFSFile *)Arc_SlabAlloc(sizeof(struct ARC_VFSFile));
+
+	if (desc == NULL) {
+		return ENOMEM;
+	}
+
+	memset(desc, 0, sizeof(struct ARC_VFSFile));
+
+	desc->reference = Arc_ReferenceResource(node->resource);
+	desc->mode = mode;
 
 	return 0;
 }
 
-// TODO: Double check
-int Arc_VFSRemove(char *filepath) {
-	if (filepath == NULL) {
-		return 1;
+int Arc_CreateVFS(struct ARC_VFSNode *start, char *path, uint32_t mode, int type) {
+	if (path == NULL) {
+		return EINVAL;
 	}
 
-	struct internal_traverse_args args = { 0 };
-	int ret = vfs_traverse_node_graph(filepath, NULL, &args);
-
-	if (ret == 0) {
-		vfs_pop_trace(args.trace);
-		vfs_free_trace(args.trace);
-
-		return 1;
-	} else if (ret < 0) {
-		return 1;
+	if (*path == '/') {
+		start = &vfs_root;
 	}
 
-	// File is most definitely not open, and we did not get here
-	// because we failed to traverse the graph
+	struct vfs_traverse_info info = { .start = start, .mode = mode, .type = type };
+	vfs_traverse(path, &info, 0);
 
-	if (args.mount == NULL || args.mount->resource == NULL || args.mount->resource->driver == NULL) {
-		vfs_pop_trace(args.trace);
-		vfs_free_trace(args.trace);
+	Arc_MutexLock(&info.node->property_lock);
 
-		return 1;
-	}
-
-	struct ARC_DriverDef *def = args.mount->resource->driver;
-	struct ARC_SuperDriverDef *super_def = (struct ARC_SuperDriverDef *)def->driver;
-
-	ret = super_def->remove(filepath);
-
-	vfs_pop_trace(args.trace);
-	vfs_free_trace(args.trace);
-
-	return ret;
-}
-
-// TODO: Double check
-int Arc_VFSLink(char *a, char *b) {
-	if (a == NULL || b == NULL) {
-		return 1;
-	}
-
-	ARC_DEBUG(INFO, "Linking \"%s\" with \"%s\"\n", a, b)
-
-	struct internal_traverse_args args_a = { 0 };
-	struct internal_traverse_args args_b = { 0 };
-
-	int ret_a = vfs_traverse_node_graph(a, NULL, &args_a);
-	int ret_b = vfs_traverse_node_graph(b, NULL, &args_b);
-
-	struct ARC_VFSNode *node_a = args_a.trace->node;
-	struct ARC_VFSNode *node_b = args_b.trace->node;
-
-	if (ret_a < 0 || ret_b < 0) {
-		// Looking up A or B has failed, cannot continue
-		goto epic_fail;
-	}
-
-	if (ret_a == 1) {
-		// Source to link to does not exist
-		// Open it so it exists in VFS context
-		struct ARC_VFSFile *file = Arc_OpenFileVFS(a, 0, 0, NULL);
-
-		// Could not open the file
-		if (file == NULL) {
-			goto epic_fail;
-		}
-
-		node_a = file->node;
-
-		// We do not need the file descriptor
-		Arc_SlabFree(file);
-	}
-
-	if (ret_b == 1) {
-		ret_b = Arc_VFSCreate(b, node_a->stat.st_mode, ARC_VFS_N_LINK, &node_b);
-	}
-
-	if (ret_b != 0) {
-		// Failed to create file
-		goto epic_fail;
-	}
-
-	node_b->link = node_a;
-	ARC_DEBUG(INFO, "Created link (%p -> %p)\n", node_b, node_a);
-
-	vfs_pop_trace(args_a.trace);
-	vfs_pop_trace(args_b.trace);
-	vfs_free_trace(args_a.trace);
-	vfs_free_trace(args_b.trace);
-
-	return 0;
-
-	epic_fail:;
-	ARC_DEBUG(ERR, "Failed to create link\n");
-
-	vfs_pop_trace(args_a.trace);
-	vfs_pop_trace(args_b.trace);
-	vfs_free_trace(args_a.trace);
-	vfs_free_trace(args_b.trace);
-
-	return 1;
-}
-
-// TODO: Double check this
-int Arc_VFSRename(char *a, char *b) {
-	if (a == NULL || b == NULL) {
-		return -1;
-	}
-
-	struct internal_traverse_args args_a = { 0 };
-	int ret_a = vfs_traverse_node_graph(a, NULL, &args_a);
-
-	if (ret_a < 0) {
-		return -2;
-	}
-
-	struct ARC_VFSNode *node_a = args_a.trace->node;
-
-	vfs_pop_trace(args_a.trace);
-	vfs_free_trace(args_a.trace);
-
-	if (ret_a == 1) {
-		struct ARC_VFSFile *file = Arc_OpenFileVFS(a, 0, 0, NULL);
-		node_a = file->node;
-		Arc_SlabFree(file);
-	}
-
-	struct internal_traverse_args args_b = { 0 };
-	int ret_b = vfs_traverse_node_graph(b, NULL, &args_b);
-
-	if (ret_b < 0) {
-		b_trace_error:;
-		vfs_pop_trace(args_b.trace);
-		vfs_free_trace(args_b.trace);
-
-		return -2;
-	}
-
-	if (ret_b == 1) {
-		ret_b = vfs_create_node_graph(b, &args_b, node_a->type);
-	}
-
-	if (ret_b != 0) {
-		goto b_trace_error;
-	}
-
-	struct ARC_VFSNode *node_b = args_b.trace->next->node;
-
-	vfs_pop_trace(args_b.trace);
-	vfs_destroy_node(args_b.trace->node);
-	vfs_free_trace(args_b.trace);
-
-	// Node_a is the node that we want to move
-	// Node_b is now the parent directory of where we
-	// want to move to
-
-	if (node_a->mount != node_b->mount && vfs_migrate_node(node_a, node_b->mount, args_b.mountpath) != 0) {
-		// Failed to physically migrate A to B
-	}
-
-	if (node_b->children != NULL) {
-		node_b->children->prev = node_a;
-		node_a->next = node_b->children;
-	}
-
-	node_b->children = node_a;
+	Arc_MutexLock(&info.node->property_lock);
 
 	return 0;
 }
