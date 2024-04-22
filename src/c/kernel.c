@@ -88,8 +88,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)ARC_PHYS_TO_HHDM(boot_meta->initramfs));
 
-	Arc_CreateVFS("/initramfs", 0, ARC_VFS_N_DIR);
-	Arc_MountVFS("/initramfs", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
+	Arc_CreateVFS("/initramfs/", 0, ARC_VFS_N_DIR);
+	Arc_MountVFS("/initramfs/", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
 	Arc_OpenVFS("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
 
 	ARC_DEBUG(INFO, "%p\n", Arc_FontFile);

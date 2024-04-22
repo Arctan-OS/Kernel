@@ -182,21 +182,32 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			child = new;
 
 			if (info->mount != NULL) {
-				ARC_DEBUG(INFO, "Mount is present, statting %s\n", info->mountpath);
+				int length = i - ((uintptr_t)info->mountpath - (uintptr_t)filepath) + (i == max - 1);
+				char *stat_path = strndup(info->mountpath, length);
+
+				ARC_DEBUG(INFO, "Mount is present, statting %s\n", stat_path);
 
 				struct ARC_Resource *res = info->mount->resource;
 				struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)res->driver->driver;
 
-				// TODO: Cannot just use info->mountpath here, as this will also need
-				//       to work for folders
-				if (def->stat(res, info->mountpath, &new->stat) != 0) {
-					ARC_DEBUG(ERR, "Failed to stat %s\n", info->mountpath);
+				if (def->stat(res, stat_path, &new->stat) != 0) {
+					ARC_DEBUG(ERR, "Failed to stat %s\n", stat_path);
 					if (info->create_level != VFS_FS_CREAT) {
+						// BUG: This case will always be called when opening an initramfs
+						//      file since CPIO does not explicitly have directories.
+						//
+						//      This causes issues, as we would want to have this case when
+						//      dealing with an ext2 filesystem, but not when dealing with
+						//      a CPIO one
+						//
+						//      Not sure how to fix this
+
 						ARC_DEBUG(ERR, "VFS_FS_CREAT not allowed\n");
 
-						Arc_QUnlock(&node->branch_lock);
+					//	Arc_SlabFree(stat_path);
+					//	Arc_QUnlock(&node->branch_lock);
 
-						return i;
+					//	return i;
 					}
 
 					// Since all mountpaths exist in VFS, we do not need to be
@@ -211,6 +222,8 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 				} else {
 					new->type = vfs_stat2type(new->stat);
 				}
+
+				Arc_SlabFree(stat_path);
 			}
 		}
 
@@ -308,9 +321,6 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 	return 0;
 }
 
-// TODO: Don't signal return type through sign of int link_depth
-// link_depth >> 31 = 0: void *ret = struct ARC_VFSFile *
-// link_depth >> 31 = 1: void *ret = struct ARC_VFSNode *
 int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 	(void)flags;
 
@@ -320,14 +330,13 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 
 	ARC_DEBUG(INFO, "Opening file %s (%d %d) to a depth of %d, returning to %p\n", path, flags, mode, link_depth, ret);
 
-	struct vfs_traverse_info info = { 0 };
+	// Find file in node graph, create node graph if needed, do not create the file
+	struct vfs_traverse_info info = { .create_level = VFS_GR_CREAT };
 	if (*path == '/') {
 		info.start = &vfs_root;
 	} else {
 		// info.start = current_working_directory();
 	}
-
-	info.create_level = VFS_GR_CREAT;
 
 	int info_ret = vfs_traverse(path, &info, link_depth);
 	if (info_ret != 0) {
@@ -343,6 +352,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 
 	ARC_DEBUG(INFO, "Found node %p\n", node);
 
+	// Create file descriptor
 	struct ARC_VFSFile *desc = (struct ARC_VFSFile *)Arc_SlabAlloc(sizeof(struct ARC_VFSFile));
 	if (desc == NULL) {
 		return ENOMEM;
@@ -350,12 +360,12 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 	memset(desc, 0, sizeof(struct ARC_VFSFile));
 	*ret = desc;
 
-	desc->reference = Arc_ReferenceResource(node->resource);
 	desc->mode = mode;
 	desc->node = node;
 
 	ARC_DEBUG(INFO, "Created file descriptor %p\n", desc);
 
+	// Initialzie resource if needed
 	if (node->resource == NULL) {
 		ARC_DEBUG(INFO, "Node has no resource, creating one\n");
 		struct ARC_Resource *res = info.mount->resource;
@@ -378,13 +388,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		Arc_MutexUnlock(&nres->vfs_state_mutex);
 	}
 
-	if (((link_depth >> 31) & 1) == 1) {
-		ARC_DEBUG(INFO, "Opened file contextually\n");
-		Arc_SlabFree(desc);
-
-		*ret = (void *)node;
-		return 0;
-	}
+	desc->reference = Arc_ReferenceResource(node->resource);
 
 	ARC_DEBUG(INFO, "Opened file successfully\n");
 
@@ -447,8 +451,10 @@ int Arc_SeekVFS(struct ARC_VFSFile *file, long offset, int whence) {
 
 int Arc_CreateVFS(char *path, uint32_t mode, int type) {
 	if (path == NULL) {
+		ARC_DEBUG(ERR, "No path given\n");
 		return EINVAL;
 	}
+
 
 	struct vfs_traverse_info info = { .mode = mode, .type = type, .create_level = VFS_FS_CREAT };
 	if (*path == '/') {
@@ -457,9 +463,9 @@ int Arc_CreateVFS(char *path, uint32_t mode, int type) {
 		// info.start = get_current_directory();
 	}
 
-	vfs_traverse(path, &info, 0);
+	ARC_DEBUG(INFO, "Creating node graph %s from node %p\n", path, info.start)
 
-	return 0;
+	return vfs_traverse(path, &info, 0);
 }
 
 #undef VFS_NO_CREAT
