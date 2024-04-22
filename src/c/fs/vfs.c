@@ -95,6 +95,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 	struct ARC_VFSNode *node = info->start;
 	node->ref_count++; // TODO: Atomize
+	info->node = node;
 
 	int64_t tid = Arc_QLock(&node->branch_lock);
 	if (tid < 0 && tid != -1) {
@@ -181,9 +182,13 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			child = new;
 
 			if (info->mount != NULL) {
+				ARC_DEBUG(INFO, "Mount is present, statting %s\n", info->mountpath);
+
 				struct ARC_Resource *res = info->mount->resource;
 				struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)res->driver->driver;
 
+				// TODO: Cannot just use info->mountpath here, as this will also need
+				//       to work for folders
 				if (def->stat(res, info->mountpath, &new->stat) != 0) {
 					ARC_DEBUG(ERR, "Failed to stat %s\n", info->mountpath);
 					if (info->create_level != VFS_FS_CREAT) {
@@ -218,6 +223,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		node->ref_count--; // TODO: Atomize
 		node = child;
 		node->ref_count++; // TODO: Atomize
+		info->node = node;
 	}
 
 	return 0;
@@ -238,6 +244,7 @@ int Arc_InitializeVFS() {
 
 int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 	if (mountpoint == NULL || resource == NULL || fs_type == ARC_VFS_NULL) {
+		ARC_DEBUG(ERR, "Invalid arguments (%p, %p, %d)\n", mountpoint, resource, fs_type);
 		return EINVAL;
 	}
 
@@ -256,6 +263,11 @@ int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 
 	struct ARC_VFSNode *mount = info.node;
 
+	if (mount == NULL) {
+		ARC_DEBUG(ERR, "Mount is NULL\n");
+		return -1;
+	}
+
 	if (mount->type != ARC_VFS_N_DIR) {
 		ARC_DEBUG(ERR, "%s is not a directory (or already mounted)\n", mountpoint);
 		return -1;
@@ -268,11 +280,14 @@ int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 
 	Arc_MutexUnlock(&mount->property_lock);
 
+	ARC_DEBUG(INFO, "Successfully mounted resource %p at %s (%d, %p)\n", resource, mountpoint, fs_type, mount);
+
 	return 0;
 }
 
 int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 	if (mount == NULL || mount->type != ARC_VFS_N_MOUNT) {
+		ARC_DEBUG(ERR, "Given mount is NULL or not a mount\n");
 		return EINVAL;
 	}
 
@@ -288,7 +303,7 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 		return -1;
 	}
 
-
+	ARC_DEBUG(INFO, "Successfully unmount %p\n", mount);
 
 	return 0;
 }
@@ -303,6 +318,8 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		return EINVAL;
 	}
 
+	ARC_DEBUG(INFO, "Opening file %s (%d %d) to a depth of %d, returning to %p\n", path, flags, mode, link_depth, ret);
+
 	struct vfs_traverse_info info = { 0 };
 	if (*path == '/') {
 		info.start = &vfs_root;
@@ -310,33 +327,122 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		// info.start = current_working_directory();
 	}
 
-	info.create_level = 1;
+	info.create_level = VFS_GR_CREAT;
 
-	if (vfs_traverse(path, &info, link_depth) != 0) {
-		// Error
+	int info_ret = vfs_traverse(path, &info, link_depth);
+	if (info_ret != 0) {
+		ARC_DEBUG(ERR, "Failed to traverse node graph (%d)\n", info_ret);
+		return -1;
 	}
 
 	struct ARC_VFSNode *node = info.node;
 
+	if (node == NULL) {
+		ARC_DEBUG(ERR, "Discovered node is NULL\n");
+	}
+
+	ARC_DEBUG(INFO, "Found node %p\n", node);
+
+	struct ARC_VFSFile *desc = (struct ARC_VFSFile *)Arc_SlabAlloc(sizeof(struct ARC_VFSFile));
+	if (desc == NULL) {
+		return ENOMEM;
+	}
+	memset(desc, 0, sizeof(struct ARC_VFSFile));
+	*ret = desc;
+
+	desc->reference = Arc_ReferenceResource(node->resource);
+	desc->mode = mode;
+	desc->node = node;
+
+	ARC_DEBUG(INFO, "Created file descriptor %p\n", desc);
+
+	if (node->resource == NULL) {
+		ARC_DEBUG(INFO, "Node has no resource, creating one\n");
+		struct ARC_Resource *res = info.mount->resource;
+		Arc_MutexLock(&res->dri_state_mutex);
+		struct ARC_Resource *nres = Arc_InitializeResource(node->name, res->dri_group, res->dri_index + 1, res->driver_state);
+		Arc_MutexUnlock(&res->dri_state_mutex);
+		node->resource = nres;
+
+		if (nres == NULL) {
+			ARC_DEBUG(ERR, "Failed to create resource\n");
+			return -1;
+		}
+
+		Arc_MutexLock(&nres->vfs_state_mutex);
+		nres->vfs_state = desc;
+		if (nres->driver->open(nres, info.mountpath, 0, mode) != 0) {
+			Arc_MutexUnlock(&nres->vfs_state_mutex);
+			ARC_DEBUG(ERR, "Failed to open file\n");
+		}
+		Arc_MutexUnlock(&nres->vfs_state_mutex);
+	}
+
 	if (((link_depth >> 31) & 1) == 1) {
+		ARC_DEBUG(INFO, "Opened file contextually\n");
+		Arc_SlabFree(desc);
+
 		*ret = (void *)node;
 		return 0;
 	}
 
-	// TODO: Check perms
-
-	struct ARC_VFSFile *desc = (struct ARC_VFSFile *)Arc_SlabAlloc(sizeof(struct ARC_VFSFile));
-
-	if (desc == NULL) {
-		return ENOMEM;
-	}
-
-	memset(desc, 0, sizeof(struct ARC_VFSFile));
-
-	desc->reference = Arc_ReferenceResource(node->resource);
-	desc->mode = mode;
+	ARC_DEBUG(INFO, "Opened file successfully\n");
 
 	return 0;
+}
+
+int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file) {
+	if (buffer == NULL || file == NULL) {
+		return -1;
+	}
+
+	if (size == 0 || count == 0) {
+		return 0;
+	}
+
+	struct ARC_Resource *res = file->node->resource;
+
+	if (res == NULL) {
+		return -1;
+	}
+
+	res->vfs_state = file;
+
+	return res->driver->read(buffer, size, count, res);
+}
+
+int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file) {
+	if (buffer == NULL || file == NULL) {
+		return -1;
+	}
+
+	if (size == 0 || count == 0) {
+		return 0;
+	}
+
+	struct ARC_Resource *res = file->node->resource;
+
+	if (res == NULL) {
+		return -1;
+	}
+	res->vfs_state = file;
+	return res->driver->write(buffer, size, count, res);
+}
+
+int Arc_SeekVFS(struct ARC_VFSFile *file, long offset, int whence) {
+	if (file == NULL) {
+		return -1;
+	}
+
+	struct ARC_Resource *res = file->node->resource;
+
+	if (res == NULL) {
+		return -1;
+	}
+
+	res->vfs_state = file;
+
+	return res->driver->seek(res, offset, whence);
 }
 
 int Arc_CreateVFS(char *path, uint32_t mode, int type) {
@@ -352,10 +458,6 @@ int Arc_CreateVFS(char *path, uint32_t mode, int type) {
 	}
 
 	vfs_traverse(path, &info, 0);
-
-	Arc_MutexLock(&info.node->property_lock);
-
-	Arc_MutexLock(&info.node->property_lock);
 
 	return 0;
 }

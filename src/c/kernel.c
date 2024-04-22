@@ -90,6 +90,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	Arc_CreateVFS("/initramfs", 0, ARC_VFS_N_DIR);
 	Arc_MountVFS("/initramfs", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
+	Arc_OpenVFS("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
+
+	ARC_DEBUG(INFO, "%p\n", Arc_FontFile);
 
 //	Arc_VFSLink("/initramfs/boot/ANTIQUE.F14", "/font.fnt");
 
@@ -100,7 +103,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitializeSyscall();
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
-
 
 	// Quickly map framebuffer in
 	uint64_t fb_size = Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8);
@@ -117,7 +119,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	}
 
 	for (;;) {
-//		Arc_TermDraw(&Arc_MainTerm);
+		Arc_TermDraw(&Arc_MainTerm);
 	}
 
 	return 0;

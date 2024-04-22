@@ -80,8 +80,8 @@ void Arc_TermDraw(struct ARC_TermMeta *term) {
 			char c = term->term_mem[y * term->term_width + x];
 
 			memset(data, 0, size_in_bytes);
-//			Arc_SeekFileVFS(Arc_FontFile, (c * size_in_bytes), ARC_VFS_SEEK_SET);
-//			Arc_ReadFileVFS(data, 1, size_in_bytes, Arc_FontFile);
+			Arc_SeekVFS(Arc_FontFile, (c * size_in_bytes), ARC_VFS_SEEK_SET);
+			Arc_ReadVFS(data, 1, size_in_bytes, Arc_FontFile);
 
 			for (int i = 0; i < term->font_height; i++) {
 				int rx = 0;
