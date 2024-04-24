@@ -58,6 +58,17 @@ struct vfs_traverse_info {
 	int create_level;
 };
 
+// TODO: Unfortuantely memory is not infinite, so the node graph
+//       will eventually use up too much memory. We are going to need
+//       to:
+//         - Implement a way to measure how much memory the graph is using
+//           up
+//         - Create a function to prune out old nodes that are not being
+//           used
+//         - Re-open these pruned out nodes if they are used again
+//         - How would this interact with links since they must be present
+//           in the node graph at all times (memory address dependant)
+
 int vfs_stat2type(struct stat stat) {
 	switch (stat.st_mode & S_IFMT) {
 		case S_IFDIR: {
@@ -182,7 +193,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			child = new;
 
 			if (info->mount != NULL) {
-				int length = i - ((uintptr_t)info->mountpath - (uintptr_t)filepath) + (i == max - 1);
+				int length = i - ((uintptr_t)info->mountpath - (uintptr_t)filepath) + 1;
 				char *stat_path = strndup(info->mountpath, length);
 
 				ARC_DEBUG(INFO, "Mount is present, statting %s\n", stat_path);
@@ -193,21 +204,12 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 				if (def->stat(res, stat_path, &new->stat) != 0) {
 					ARC_DEBUG(ERR, "Failed to stat %s\n", stat_path);
 					if (info->create_level != VFS_FS_CREAT) {
-						// BUG: This case will always be called when opening an initramfs
-						//      file since CPIO does not explicitly have directories.
-						//
-						//      This causes issues, as we would want to have this case when
-						//      dealing with an ext2 filesystem, but not when dealing with
-						//      a CPIO one
-						//
-						//      Not sure how to fix this
-
 						ARC_DEBUG(ERR, "VFS_FS_CREAT not allowed\n");
 
-					//	Arc_SlabFree(stat_path);
-					//	Arc_QUnlock(&node->branch_lock);
+						Arc_SlabFree(stat_path);
+						Arc_QUnlock(&node->branch_lock);
 
-					//	return i;
+						return i;
 					}
 
 					// Since all mountpaths exist in VFS, we do not need to be
@@ -220,11 +222,32 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 						ARC_DEBUG(ERR, "VFS_FS_CREAT failed\n");
 					}
 				} else {
-					new->type = vfs_stat2type(new->stat);
+					if (vfs_stat2type(new->stat) != ARC_VFS_NULL) {
+						new->type = vfs_stat2type(new->stat);
+					}
 				}
 
 				Arc_SlabFree(stat_path);
 			}
+
+                        // Initialzie resource if needed
+			if (new->type != ARC_VFS_N_DIR && new->type != ARC_VFS_N_LINK && new->resource == NULL) {
+				ARC_DEBUG(INFO, "Node has no resource, creating one\n");
+				struct ARC_Resource *res = info->mount->resource;
+				Arc_MutexLock(&res->dri_state_mutex);
+				// NOTE: Name of resource would probably be better as stat_path
+				//       instead of info->mountpath
+				struct ARC_Resource *nres = Arc_InitializeResource(info->mountpath, res->dri_group, res->dri_index + 1, res->driver_state);
+				Arc_MutexUnlock(&res->dri_state_mutex);
+				new->resource = nres;
+
+				if (nres == NULL) {
+					ARC_DEBUG(ERR, "Failed to create resource\n");
+					return -1;
+				}
+			}
+
+			ARC_DEBUG(INFO, "Created new node %p\n", new);
 		}
 
 		tid = Arc_QLock(&child->branch_lock);
@@ -350,6 +373,10 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		ARC_DEBUG(ERR, "Discovered node is NULL\n");
 	}
 
+	if (node->link != NULL) {
+		node = node->link;
+	}
+
 	ARC_DEBUG(INFO, "Found node %p\n", node);
 
 	// Create file descriptor
@@ -365,28 +392,18 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 
 	ARC_DEBUG(INFO, "Created file descriptor %p\n", desc);
 
-	// Initialzie resource if needed
-	if (node->resource == NULL) {
-		ARC_DEBUG(INFO, "Node has no resource, creating one\n");
-		struct ARC_Resource *res = info.mount->resource;
-		Arc_MutexLock(&res->dri_state_mutex);
-		struct ARC_Resource *nres = Arc_InitializeResource(node->name, res->dri_group, res->dri_index + 1, res->driver_state);
-		Arc_MutexUnlock(&res->dri_state_mutex);
-		node->resource = nres;
-
-		if (nres == NULL) {
-			ARC_DEBUG(ERR, "Failed to create resource\n");
-			return -1;
-		}
-
-		Arc_MutexLock(&nres->vfs_state_mutex);
-		nres->vfs_state = desc;
-		if (nres->driver->open(nres, info.mountpath, 0, mode) != 0) {
-			Arc_MutexUnlock(&nres->vfs_state_mutex);
-			ARC_DEBUG(ERR, "Failed to open file\n");
-		}
-		Arc_MutexUnlock(&nres->vfs_state_mutex);
+	// TODO: Check if file is already open
+	Arc_MutexLock(&node->resource->vfs_state_mutex);
+	node->resource->vfs_state = desc;
+	// NOTE: node->resource->name will always correspond to the path
+	//       to the node within the filesystem. This name is changed
+	//       when renaming, the path is absolute relative to the
+	//       mount
+	if (node->resource->driver->open(node->resource, node->resource->name, 0, mode) != 0) {
+		Arc_MutexUnlock(&node->resource->vfs_state_mutex);
+		ARC_DEBUG(ERR, "Failed to open file\n");
 	}
+	Arc_MutexUnlock(&node->resource->vfs_state_mutex);
 
 	desc->reference = Arc_ReferenceResource(node->resource);
 
@@ -466,6 +483,61 @@ int Arc_CreateVFS(char *path, uint32_t mode, int type) {
 	ARC_DEBUG(INFO, "Creating node graph %s from node %p\n", path, info.start)
 
 	return vfs_traverse(path, &info, 0);
+}
+
+int Arc_RemoveVFS(char *filepath) {
+	// TODO: Implement
+	(void)filepath;
+	return 0;
+};
+
+int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
+	if (a == NULL || b == NULL) {
+		ARC_DEBUG(ERR, "Invalid parameters given (%p, %p)\n", a, b);
+		return EINVAL;
+	}
+
+	struct vfs_traverse_info info_a = { .create_level = VFS_GR_CREAT };
+	if (*a == '/') {
+		info_a.start = &vfs_root;
+	} else {
+		// info_a.start = get_current_directory();
+	}
+
+	int ret = vfs_traverse(a, &info_a, 0);
+
+	if (ret != 0) {
+		ARC_DEBUG(ERR, "Failed to find %s\n", a);
+		return 1;
+	}
+
+	struct vfs_traverse_info info_b = { .create_level = VFS_FS_CREAT, .mode = mode, .type = ARC_VFS_N_LINK };
+	if (*a == '/') {
+		info_b.start = &vfs_root;
+	} else {
+		// info_b.start = get_current_directory();
+	}
+
+	ret = vfs_traverse(b, &info_b, 0);
+
+	if (ret != 0) {
+		ARC_DEBUG(ERR, "Failed to find or create %s\n", b);
+		return 1;
+	}
+
+	struct ARC_VFSNode *src = info_a.node;
+	struct ARC_VFSNode *lnk = info_b.node;
+
+	// TODO: Make sure that lnk is a classified as a link
+	//       on physical filesystem and in node graph
+	// TODO: Think about if b already exists
+	// TODO: Perms check
+
+	lnk->link = src;
+
+	ARC_DEBUG(INFO, "Linked %s (%p) -> %s (%p)\n", a, src, b, lnk);
+
+	return 0;
 }
 
 #undef VFS_NO_CREAT

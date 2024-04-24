@@ -257,6 +257,14 @@ static int initramfs_stat(struct ARC_Resource *res, char *filename, struct stat 
 		return 1;
 	}
 
+	if (filename[strlen(filename) - 1] == '/') {
+		// The given path is a directory, we do not have
+		// distinct directories, and are unable to provide stats
+		// for them
+		ARC_DEBUG(WARN, "Tried to stat directory %s\n", filename);
+		return 0;
+	}
+
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
 
 	struct ARC_HeaderCPIO *header = initramfs_find_file(state->initramfs_base, filename);
