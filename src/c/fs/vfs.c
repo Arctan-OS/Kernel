@@ -89,11 +89,46 @@ int vfs_stat2type(struct stat stat) {
 	}
 }
 
-int vfs_create_node() {
+int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
+	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
+		return 1;
+	}
+
+	struct ARC_VFSNode *child = node->children;
+	while (child != NULL) {
+		vfs_delete_node_recurse(child);
+		child = child->next;
+	}
+
+	Arc_SlabFree(node->name);
+	Arc_UninitializeResource(node->resource);
+	Arc_SlabFree(node);
+
 	return 0;
 }
 
-int create_link(struct ARC_VFSNode *node, int link_depth) {
+int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
+	struct ARC_VFSNode *child = node->children;
+	while (child != NULL && recurse == 1) {
+		vfs_delete_node_recurse(child);
+		child = child->next;
+	}
+
+	Arc_SlabFree(node->name);
+	Arc_UninitializeResource(node->resource);
+
+	if (node->prev == NULL) {
+		node->parent->children = node->next;
+	} else {
+		node->prev->next = node->next;
+	}
+
+	if (node->next != NULL) {
+		node->next->prev = node->prev;
+	}
+
+	Arc_SlabFree(node);
+
 	return 0;
 }
 
@@ -284,6 +319,8 @@ int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 		return EINVAL;
 	}
 
+	ARC_DEBUG(INFO, "Mounting %p on %s (%d)\n", resource, mountpoint, fs_type);
+
 	struct vfs_traverse_info info = { 0 };
 	if (*mountpoint == '/') {
 		info.start = &vfs_root;
@@ -326,6 +363,8 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 		ARC_DEBUG(ERR, "Given mount is NULL or not a mount\n");
 		return EINVAL;
 	}
+
+	ARC_DEBUG(INFO, "Unmounting %p\n", mount);
 
 	int64_t tid = Arc_QLock(&mount->branch_lock);
 	if (tid < 0 && tid != -1) {
@@ -392,18 +431,25 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 
 	ARC_DEBUG(INFO, "Created file descriptor %p\n", desc);
 
-	// TODO: Check if file is already open
-	Arc_MutexLock(&node->resource->vfs_state_mutex);
-	node->resource->vfs_state = desc;
-	// NOTE: node->resource->name will always correspond to the path
-	//       to the node within the filesystem. This name is changed
-	//       when renaming, the path is absolute relative to the
-	//       mount
-	if (node->resource->driver->open(node->resource, node->resource->name, 0, mode) != 0) {
+	node->ref_count++; // TODO: Atomize
+
+	Arc_MutexLock(&node->property_lock);
+	if (node->is_open == 0) {
+		Arc_MutexLock(&node->resource->vfs_state_mutex);
+		node->resource->vfs_state = desc;
+		// NOTE: node->resource->name will always correspond to the path
+		//       to the node within the filesystem. This name is changed
+		//       when renaming, the path is absolute relative to the
+		//       mount
+		if (node->resource->driver->open(node->resource, node->resource->name, 0, mode) != 0) {
+			Arc_MutexUnlock(&node->resource->vfs_state_mutex);
+			ARC_DEBUG(ERR, "Failed to open file\n");
+		}
 		Arc_MutexUnlock(&node->resource->vfs_state_mutex);
-		ARC_DEBUG(ERR, "Failed to open file\n");
+
+		node->is_open = 1;
 	}
-	Arc_MutexUnlock(&node->resource->vfs_state_mutex);
+	Arc_MutexUnlock(&node->property_lock);
 
 	desc->reference = Arc_ReferenceResource(node->resource);
 
@@ -411,6 +457,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 
 	return 0;
 }
+
 
 int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file) {
 	if (buffer == NULL || file == NULL) {
@@ -466,12 +513,19 @@ int Arc_SeekVFS(struct ARC_VFSFile *file, long offset, int whence) {
 	return res->driver->seek(res, offset, whence);
 }
 
+int Arc_CloseVFS(struct ARC_VFSFile *file) {
+	(void)file;
+	ARC_DEBUG(INFO, "Closing %p\n", file);
+	return 0;
+}
+
 int Arc_CreateVFS(char *path, uint32_t mode, int type) {
 	if (path == NULL) {
 		ARC_DEBUG(ERR, "No path given\n");
 		return EINVAL;
 	}
 
+	ARC_DEBUG(INFO, "Creating %s (%o, %d)\n", path, mode, type);
 
 	struct vfs_traverse_info info = { .mode = mode, .type = type, .create_level = VFS_FS_CREAT };
 	if (*path == '/') {
@@ -485,9 +539,69 @@ int Arc_CreateVFS(char *path, uint32_t mode, int type) {
 	return vfs_traverse(path, &info, 0);
 }
 
-int Arc_RemoveVFS(char *filepath) {
-	// TODO: Implement
-	(void)filepath;
+int Arc_RemoveVFS(char *filepath, bool physical, bool recurse) {
+	if (filepath == NULL) {
+		ARC_DEBUG(ERR, "No path given\n");
+		return -1;
+	}
+
+	ARC_DEBUG(INFO, "Removing %s (%d, %d)\n", filepath, physical, recurse);
+
+	struct vfs_traverse_info info = { .create_level = VFS_NO_CREAT };
+	if (*filepath == '/') {
+		info.start = &vfs_root;
+	} else {
+		// info.start = get_current_directory();
+	}
+
+	int ret = vfs_traverse(filepath, &info, 0);
+
+	if (ret != 0 || info.node == NULL) {
+		ARC_DEBUG(ERR, "%s does not exist in node graph\n", filepath);
+		return -1;
+	}
+
+	if (recurse == 0 && info.node->type == ARC_VFS_N_DIR) {
+		ARC_DEBUG(ERR, "Trying to non-recursively delete directory\n");
+		return -1;
+	}
+
+	Arc_MutexLock(&info.node->property_lock);
+	if (info.node->ref_count > 0 || info.node->is_open == 0) {
+		ARC_DEBUG(ERR, "Node %p is still inuse\n", info.node);
+		Arc_MutexUnlock(&info.node->property_lock);
+		return -1;
+	}
+
+	int64_t tid = Arc_QLock(&info.node->branch_lock);
+	if (tid < 0 && tid != -1) {
+		ARC_DEBUG(ERR, "Lock error\n");
+	}
+	Arc_QYield(&info.node->branch_lock, tid);
+
+	// We now have the node completely under control
+
+	if (physical == 1 && info.mount != NULL) {
+		ARC_DEBUG(INFO, "Removing %s physically on mount %p\n", info.mountpath, info.mount);
+
+		struct ARC_Resource *res = info.mount->resource;
+
+		if (res == NULL) {
+			ARC_DEBUG(ERR, "Cannot physically remove path, mount resource is NULL\n");
+			Arc_MutexUnlock(&info.node->property_lock);
+			Arc_QUnlock(&info.node->branch_lock);
+			return -1;
+		}
+
+		struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)res->driver->driver;
+
+		if (def->remove(info.mountpath) != 0) {
+			ARC_DEBUG(WARN, "Cannot physically remove path\n");
+		}
+	}
+
+	vfs_delete_node(info.node, recurse);
+
 	return 0;
 };
 
@@ -503,6 +617,8 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	} else {
 		// info_a.start = get_current_directory();
 	}
+
+	ARC_DEBUG(INFO, "Linking %s -> %s (%o)\n", a, b, mode);
 
 	int ret = vfs_traverse(a, &info_a, 0);
 

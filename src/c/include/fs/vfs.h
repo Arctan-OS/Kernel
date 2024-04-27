@@ -49,6 +49,7 @@
 #include <sys/stat.h>
 #include <lib/resource.h>
 #include <lib/atomics.h>
+#include <stdbool.h>
 
 struct ARC_VFSFile {
 	/// Current offset into the file.
@@ -78,7 +79,7 @@ struct ARC_VFSMount {
 struct ARC_VFSNode {
 	/// Lock on branching of this node (link, parent, children, next, prev, name)
 	struct ARC_QLock branch_lock;
-	/// Lock on the properties of this node (type, mount, stat)
+	/// Lock on the properties of this node (type, mount, stat, is_open)
 	ARC_GenericMutex property_lock;
 
 	/// Pointer to the device. References can be found through consulting resource.
@@ -87,6 +88,7 @@ struct ARC_VFSNode {
 	int type;
 	/// Number of references to this node (> 0 means node and children cannot be destroyed).
 	uint64_t ref_count;
+	bool is_open;
 	/// The name of this node.
 	char *name;
 	// Stat
@@ -192,7 +194,7 @@ int Arc_SeekVFS(struct ARC_VFSFile *file, long offset, int whence);
  * @param struct ARC_Reference *reference - The reference which is closing the file.
  * @return zero on success.
  * */
-int Arc_CloseVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference);
+int Arc_CloseVFS(struct ARC_VFSFile *file);
 
 /**
  * Get the status of a file
@@ -207,7 +209,7 @@ int Arc_CloseVFS(struct ARC_VFSFile *file, struct ARC_Reference *reference);
 int Arc_StatVFS(char *filepath, struct stat *stat);
 
 int Arc_CreateVFS(char *path, uint32_t mode, int type);
-int Arc_RemoveVFS(char *filepath);
+int Arc_RemoveVFS(char *filepath, bool physical, bool recurse);
 int Arc_LinkVFS(char *a, char *b, uint32_t mode);
 int Arc_RenameVFS(char *a, char *b);
 
