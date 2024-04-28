@@ -88,5 +88,5 @@ void Arc_InitVMM() {
 	ARC_DEBUG(INFO, "Initializing VMM\n");
 	_x86_getCR3();
 	pml4 = (uint64_t *)ARC_PHYS_TO_HHDM(_x86_CR3);
-	ARC_DEBUG(INFO, "Initialized VMM (%p\n)", pml4);
+	ARC_DEBUG(INFO, "Initialized VMM (%p)\n", pml4);
 }

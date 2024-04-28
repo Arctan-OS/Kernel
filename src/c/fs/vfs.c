@@ -137,6 +137,8 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		return EINVAL;
 	}
 
+	ARC_DEBUG(INFO, "Traversing %s\n", filepath);
+
 	size_t max = strlen(filepath);
 
 	struct ARC_VFSNode *node = info->start;
@@ -185,7 +187,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 		struct ARC_VFSNode *child = node->children;
 		while (child != NULL) {
-			if (strncmp(component, child->name, 0) == 0) {
+			if (strncmp(component, child->name, component_length) == 0) {
 				break;
 			}
 
@@ -412,10 +414,6 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		ARC_DEBUG(ERR, "Discovered node is NULL\n");
 	}
 
-	if (node->link != NULL) {
-		node = node->link;
-	}
-
 	ARC_DEBUG(INFO, "Found node %p\n", node);
 
 	// Create file descriptor
@@ -430,8 +428,6 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 	desc->node = node;
 
 	ARC_DEBUG(INFO, "Created file descriptor %p\n", desc);
-
-	node->ref_count++; // TODO: Atomize
 
 	Arc_MutexLock(&node->property_lock);
 	if (node->is_open == 0) {
@@ -468,7 +464,11 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *fil
 		return 0;
 	}
 
-	struct ARC_Resource *res = file->node->resource;
+	if (file->node->type == ARC_VFS_N_LINK && file->node->link == NULL) {
+		return -1;
+	}
+
+	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
 
 	if (res == NULL) {
 		return -1;
@@ -488,11 +488,16 @@ int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *fi
 		return 0;
 	}
 
-	struct ARC_Resource *res = file->node->resource;
+	if (file->node->type == ARC_VFS_N_LINK && file->node->link == NULL) {
+		return -1;
+	}
+
+	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
 
 	if (res == NULL) {
 		return -1;
 	}
+
 	res->vfs_state = file;
 	return res->driver->write(buffer, size, count, res);
 }
@@ -502,7 +507,11 @@ int Arc_SeekVFS(struct ARC_VFSFile *file, long offset, int whence) {
 		return -1;
 	}
 
-	struct ARC_Resource *res = file->node->resource;
+	if (file->node->type == ARC_VFS_N_LINK && file->node->link == NULL) {
+		return -1;
+	}
+
+	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
 
 	if (res == NULL) {
 		return -1;
@@ -514,8 +523,52 @@ int Arc_SeekVFS(struct ARC_VFSFile *file, long offset, int whence) {
 }
 
 int Arc_CloseVFS(struct ARC_VFSFile *file) {
-	(void)file;
+	if (file == NULL) {
+		return -1;
+	}
+
 	ARC_DEBUG(INFO, "Closing %p\n", file);
+
+	struct ARC_VFSNode *node = file->node;
+
+	int64_t tid = Arc_QLock(&node->branch_lock);
+	if (tid < 0 && tid != -1) {
+		ARC_DEBUG(ERR, "Lock error\n");
+		return -1;
+	}
+	Arc_QYield(&node->branch_lock, tid);
+
+	Arc_MutexLock(&node->property_lock);
+
+	// TODO: Account if node->type == ARC_VFS_N_LINK
+
+	if (node->ref_count > 1) {
+		ARC_DEBUG(INFO, "ref_count (%d) > 1, closing file descriptor\n", node->ref_count);
+
+		Arc_UnreferenceResource(file->reference);
+		Arc_SlabFree(file);
+		node->ref_count--; // TODO: Atomize
+
+		Arc_MutexUnlock(&node->property_lock);
+
+		return 0;
+	}
+
+	struct ARC_Resource *res = node->resource;
+
+	if (res == NULL) {
+		ARC_DEBUG(ERR, "Node has NULL resource\n")
+	}
+
+	if (res->driver->close(res) != 0) {
+		ARC_DEBUG(ERR, "Failed to physically close file\n");
+	}
+
+	vfs_delete_node(node, 0);
+	Arc_SlabFree(file);
+
+	ARC_DEBUG(INFO, "Closed file successfully\n");
+
 	return 0;
 }
 
@@ -644,6 +697,19 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	struct ARC_VFSNode *src = info_a.node;
 	struct ARC_VFSNode *lnk = info_b.node;
 
+	// Resolve link if src is a link
+	if (src->type == ARC_VFS_N_LINK) {
+		src = src->link;
+	}
+
+	Arc_MutexLock(&src->property_lock);
+	Arc_MutexLock(&lnk->property_lock);
+	src->stat.st_nlink++;
+	// src->ref_count is already incremented from the traverse
+	lnk->ref_count--;
+	Arc_MutexUnlock(&src->property_lock);
+	Arc_MutexUnlock(&lnk->property_lock);
+
 	// TODO: Make sure that lnk is a classified as a link
 	//       on physical filesystem and in node graph
 	// TODO: Think about if b already exists
@@ -651,8 +717,15 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 
 	lnk->link = src;
 
-	ARC_DEBUG(INFO, "Linked %s (%p) -> %s (%p)\n", a, src, b, lnk);
+	ARC_DEBUG(INFO, "Linked %s (%p, %d) -> %s (%p, %d)\n", a, src, src->ref_count, b, lnk, lnk->ref_count);
 
+	return 0;
+}
+
+int Arc_RenameVFS(char *a, char *b) {
+	// TODO: Implement
+	(void)a;
+	(void)b;
 	return 0;
 }
 

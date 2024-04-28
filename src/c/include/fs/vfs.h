@@ -54,7 +54,7 @@
 struct ARC_VFSFile {
 	/// Current offset into the file.
 	long offset;
-	/// Pointer to the parent VFS node.
+	/// Pointer to the VFS node.
 	struct ARC_VFSNode *node;
 	/// Reference
 	struct ARC_Reference *reference;
