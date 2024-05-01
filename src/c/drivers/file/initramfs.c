@@ -178,6 +178,7 @@ static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Re
 		return 0;
 	}
 
+
 	struct ARC_VFSFile *spec = res->vfs_state;
 
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;

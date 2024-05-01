@@ -229,10 +229,11 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			node->children = new;
 			child = new;
 
-			if (info->mount != NULL) {
-				int length = i - ((uintptr_t)info->mountpath - (uintptr_t)filepath) + 1;
-				char *stat_path = strndup(info->mountpath, length);
+			char *use_path = info->mountpath == NULL ? filepath : info->mountpath;
+			int length = i - ((uintptr_t)use_path - (uintptr_t)filepath) + 1;
+			char *stat_path = strndup(use_path, length);
 
+			if (info->mount != NULL) {
 				ARC_DEBUG(INFO, "Mount is present, statting %s\n", stat_path);
 
 				struct ARC_Resource *res = info->mount->resource;
@@ -263,26 +264,34 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 						new->type = vfs_stat2type(new->stat);
 					}
 				}
-
-				Arc_SlabFree(stat_path);
 			}
 
                         // Initialzie resource if needed
-			if (new->type != ARC_VFS_N_DIR && new->type != ARC_VFS_N_LINK && new->resource == NULL) {
+			if (new->type != ARC_VFS_N_DIR && new->resource == NULL) {
 				ARC_DEBUG(INFO, "Node has no resource, creating one\n");
 				struct ARC_Resource *res = info->mount->resource;
 				Arc_MutexLock(&res->dri_state_mutex);
-				// NOTE: Name of resource would probably be better as stat_path
-				//       instead of info->mountpath
-				struct ARC_Resource *nres = Arc_InitializeResource(info->mountpath, res->dri_group, res->dri_index + 1, res->driver_state);
+
+				int group = res->dri_group;
+				uint64_t index = res->dri_index + 1;
+
+				if (new->type == ARC_VFS_N_LINK) {
+					group = 0xAB;
+					index = 0xAB;
+				}
+
+				struct ARC_Resource *nres = Arc_InitializeResource(stat_path, group, index, res->driver_state);
 				Arc_MutexUnlock(&res->dri_state_mutex);
 				new->resource = nres;
 
 				if (nres == NULL) {
 					ARC_DEBUG(ERR, "Failed to create resource\n");
+					Arc_SlabFree(stat_path);
 					return -1;
 				}
 			}
+
+			Arc_SlabFree(stat_path);
 
 			ARC_DEBUG(INFO, "Created new node %p\n", new);
 		}
@@ -431,6 +440,12 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 
 	Arc_MutexLock(&node->property_lock);
 	if (node->is_open == 0) {
+		struct ARC_VFSNode *tmp = node;
+
+		if (node->type == ARC_VFS_N_LINK) {
+			node = node->link;
+		}
+
 		Arc_MutexLock(&node->resource->vfs_state_mutex);
 		node->resource->vfs_state = desc;
 		// NOTE: node->resource->name will always correspond to the path
@@ -444,6 +459,8 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		Arc_MutexUnlock(&node->resource->vfs_state_mutex);
 
 		node->is_open = 1;
+		tmp->is_open = 1;
+		node = tmp;
 	}
 	Arc_MutexUnlock(&node->property_lock);
 
@@ -707,6 +724,8 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	src->stat.st_nlink++;
 	// src->ref_count is already incremented from the traverse
 	lnk->ref_count--;
+	lnk->link = src;
+	lnk->is_open = src->is_open;
 	Arc_MutexUnlock(&src->property_lock);
 	Arc_MutexUnlock(&lnk->property_lock);
 
@@ -715,7 +734,6 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	// TODO: Think about if b already exists
 	// TODO: Perms check
 
-	lnk->link = src;
 
 	ARC_DEBUG(INFO, "Linked %s (%p, %d) -> %s (%p, %d)\n", a, src, src->ref_count, b, lnk, lnk->ref_count);
 

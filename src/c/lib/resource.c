@@ -40,8 +40,6 @@ extern struct ARC_DriverDef __DRIVERS2_END[];
 extern struct ARC_DriverDef __DRIVERS3_END[];
 
 struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t dri_index, void *args) {
-	ARC_DEBUG(INFO, "Initializing resource \"%s\" (%d, %lu)\n", name, dri_group, dri_index);
-
 	struct ARC_Resource *resource = (struct ARC_Resource *)Arc_SlabAlloc(sizeof(struct ARC_Resource));
 
 	if (resource == NULL) {
@@ -51,7 +49,16 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 
 	memset(resource, 0, sizeof(struct ARC_Resource));
 
+	ARC_DEBUG(INFO, "Initializing resource \"%s\" (%d, %lu)\n", name, dri_group, dri_index);
+
 	resource->name = strdup(name);
+	resource->dri_group = dri_group;
+	resource->dri_index = dri_index;
+
+	if (dri_group == 0xAB && dri_index == 0xAB) {
+		ARC_DEBUG(INFO, "Initialized place-holder resource\n");
+		return resource;
+	}
 
 	// Set open, close, read, write, and seek pointers
 	// Call driver initialization function from driver table
@@ -59,8 +66,6 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 	struct ARC_DriverDef *def = Arc_GetDriverDef(dri_group, dri_index);
 
 	resource->driver = def;
-	resource->dri_group = dri_group;
-	resource->dri_index = dri_index;
 
 	if (def != NULL) {
 		def->init(resource, args);
@@ -92,6 +97,11 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 		}
 
 		current_ref = tmp;
+	}
+
+	if (resource->dri_group == 0xAB && resource->dri_index == 0xAB) {
+		ARC_DEBUG(INFO, "Uninitialized, place-holder resource\n");
+		return 0;
 	}
 
 	resource->driver->uninit(resource);
