@@ -51,10 +51,11 @@ struct vfs_traverse_info {
 	uint32_t mode;
 	/// Type of node to create.
 	int type;
-	/// Creation level (0: no creation, 1: create node graph, 2: create node graph and physical files)
-#define VFS_NO_CREAT 0
-#define VFS_GR_CREAT 1
-#define VFS_FS_CREAT 2
+	/// Creation level
+#define VFS_NO_CREAT 0x1 // Don't create anything, just traverse.
+#define VFS_GR_CREAT 0x2 // Create node graph from physical file system.
+#define VFS_FS_CREAT 0x4 // Create node graph and physical file system from path.
+#define VFS_NOLCMP   0x8 // Create node graph except for last component in path.
 	int create_level;
 };
 
@@ -152,7 +153,16 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 	size_t last_div = 0;
 	for (size_t i = 0; i < max; i++) {
-		if (filepath[i] != '/' && i != max -1) {
+		if (filepath[i] != '/' && i != max - 1) {
+			// Code executes only if:
+			//     Current character is not a '/'
+			//     Or we are not at the end of a line
+			continue;
+		}
+
+		if (i == max - 1 && (info->create_level & VFS_NOLCMP) != 0) {
+			// If we are at the last component, and VFS_NOLCMP is set
+			// then continue
 			continue;
 		}
 
@@ -163,6 +173,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		}
 
 		char *component = (char *)(filepath + last_div);
+
 
 		if (*component == '/') {
 			component++;
@@ -195,7 +206,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		}
 
 		if (child == NULL) {
-			if (info->create_level == VFS_NO_CREAT) {
+			if ((info->create_level & VFS_NO_CREAT) == 1) {
 				// No creation desired by caller
 				ARC_DEBUG(ERR, "VFS_NO_CREAT specified\n");
 				return i;
@@ -214,7 +225,6 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			new->name = strndup(component, component_length);
 
 			new->mount = info->mount->mount;
-			new->next = node->children;
 
 			new->type = ARC_VFS_N_DIR;
 			if (i == max - 1) {
@@ -223,10 +233,12 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 				new->type = info->type;
 			}
 
+			new->next = node->children;
 			if (node->children != NULL) {
 				node->children->prev = new;
 			}
 			node->children = new;
+			new->parent = node;
 			child = new;
 
 			char *use_path = info->mountpath == NULL ? filepath : info->mountpath;
@@ -241,7 +253,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 				if (def->stat(res, stat_path, &new->stat) != 0) {
 					ARC_DEBUG(ERR, "Failed to stat %s\n", stat_path);
-					if (info->create_level != VFS_FS_CREAT) {
+					if ((info->create_level & VFS_FS_CREAT) != 1) {
 						ARC_DEBUG(ERR, "VFS_FS_CREAT not allowed\n");
 
 						Arc_SlabFree(stat_path);
@@ -293,7 +305,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 			Arc_SlabFree(stat_path);
 
-			ARC_DEBUG(INFO, "Created new node %p\n", new);
+			ARC_DEBUG(INFO, "Created new node \"%s\" (%p)\n", new->name, new);
 		}
 
 		tid = Arc_QLock(&child->branch_lock);
@@ -638,7 +650,7 @@ int Arc_RemoveVFS(char *filepath, bool physical, bool recurse) {
 
 	Arc_MutexLock(&info.node->property_lock);
 	if (info.node->ref_count > 0 || info.node->is_open == 0) {
-		ARC_DEBUG(ERR, "Node %p is still inuse\n", info.node);
+		ARC_DEBUG(ERR, "Node %p is still in use\n", info.node);
 		Arc_MutexUnlock(&info.node->property_lock);
 		return -1;
 	}
@@ -741,12 +753,129 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 }
 
 int Arc_RenameVFS(char *a, char *b) {
-	// TODO: Implement
-	(void)a;
-	(void)b;
+	if (a == NULL || b == NULL) {
+		ARC_DEBUG(ERR, "Src (%p) or dest (%p) path NULL\n", a, b);
+		return -1;
+	}
+
+	ARC_DEBUG(INFO, "Renaming %s -> %s\n", a, b);
+
+	struct vfs_traverse_info info_a = { .create_level = VFS_GR_CREAT };
+
+	if (*a == '/') {
+		info_a.start = &vfs_root;
+	} else {
+		// info_a.start = get_current_directory();
+	}
+
+	int ret = vfs_traverse(a, &info_a, 0);
+
+	if (ret != 0) {
+		ARC_DEBUG(ERR, "Failed to find %s in node graph\n", a);
+		return -1;
+	}
+
+	struct vfs_traverse_info info_b = { .create_level = VFS_FS_CREAT | VFS_NOLCMP, .mode = info_a.mode };
+
+	if (*b == '/') {
+		info_b.start = &vfs_root;
+	} else {
+		// info_b.start = get_current_directory();
+	}
+
+	ret = vfs_traverse(b, &info_b, 0);
+
+	if (ret != 0) {
+		ARC_DEBUG(ERR, "Failed to find or create %s in node graph / on disk\n", b);
+	}
+
+	struct ARC_VFSNode *node_a = info_a.node;
+	struct ARC_VFSNode *node_b = info_b.node;
+
+	// Patch node_a onto node_b
+	int64_t tid = Arc_QLock(&node_b->branch_lock);
+	if (tid < 0 && tid != -1) {
+		ARC_DEBUG(ERR, "Lock error\n");
+	}
+	Arc_QYield(&node_b->branch_lock, tid);
+
+	if (node_b->children != NULL) {
+		node_b->children->prev = node_a;
+	}
+
+	node_b->children = node_a;
+
+	Arc_QUnlock(&node_b->branch_lock);
+
+	// Remove node from parent node
+	struct ARC_VFSNode *parent = node_a->parent;
+	ARC_DEBUG(INFO, "%p\n", parent);
+	tid = Arc_QLock(&parent->branch_lock);
+	if (tid < 0 && tid != -1) {
+		ARC_DEBUG(ERR, "Lock error\n");
+	}
+	Arc_QYield(&parent->branch_lock, tid);
+	struct ARC_VFSNode *child = parent->children;
+	while (child != node_a && child != NULL) {
+		child = child->next;
+	}
+
+	// Update links, if child != node_a, then we
+	// do not need to do this, as the child has
+	// already been removed
+	if (child == node_a) {
+		if (child->next != NULL) {
+			child->next->prev = child->prev;
+		}
+
+		if (child->prev != NULL) {
+			child->prev->next = child->next;
+		} else {
+			parent->children = child->next;
+		}
+	}
+	Arc_QUnlock(&parent->branch_lock);
+
+	// Patch node in
+	tid = Arc_QLock(&node_a->branch_lock);
+	if (tid < 0 && tid != -1) {
+		ARC_DEBUG(ERR, "Lock error\n");
+	}
+	Arc_QYield(&node_a->branch_lock, tid);
+	node_a->parent = node_b;
+	Arc_QUnlock(&node_a->branch_lock);
+
+	// Rename the resource
+	Arc_MutexLock(&node_a->resource->prop_mutex);
+	Arc_SlabFree(node_a->resource->name);
+	node_a->resource->name = strdup(b);
+	Arc_MutexUnlock(&node_a->resource->prop_mutex);
+
+	node_a->ref_count--; // TODO: Atomize
+	node_b->ref_count--; // TODO: Atomize
+
+	if (info_a.mount == NULL) {
+		// Virtually renamed the files, nothing else
+		// to do
+		return 0;
+	}
+
+	if (info_a.mount != info_b.mount) {
+		// Different mountpoints, we need to migrate the files
+		// TODO: Physically copy A to B, delete A
+		ARC_DEBUG(ERR, "Physical migration unimplemented\n");
+		return 0;
+	} else {
+		// Physically rename file
+		struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)info_a.mount->resource->driver->driver;
+
+		def->rename(info_a.mountpath, info_b.mountpath);
+	}
+
 	return 0;
 }
 
 #undef VFS_NO_CREAT
 #undef VFS_GR_CREAT
 #undef VFS_FS_CREAT
+#undef VFS_NOLCMP

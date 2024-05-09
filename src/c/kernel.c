@@ -92,9 +92,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_MountVFS("/initramfs/", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
 	Arc_LinkVFS("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
 	Arc_OpenVFS("/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
-//	Arc_CloseVFS(Arc_FontFile);
+	Arc_RenameVFS("/font.fnt", "/fonts/font.fnt");
 
-	ARC_DEBUG(INFO, "%p\n", Arc_FontFile);
+	ARC_DEBUG(INFO, "%s\n", Arc_FontFile->node->parent->name);
 
 	Arc_InitializeSyscall();
 
