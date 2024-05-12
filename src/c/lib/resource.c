@@ -91,7 +91,7 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 		void *tmp = current_ref->next;
 
 		// TODO: What if we fail to close?
-		if (current_ref->close != NULL && current_ref->close() == 0) {
+		if (current_ref->signal != NULL && current_ref->signal(0, NULL) == 0) {
 			resource->ref_count -= 1;
 			Arc_SlabFree(current_ref);
 		}

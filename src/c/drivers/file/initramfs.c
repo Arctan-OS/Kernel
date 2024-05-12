@@ -24,12 +24,11 @@
  *
  * @DESCRIPTION
 */
-#include "lib/atomics.h"
 #include <abi-bits/errno.h>
+#include "lib/atomics.h"
 #include <lib/perms.h>
 #include <fs/vfs.h>
 #include <mm/allocator.h>
-#include <lib/resource.h>
 #include <global.h>
 #include <time.h>
 #include <util.h>
@@ -130,16 +129,16 @@ static int initramfs_file_init(struct ARC_Resource *res, void *args) {
 	return 0;
 }
 
-static int initramfs_uninit(struct ARC_Resource *res) {
-	Arc_SlabFree(res->driver_state);
+static int initramfs_uninit(struct ARC_File *file) {
+	Arc_SlabFree(file->node->resource->driver_state);
 
 	return 0;
 }
 
-static int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
+static int initramfs_open(struct ARC_File *file, char *path, int flags, uint32_t mode) {
 	(void)flags;
 
-	if (res == NULL) {
+	if (file == NULL) {
 		return EINVAL;
 	}
 
@@ -147,9 +146,9 @@ static int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint3
 		return EPERM;
 	}
 
-	struct ARC_VFSFile *spec = res->vfs_state;
+	struct ARC_Resource *res = (struct ARC_Resource *)file->node->resource;
 
-	// Lock dri_state
+	// Lock dir_state
 	Arc_MutexLock(&res->dri_state_mutex);
 
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
@@ -168,36 +167,35 @@ static int initramfs_open(struct ARC_Resource *res, char *path, int flags, uint3
 	// Unlock dri_state
 	Arc_MutexUnlock(&res->dri_state_mutex);
 
-	initramfs_internal_stat(header, &spec->node->stat);
+	initramfs_internal_stat(header, &file->node->stat);
 
 	return 0;
 }
 
-static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Resource *res) {
-	if (res == NULL || res->driver_state == NULL) {
+static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_File *file) {
+	if (file == NULL || file->node->resource->driver_state == NULL) {
 		return 0;
 	}
 
-
-	struct ARC_VFSFile *spec = res->vfs_state;
+	struct ARC_Resource *res = file->node->resource;
 
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
-	void *address = state->initramfs_base;
+	void *addfiles = state->initramfs_base;
 
-	if (address == NULL) {
+	if (addfiles == NULL) {
 		return 0;
 	}
 
-	struct ARC_HeaderCPIO *header = (struct ARC_HeaderCPIO *)address;
+	struct ARC_HeaderCPIO *header = (struct ARC_HeaderCPIO *)addfiles;
 
-	uint8_t *data = (uint8_t *)(address + ARC_DATA_OFFSET(header));
+	uint8_t *data = (uint8_t *)(addfiles + ARC_DATA_OFFSET(header));
 
 	// Copy file data to buffer
 	for (size_t i = 0; i < size * count; i++) {
 		uint8_t value = 0;
 
-		if (i + spec->offset < (size_t)spec->node->stat.st_size) {
-			value = *((uint8_t *)(data + spec->offset + i));
+		if (i + file->offset < (size_t)file->node->stat.st_size) {
+			value = *((uint8_t *)(data + file->offset + i));
 		}
 
 		*((uint8_t *)(buffer + i)) = value;
@@ -212,38 +210,37 @@ static int initramfs_write() {
 	return 1;
 }
 
-static int initramfs_seek(struct ARC_Resource *res, long offset, int whence) {
-	if (res == NULL) {
+static int initramfs_seek(struct ARC_File *file, long offset, int whence) {
+	if (file == NULL) {
 		return 1;
 	}
 
-	struct ARC_VFSFile *spec = res->vfs_state;
-	long size = spec->node->stat.st_size;
+	long size = file->node->stat.st_size;
 
 	switch (whence) {
 	case ARC_VFS_SEEK_SET: {
 		if (offset < size) {
-			spec->offset = offset;
+			file->offset = offset;
 		}
 
 		return 0;
 	}
 
 	case ARC_VFS_SEEK_CUR: {
-		spec->offset += offset;
+		file->offset += offset;
 
-		if (spec->offset >= size) {
-			spec->offset = size;
+		if (file->offset >= size) {
+			file->offset = size;
 		}
 
 		return 0;
 	}
 
 	case ARC_VFS_SEEK_END: {
-		spec->offset = size - offset - 1;
+		file->offset = size - offset - 1;
 
-		if (spec->offset < 0) {
-			spec->offset = 0;
+		if (file->offset < 0) {
+			file->offset = 0;
 		}
 
 		return 0;

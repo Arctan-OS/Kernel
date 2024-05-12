@@ -35,6 +35,8 @@
 #include <global.h>
 #include <util.h>
 
+// TODO: Implement error cases for all functions.
+
 static const char *root = "\0";
 static const struct ARC_Resource root_res = { .name = "/" };
 static struct ARC_VFSNode vfs_root = { 0 };
@@ -58,17 +60,6 @@ struct vfs_traverse_info {
 #define VFS_NOLCMP   0x8 // Create node graph except for last component in path.
 	int create_level;
 };
-
-// TODO: Unfortuantely memory is not infinite, so the node graph
-//       will eventually use up too much memory. We are going to need
-//       to:
-//         - Implement a way to measure how much memory the graph is using
-//           up
-//         - Create a function to prune out old nodes that are not being
-//           used
-//         - Re-open these pruned out nodes if they are used again
-//         - How would this interact with links since they must be present
-//           in the node graph at all times (memory address dependant)
 
 int vfs_stat2type(struct stat stat) {
 	switch (stat.st_mode & S_IFMT) {
@@ -95,9 +86,11 @@ int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 		return 1;
 	}
 
+	int err = 0;
+
 	struct ARC_VFSNode *child = node->children;
 	while (child != NULL) {
-		vfs_delete_node_recurse(child);
+		err += vfs_delete_node_recurse(child);
 		child = child->next;
 	}
 
@@ -105,13 +98,20 @@ int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 	Arc_UninitializeResource(node->resource);
 	Arc_SlabFree(node);
 
-	return 0;
+	return err;
 }
 
 int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
+	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
+		return 1;
+	}
+
 	struct ARC_VFSNode *child = node->children;
+
+	int err = 0;
+
 	while (child != NULL && recurse == 1) {
-		vfs_delete_node_recurse(child);
+		err = vfs_delete_node_recurse(child);
 		child = child->next;
 	}
 
@@ -130,6 +130,39 @@ int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 
 	Arc_SlabFree(node);
 
+	return err;
+}
+
+// TODO: Unfortuantely memory is not infinite, so the node graph
+//       will eventually use up too much memory. We are going to need
+//       to:
+//         - Implement a way to measure how much memory the graph is using
+//           up
+//         - Create a function to prune out old nodes that are not being
+//           used
+//         - Re-open these pruned out nodes if they are used again
+//         - How would this interact with links since they must be present
+//           in the node graph at all times (memory address dependant)
+
+int vfs_open_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int link_depth) {
+	(void)node;
+	(void)ret;
+	(void)link_depth;
+	// TODO: Open and read contents of node, which is a link,
+	//       vfs_traverse to the path this node contains.
+	//       Once link_depth == 0, return whatever node was
+	//       found, even if it is a link.
+	//
+	//       Error Cases:
+	//          Cyclic Links - If any given node in the list of nodes
+	//                         we have found with this function points
+	//                         back to another node in this functio, we have
+	//                         a cyclic link. Not sure how to resolve this
+	//                         besides just erroring out and saying "could
+	//                         not resolve link"
+	//          vfs_traverse - We failed to traverse the node graph, so we
+	//                         "could not resolve link"
+	//
 	return 0;
 }
 
@@ -149,6 +182,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 	int64_t tid = Arc_QLock(&node->branch_lock);
 	if (tid < 0 && tid != -1) {
 		 ARC_DEBUG(ERR, "Lock error!\n");
+		 return -1;
 	}
 
 	size_t last_div = 0;
@@ -173,7 +207,6 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		}
 
 		char *component = (char *)(filepath + last_div);
-
 
 		if (*component == '/') {
 			component++;
@@ -306,11 +339,16 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			Arc_SlabFree(stat_path);
 
 			ARC_DEBUG(INFO, "Created new node \"%s\" (%p)\n", new->name, new);
+
+			if (new->type == ARC_VFS_N_LINK) {
+				// TODO: Resolve link
+			}
 		}
 
 		tid = Arc_QLock(&child->branch_lock);
 		if (tid < 0 && tid != -1) {
 			ARC_DEBUG(ERR, "Lock error!\n");
+			goto cleanup;
 		}
 		Arc_QUnlock(&node->branch_lock);
 
@@ -321,6 +359,10 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 	}
 
 	return 0;
+
+cleanup:;
+	ARC_DEBUG(WARN, "Definitely cleaning up\n");
+	return -1;
 }
 
 int Arc_InitializeVFS() {
@@ -389,6 +431,13 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 
 	ARC_DEBUG(INFO, "Unmounting %p\n", mount);
 
+	if (Arc_MutexLock(&mount->property_lock) != 0) {
+		ARC_DEBUG(ERR, "Lock error!\n");
+		return -1;
+	}
+
+	// Mark node for unmounting
+
 	int64_t tid = Arc_QLock(&mount->branch_lock);
 	if (tid < 0 && tid != -1) {
 		ARC_DEBUG(ERR, "Lock error!\n");
@@ -396,10 +445,13 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 	}
 	Arc_QYield(&mount->branch_lock, tid);
 
-	if (Arc_MutexLock(&mount->property_lock) != 0) {
-		ARC_DEBUG(ERR, "Lock error!\n");
+	if (Arc_QFreeze(&mount->branch_lock) != 0) {
+		ARC_DEBUG(ERR, "Could not freeze lock!\n");
 		return -1;
 	}
+
+	// TODO: Synchronize
+	// TODO: Destroy nodes
 
 	ARC_DEBUG(INFO, "Successfully unmount %p\n", mount);
 
@@ -438,11 +490,11 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 	ARC_DEBUG(INFO, "Found node %p\n", node);
 
 	// Create file descriptor
-	struct ARC_VFSFile *desc = (struct ARC_VFSFile *)Arc_SlabAlloc(sizeof(struct ARC_VFSFile));
+	struct ARC_File *desc = (struct ARC_File *)Arc_SlabAlloc(sizeof(struct ARC_File));
 	if (desc == NULL) {
 		return ENOMEM;
 	}
-	memset(desc, 0, sizeof(struct ARC_VFSFile));
+	memset(desc, 0, sizeof(struct ARC_File));
 	*ret = desc;
 
 	desc->mode = mode;
@@ -458,20 +510,19 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 			node = node->link;
 		}
 
-		Arc_MutexLock(&node->resource->vfs_state_mutex);
-		node->resource->vfs_state = desc;
+		Arc_MutexLock(&node->property_lock);
 		// NOTE: node->resource->name will always correspond to the path
 		//       to the node within the filesystem. This name is changed
 		//       when renaming, the path is absolute relative to the
 		//       mount
-		if (node->resource->driver->open(node->resource, node->resource->name, 0, mode) != 0) {
-			Arc_MutexUnlock(&node->resource->vfs_state_mutex);
+		if (node->resource->driver->open(desc, node->resource->name, 0, mode) != 0) {
 			ARC_DEBUG(ERR, "Failed to open file\n");
 		}
-		Arc_MutexUnlock(&node->resource->vfs_state_mutex);
 
 		node->is_open = 1;
 		tmp->is_open = 1;
+		Arc_MutexUnlock(&node->property_lock);
+
 		node = tmp;
 	}
 	Arc_MutexUnlock(&node->property_lock);
@@ -484,7 +535,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 }
 
 
-int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file) {
+int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) {
 	if (buffer == NULL || file == NULL) {
 		return -1;
 	}
@@ -503,12 +554,10 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *fil
 		return -1;
 	}
 
-	res->vfs_state = file;
-
-	return res->driver->read(buffer, size, count, res);
+	return res->driver->read(buffer, size, count, file);
 }
 
-int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *file) {
+int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) {
 	if (buffer == NULL || file == NULL) {
 		return -1;
 	}
@@ -527,11 +576,10 @@ int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSFile *fi
 		return -1;
 	}
 
-	res->vfs_state = file;
-	return res->driver->write(buffer, size, count, res);
+	return res->driver->write(buffer, size, count, file);
 }
 
-int Arc_SeekVFS(struct ARC_VFSFile *file, long offset, int whence) {
+int Arc_SeekVFS(struct ARC_File *file, long offset, int whence) {
 	if (file == NULL) {
 		return -1;
 	}
@@ -546,12 +594,10 @@ int Arc_SeekVFS(struct ARC_VFSFile *file, long offset, int whence) {
 		return -1;
 	}
 
-	res->vfs_state = file;
-
-	return res->driver->seek(res, offset, whence);
+	return res->driver->seek(file, offset, whence);
 }
 
-int Arc_CloseVFS(struct ARC_VFSFile *file) {
+int Arc_CloseVFS(struct ARC_File *file) {
 	if (file == NULL) {
 		return -1;
 	}
@@ -589,7 +635,7 @@ int Arc_CloseVFS(struct ARC_VFSFile *file) {
 		ARC_DEBUG(ERR, "Node has NULL resource\n")
 	}
 
-	if (res->driver->close(res) != 0) {
+	if (res->driver->close(file) != 0) {
 		ARC_DEBUG(ERR, "Failed to physically close file\n");
 	}
 

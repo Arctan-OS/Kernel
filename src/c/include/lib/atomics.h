@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 
 /// Generic spinlock
 typedef _Atomic int ARC_GenericSpinlock;
@@ -42,6 +43,7 @@ typedef _Atomic int ARC_GenericMutex;
 struct ARC_QLock {
 	/// Synchronization lock for the queue
 	ARC_GenericMutex lock;
+	bool is_frozen;
 	/// Pointer to the current owner of the lock
 	void *next;
 	/// Pointer to the last element in the queue
@@ -105,6 +107,10 @@ void Arc_QYield(struct ARC_QLock *lock, int64_t tid);
  * mismatch.
  * */
 int Arc_QUnlock(struct ARC_QLock *lock);
+
+
+int Arc_QFreeze(struct ARC_QLock *head);
+int Arc_QThaw(struct ARC_QLock *head);
 
 int Arc_MutexInit(ARC_GenericMutex **mutex);
 int Arc_MutexUninit(ARC_GenericMutex *mutex);

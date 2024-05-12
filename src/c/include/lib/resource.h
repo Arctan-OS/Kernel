@@ -62,10 +62,33 @@ struct ARC_Resource {
 struct ARC_Reference {
 	// Functions for managing this reference.
 	struct ARC_Resource *resource;
-	int (*close)();
+	int (*signal)(int code, void *data);
+	int64_t pid;
 	ARC_GenericMutex branch_mutex;
 	struct ARC_Reference *prev;
 	struct ARC_Reference *next;
+};
+
+struct ARC_File {
+	/// Current offset into the file.
+	long offset;
+	/// Pointer to the VFS node.
+	struct ARC_VFSNode *node;
+	/// Reference
+	struct ARC_Reference *reference;
+	/// Mode the file was opened with.
+	uint32_t mode;
+	/// Flags the file was opened with.
+	int flags;
+};
+
+struct ARC_Mount {
+	/// Type of file system.
+	int fs_type;
+	/// Pointer to the parent VFS node.
+	struct ARC_VFSNode *node;
+	/// Number of open files under this mount.
+	uint64_t open_files;
 };
 
 struct ARC_DriverDef {
@@ -75,12 +98,12 @@ struct ARC_DriverDef {
 	void *driver;
 	// Generic
 	int (*init)(struct ARC_Resource *res, void *args);
-	int (*uninit)(struct ARC_Resource *res);
-	int (*open)(struct ARC_Resource *res, char *path, int flags, uint32_t mode);
-	int (*write)(void *buffer, size_t size, size_t count, struct ARC_Resource *res);
-	int (*read)(void *buffer, size_t size, size_t count, struct ARC_Resource *res);
-	int (*close)(struct ARC_Resource *res);
-	int (*seek)(struct ARC_Resource *res, long offset, int whence);
+	int (*uninit)(struct ARC_Resource  *res);
+	int (*open)(struct ARC_File  *file, char *path, int flags, uint32_t mode);
+	int (*write)(void *buffer, size_t size, size_t count, struct ARC_File  *file);
+	int (*read)(void *buffer, size_t size, size_t count, struct ARC_File *file);
+	int (*close)(struct ARC_File *file);
+	int (*seek)(struct ARC_File *file, long offset, int whence);
 	/// Rename the resource.
 	int (*rename)(char *newname, struct ARC_Resource *res);
 }__attribute__((packed));

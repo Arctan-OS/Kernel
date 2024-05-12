@@ -56,7 +56,10 @@ int Arc_QLockStaticInit(struct ARC_QLock *head) {
 }
 
 int64_t Arc_QLock(struct ARC_QLock *head) {
-	// TODO: Replace
+	if (head->is_frozen) {
+		return -3;
+	}
+
 	int64_t tid = Arc_GetCurrentTID();
 
 	if (head->next != NULL && ((struct internal_qlock_node *)head->next)->tid == tid) {
@@ -118,6 +121,36 @@ int Arc_QUnlock(struct ARC_QLock *head) {
 	}
 
 	Arc_MutexUnlock(&head->lock);
+
+	return 0;
+}
+
+int Arc_QFreeze(struct ARC_QLock *head) {
+	// Freeze the lock, let no new owners in,
+	// but advance through all of the other owners
+	// already in the queue.
+	//
+	// If the owner we are currently getting through
+	// calls this function, return an error, as it is
+	// already frozen.
+	//
+	// Once all other owners have been removed from the
+	// queue, call original owner who invoked this function.
+	//
+	// Note: The calling thread must own the lock to freeze
+	// it.
+
+	if (head->is_frozen == 1) {
+		return -1;
+	}
+
+	head->is_frozen = 1;
+
+	return 0;
+}
+int Arc_QThaw(struct ARC_QLock *head) {
+	// Thaw a frozen lock
+	head->is_frozen = 0;
 
 	return 0;
 }
