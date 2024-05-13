@@ -84,7 +84,7 @@ int Arc_QLockStaticInit(struct ARC_QLock *head);
  * @return tid of the current thread upon success (>= 0), -1: thread owns lock, -2: failed
  * to enqueue thread.
  * */
-int64_t Arc_QLock(struct ARC_QLock *lock);
+int Arc_QLock(struct ARC_QLock *lock);
 
 /**
  * Yield current thread to lock owner thread.
@@ -94,7 +94,7 @@ int64_t Arc_QLock(struct ARC_QLock *lock);
  * asked to yield the calling thread to the thread
  * which owns the lock.
  * */
-void Arc_QYield(struct ARC_QLock *lock, int64_t tid);
+void Arc_QYield(struct ARC_QLock *lock);
 
 /**
  * Dequeue current lock owner.
@@ -107,7 +107,6 @@ void Arc_QYield(struct ARC_QLock *lock, int64_t tid);
  * mismatch.
  * */
 int Arc_QUnlock(struct ARC_QLock *lock);
-
 
 int Arc_QFreeze(struct ARC_QLock *head);
 int Arc_QThaw(struct ARC_QLock *head);

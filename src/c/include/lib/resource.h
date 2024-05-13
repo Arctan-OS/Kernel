@@ -45,9 +45,6 @@ struct ARC_Resource {
 	/// State managed by driver, owned by resource.
 	ARC_GenericMutex dri_state_mutex;
 	void *driver_state;
-	/// External swappable state.
-	ARC_GenericMutex vfs_state_mutex;
-	void *vfs_state;
 
 	/// Dynamically allocated name.
 	char *name;
@@ -98,12 +95,12 @@ struct ARC_DriverDef {
 	void *driver;
 	// Generic
 	int (*init)(struct ARC_Resource *res, void *args);
-	int (*uninit)(struct ARC_Resource  *res);
-	int (*open)(struct ARC_File  *file, char *path, int flags, uint32_t mode);
-	int (*write)(void *buffer, size_t size, size_t count, struct ARC_File  *file);
-	int (*read)(void *buffer, size_t size, size_t count, struct ARC_File *file);
-	int (*close)(struct ARC_File *file);
-	int (*seek)(struct ARC_File *file, long offset, int whence);
+	int (*uninit)(struct ARC_Resource *res);
+	int (*open)(struct ARC_File *file, struct ARC_Resource *res, char *path, int flags, uint32_t mode);
+	int (*write)(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res);
+	int (*read)(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res);
+	int (*close)(struct ARC_File *file, struct ARC_Resource *res);
+	int (*seek)(struct ARC_File *file, struct ARC_Resource *res, long offset, int whence);
 	/// Rename the resource.
 	int (*rename)(char *newname, struct ARC_Resource *res);
 }__attribute__((packed));

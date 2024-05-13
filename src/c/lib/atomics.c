@@ -55,7 +55,7 @@ int Arc_QLockStaticInit(struct ARC_QLock *head) {
 	return 0;
 }
 
-int64_t Arc_QLock(struct ARC_QLock *head) {
+int Arc_QLock(struct ARC_QLock *head) {
 	if (head->is_frozen) {
 		return -3;
 	}
@@ -63,7 +63,7 @@ int64_t Arc_QLock(struct ARC_QLock *head) {
 	int64_t tid = Arc_GetCurrentTID();
 
 	if (head->next != NULL && ((struct internal_qlock_node *)head->next)->tid == tid) {
-		return tid;
+		return 0;
 	}
 
 	register struct internal_qlock_node *next = (struct internal_qlock_node *)Arc_SlabAlloc(sizeof(struct internal_qlock_node));
@@ -88,17 +88,17 @@ int64_t Arc_QLock(struct ARC_QLock *head) {
 
 	Arc_MutexUnlock(&head->lock);
 
-	return tid;
+	return 0;
 }
 
-void Arc_QYield(struct ARC_QLock *head, int64_t tid) {
+void Arc_QYield(struct ARC_QLock *head) {
 	int64_t current_tid = ((struct internal_qlock_node *)head->next)->tid;
 
-	if (current_tid == tid) {
+	if (current_tid == Arc_GetCurrentTID()) {
 		return;
 	}
 
-	while (current_tid != tid) {
+	while (current_tid != Arc_GetCurrentTID()) {
 		Arc_YieldCPU(current_tid);
 	}
 }
@@ -146,10 +146,20 @@ int Arc_QFreeze(struct ARC_QLock *head) {
 
 	head->is_frozen = 1;
 
+	// TODO: Implement yielding
+
 	return 0;
 }
 int Arc_QThaw(struct ARC_QLock *head) {
 	// Thaw a frozen lock
+	if (head->is_frozen == 0) {
+		return 0;
+	}
+
+	if (((struct internal_qlock_node *)head->next)->tid != Arc_GetCurrentTID()) {
+		return -1;
+	}
+
 	head->is_frozen = 0;
 
 	return 0;

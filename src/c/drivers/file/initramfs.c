@@ -129,13 +129,13 @@ static int initramfs_file_init(struct ARC_Resource *res, void *args) {
 	return 0;
 }
 
-static int initramfs_uninit(struct ARC_File *file) {
-	Arc_SlabFree(file->node->resource->driver_state);
+static int initramfs_uninit(struct ARC_Resource *res) {
+	Arc_SlabFree(res->driver_state);
 
 	return 0;
 }
 
-static int initramfs_open(struct ARC_File *file, char *path, int flags, uint32_t mode) {
+static int initramfs_open(struct ARC_File *file, struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
 	(void)flags;
 
 	if (file == NULL) {
@@ -145,8 +145,6 @@ static int initramfs_open(struct ARC_File *file, char *path, int flags, uint32_t
 	if (Arc_CheckCurPerms(mode) != 0) {
 		return EPERM;
 	}
-
-	struct ARC_Resource *res = (struct ARC_Resource *)file->node->resource;
 
 	// Lock dir_state
 	Arc_MutexLock(&res->dri_state_mutex);
@@ -172,12 +170,10 @@ static int initramfs_open(struct ARC_File *file, char *path, int flags, uint32_t
 	return 0;
 }
 
-static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_File *file) {
-	if (file == NULL || file->node->resource->driver_state == NULL) {
+static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
+	if (file == NULL || res->driver_state == NULL) {
 		return 0;
 	}
-
-	struct ARC_Resource *res = file->node->resource;
 
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
 	void *addfiles = state->initramfs_base;
@@ -210,7 +206,9 @@ static int initramfs_write() {
 	return 1;
 }
 
-static int initramfs_seek(struct ARC_File *file, long offset, int whence) {
+static int initramfs_seek(struct ARC_File *file, struct ARC_Resource *res, long offset, int whence) {
+	(void)res;
+
 	if (file == NULL) {
 		return 1;
 	}
