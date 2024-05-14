@@ -42,6 +42,7 @@ static const struct ARC_Resource root_res = { .name = "/" };
 static struct ARC_VFSNode vfs_root = { 0 };
 
 struct vfs_traverse_info {
+	/// The node to start traversal from.
 	struct ARC_VFSNode *start;
 	/// The sought after nodes.
 	struct ARC_VFSNode *node;
@@ -61,6 +62,9 @@ struct vfs_traverse_info {
 	int create_level;
 };
 
+/**
+ * Convert stat.st_type to node->type.
+ * */
 int vfs_stat2type(struct stat stat) {
 	switch (stat.st_mode & S_IFMT) {
 		case S_IFDIR: {
@@ -81,6 +85,14 @@ int vfs_stat2type(struct stat stat) {
 	}
 }
 
+/**
+ * Internal recursive delete function.
+ *
+ * Recursively destroy the node.
+ *
+ * @param struct ARC_VFSNode *node - The node to start recursive destruction from.
+ * @return the number of nodes that were not destroyed.
+ * */
 int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
 		return 1;
@@ -101,6 +113,17 @@ int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 	return err;
 }
 
+/**
+ * Delete a node from the node graph.
+ *
+ * General function for deleting nodes. Parent
+ * node's children are updated to remove the link
+ * to this node.
+ *
+ * @param struct ARC_VFSNode *node - The node which to destroy.
+ * @param bool recurse - Whether to recurse or not.
+ * @return number of nodes which were not destroyed.
+ * */
 int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
 		return 1;
@@ -137,6 +160,17 @@ int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 //       First, it needs testing like the remove and close functions.
 //       Second, this may become costly in terms of speed, as quite a
 //       big lock is grabbed (locking the topmost node).
+/**
+ * Prune unused nodes from bottom to top.
+ *
+ * A node, starting at a lower level of the graph
+ * starts a chain of destruction upward of unused nodes.
+ * This frees up memory, at the cost of some caching.
+ *
+ * @param struct ARC_VFSNode *bottom - Bottom-most node to start from.
+ * @param struct ARC_VFSNode *top - Topmost node to end on.
+ * @return positive integer indicating the number of nodes freed.
+ * */
 int vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
 	struct ARC_VFSNode *current = bottom;
 	int freed = 0;
@@ -186,6 +220,18 @@ int vfs_open_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int link_d
 	return 0;
 }
 
+/**
+ * Traverse the node graph
+ *
+ * The ultimate function to traverse the node graph.
+ * Links are resolved and opened, resources are created,
+ * new nodes are created upon specification.
+ *
+ * @param char *filepath - The path to to the file.
+ * @param struct vfs_traverse_info *info - Input values and return values of the function.
+ * @param int link_depth - How many links to resolve.
+ * @return 0 upon success.
+ * */
 int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth) {
 	if (filepath == NULL || info == NULL || info->start == NULL) {
 		return EINVAL;
@@ -841,8 +887,13 @@ int Arc_RenameVFS(char *a, char *b) {
 		return -1;
 	}
 
-	struct vfs_traverse_info info_b = { .create_level = VFS_FS_CREAT | VFS_NOLCMP, .mode = info_a.mode };
+	// Lock parent ASAP ensuring node_a is not modified
+	if (Arc_QLock(&info_a.node->parent->branch_lock)) {
+		ARC_DEBUG(ERR, "Lock error\n");
+	}
+	Arc_QYield(&info_a.node->parent->branch_lock);
 
+	struct vfs_traverse_info info_b = { .create_level = VFS_FS_CREAT | VFS_NOLCMP, .mode = info_a.mode };
 	if (*b == '/') {
 		info_b.start = &vfs_root;
 	} else {
@@ -853,60 +904,43 @@ int Arc_RenameVFS(char *a, char *b) {
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find or create %s in node graph / on disk\n", b);
+		Arc_QUnlock(&info_a.node->parent->branch_lock);
+		return -1;
 	}
 
 	struct ARC_VFSNode *node_a = info_a.node;
 	struct ARC_VFSNode *node_b = info_b.node;
+
+	// Remove node_a from parent node in preparation for patching
+	struct ARC_VFSNode *parent = node_a->parent;
+	if (node_a->next != NULL) {
+		node_a->next->prev = node_a->prev;
+	}
+	if (node_a->prev != NULL) {
+		node_a->prev->next = node_a->next;
+	} else {
+		parent->children = node_a->next;
+	}
+	Arc_QUnlock(&parent->branch_lock);
 
 	// Patch node_a onto node_b
 	if (Arc_QLock(&node_b->branch_lock) != 0) {
 		ARC_DEBUG(ERR, "Lock error\n");
 	}
 	Arc_QYield(&node_b->branch_lock);
-
 	if (node_b->children != NULL) {
 		node_b->children->prev = node_a;
 	}
-
 	node_b->children = node_a;
 
-	Arc_QUnlock(&node_b->branch_lock);
-
-	// Remove node from parent node
-	struct ARC_VFSNode *parent = node_a->parent;
-	ARC_DEBUG(INFO, "%p\n", parent);
-	if (Arc_QLock(&parent->branch_lock)) {
-		ARC_DEBUG(ERR, "Lock error\n");
-	}
-	Arc_QYield(&parent->branch_lock);
-	struct ARC_VFSNode *child = parent->children;
-	while (child != node_a && child != NULL) {
-		child = child->next;
-	}
-
-	// Update links, if child != node_a, then we
-	// do not need to do this, as the child has
-	// already been removed
-	if (child == node_a) {
-		if (child->next != NULL) {
-			child->next->prev = child->prev;
-		}
-
-		if (child->prev != NULL) {
-			child->prev->next = child->next;
-		} else {
-			parent->children = child->next;
-		}
-	}
-	Arc_QUnlock(&parent->branch_lock);
-
-	// Patch node in
+	// Let node_a see the patch
 	if (Arc_QLock(&node_a->branch_lock) != 0) {
 		ARC_DEBUG(ERR, "Lock error\n");
 	}
 	Arc_QYield(&node_a->branch_lock);
 	node_a->parent = node_b;
 	Arc_QUnlock(&node_a->branch_lock);
+	Arc_QUnlock(&node_b->branch_lock);
 
 	// Rename the resource
 	Arc_MutexLock(&node_a->resource->prop_mutex);
@@ -931,7 +965,6 @@ int Arc_RenameVFS(char *a, char *b) {
 	} else {
 		// Physically rename file
 		struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)info_a.mount->resource->driver->driver;
-
 		def->rename(info_a.mountpath, info_b.mountpath);
 	}
 

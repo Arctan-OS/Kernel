@@ -70,7 +70,7 @@ void *Arc_SlabFree(void *address) {
 
 	if (list == -1) {
 		// Could not find the list
-		ARC_DEBUG(INFO, "Failed to free %p\n", address);
+		ARC_DEBUG(ERR, "Failed to free %p\n", address);
 		return NULL;
 	}
 
