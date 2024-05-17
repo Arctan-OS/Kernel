@@ -28,7 +28,7 @@
 #include <lib/atomics.h>
 #include <util.h>
 #include <mp/sched/abstract.h>
-
+#include <global.h>
 struct internal_qlock_node {
 	int64_t tid;
 	struct internal_qlock_node *next;
@@ -56,19 +56,24 @@ int Arc_QLockStaticInit(struct ARC_QLock *head) {
 }
 
 int Arc_QLock(struct ARC_QLock *head) {
+	ARC_DEBUG(INFO, "QLocking %p\n", head);
+
 	if (head->is_frozen) {
+		ARC_DEBUG(ERR, "Head %p is frozen!\n", head);
 		return -3;
 	}
 
 	int64_t tid = Arc_GetCurrentTID();
 
 	if (head->next != NULL && ((struct internal_qlock_node *)head->next)->tid == tid) {
+		ARC_DEBUG(INFO, "QLock %p is already owned by %d\n", head, tid);
 		return 0;
 	}
 
 	register struct internal_qlock_node *next = (struct internal_qlock_node *)Arc_SlabAlloc(sizeof(struct internal_qlock_node));
 
 	if (next == NULL) {
+		ARC_DEBUG(ERR, "Failed to allocate next link\n");
 		return -2;
 	}
 
@@ -106,9 +111,12 @@ void Arc_QYield(struct ARC_QLock *head) {
 int Arc_QUnlock(struct ARC_QLock *head) {
 	struct internal_qlock_node *next = ((struct internal_qlock_node *)head->next)->next;
 
-	if (head->next != NULL && ((struct internal_qlock_node *)head->next)->tid != Arc_GetCurrentTID()){
+	if (head->next == NULL || ((struct internal_qlock_node *)head->next)->tid != Arc_GetCurrentTID()) {
+		ARC_DEBUG(ERR, "Lock is not owned by %d or is owned by no-one\n", Arc_GetCurrentTID());
 		return -1;
 	}
+
+	ARC_DEBUG(INFO, "Unlocking %p\n", head);
 
 	Arc_MutexLock(&head->lock);
 

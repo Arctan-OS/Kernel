@@ -240,7 +240,6 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 	ARC_DEBUG(INFO, "Traversing %s\n", filepath);
 
 	size_t max = strlen(filepath);
-
 	struct ARC_VFSNode *node = info->start;
 	node->ref_count++; // TODO: Atomize
 	info->node = node;
@@ -321,7 +320,6 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			memset(new, 0, sizeof(struct ARC_VFSNode));
 
 			new->name = strndup(component, component_length);
-
 			new->mount = info->mount->mount;
 
 			new->type = ARC_VFS_N_DIR;

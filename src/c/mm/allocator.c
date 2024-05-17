@@ -41,6 +41,7 @@ static struct ARC_AllocMeta heap = { 0 };
 void *Arc_SlabAlloc(size_t size) {
 	if (size > 0x1000) {
 		// Just allocate a contiguous set of pages
+		ARC_DEBUG(ERR, "Failed to allocate size %d\n", size);
 		return NULL;
 	}
 
