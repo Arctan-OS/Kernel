@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <interface/printf.h>
 #include <arch/x86-64/ctrl_regs.h>
+#include <arch/x86-64/apic.h>
 #include <boot/parse.h>
 
 #include <arch/x86-64/idt.h>
@@ -69,8 +70,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_MainTerm.cx = 0;
 	Arc_MainTerm.cy = 0;
 
-	ARC_DEBUG(INFO, "Sucessfully entered long mode\n")
+	ARC_DEBUG(INFO, "Sucessfully entered long mode\n");
 
+        // Initialize really basic things
 	Arc_InstallGDT();
 	Arc_InstallIDT();
 	Arc_ParseBootInfo();
@@ -79,10 +81,13 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
 	}
 
+        // Initialize memory
 	Arc_InitPMM((struct ARC_MMap *)boot_meta->arc_mmap, boot_meta->arc_mmap_len);
-
 	Arc_InitVMM();
 	Arc_InitSlabAllocator(100);
+
+        // Initialize more complicated things
+        Arc_InitAPIC();
 
 	Arc_InitializeVFS();
 

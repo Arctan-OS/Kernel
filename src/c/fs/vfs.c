@@ -138,6 +138,10 @@ int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 		child = child->next;
 	}
 
+	if (node->children != NULL) {
+		return err + 1;
+	}
+
 	Arc_SlabFree(node->name);
 	Arc_UninitializeResource(node->resource);
 
@@ -197,6 +201,76 @@ int vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
 
 	return freed;
 }
+
+int _vfs_top_down_prune_recurs(struct ARC_VFSNode *node, int depth) {
+	if (node->ref_count > 0 || depth <= 0 || node->type == ARC_VFS_N_MOUNT) {
+		// Set the sign bit to indicate that this
+		// path cannot be freed as there is still
+		// something being used on it. All other
+		// unused files / folders / whatnot has
+		// been freed
+		return -1;
+	}
+
+	struct ARC_VFSNode *child = node->children;
+	int count = 0;
+
+	while (child != NULL) {
+		int diff = _vfs_top_down_prune_recurs(child, depth - 1);
+
+		if (diff < 0 && count > 0) {
+			count *= -1;
+		}
+
+		count += diff;
+
+		child = child->next;
+	}
+
+	if (node->children == NULL) {
+		// Free this node
+	}
+
+	return count;
+}
+
+/**
+ * Prune unused nodes from top to a depth.
+ *
+ * Given a starting node, top, work downwards to free
+ * any unused nodes to save on some memory. It takes
+ * quite a big lock (the top node is locked).
+ *
+ * @param struct ARC_VFSNode *top - The starting node.
+ * @param int depth - How far down the function can traverse.
+ * @return poisitive integer indicating the number of nodes freed.
+ * */
+int vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
+	if (top == NULL) {
+		ARC_DEBUG(ERR, "Start node is NULL\n");
+		return -1;
+	}
+
+	if (depth == 0) {
+		return 0;
+	}
+
+	if (Arc_QLock(&top->branch_lock) != 0) {
+		return -2;
+	}
+	Arc_QYield(&top->branch_lock);
+
+	struct ARC_VFSNode *node = top->children;
+	int count = 0;
+
+	while (node != NULL) {
+		count += _vfs_top_down_prune_recurs(node, depth - 1);
+		node = node->next;
+	}
+
+	return count;
+}
+
 
 int vfs_open_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int link_depth) {
 	(void)node;

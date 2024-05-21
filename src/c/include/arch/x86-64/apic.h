@@ -1,5 +1,5 @@
 /**
- * @file ctrl_regs.h
+ * @file apic.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,35 +24,9 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_X86_64_CTRL_REGS_H
-#define ARC_ARCH_X86_64_CTRL_REGS_H
+#ifndef ARC_ARCH_X86_64_APIC_H
+#define ARC_ARCH_X86_64_APIC_H
 
-#include <stdint.h>
-
-extern uint64_t _x86_CR0;
-extern uint64_t _x86_CR1;
-extern uint64_t _x86_CR2;
-extern uint64_t _x86_CR3;
-extern uint64_t _x86_CR4;
-
-extern void _x86_getCR0();
-extern void _x86_setCR0();
-
-extern void _x86_getCR1();
-extern void _x86_setCR1();
-
-extern void _x86_getCR2();
-extern void _x86_setCR2();
-
-extern void _x86_getCR3();
-extern void _x86_setCR3();
-
-extern void _x86_getCR4();
-extern void _x86_setCR4();
-
-// Returns in EDX:EAX
-extern uint64_t _x86_RDMSR(uint32_t msr);
-// Value: EDX:EAX
-extern void _x86_WRMSR(uint32_t msr, uint64_t value);
+int Arc_InitAPIC();
 
 #endif

@@ -25,8 +25,8 @@
  * @DESCRIPTION
  * The file which handles the 64-bit IDT.
 */
-#ifndef IDT_H
-#define IDT_H
+#ifndef ARC_ARCH_X86_64_IDT_H
+#define ARC_ARCH_X86_64_IDT_H
 
 void Arc_InstallIDT();
 
