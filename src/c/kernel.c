@@ -36,6 +36,7 @@
 #include <interface/printf.h>
 #include <arch/x86-64/ctrl_regs.h>
 #include <arch/x86-64/apic.h>
+#include <arch/x86-64/acpi.h>
 #include <boot/parse.h>
 
 #include <arch/x86-64/idt.h>
@@ -87,6 +88,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitSlabAllocator(100);
 
         // Initialize more complicated things
+        Arc_InitializeACPI(boot_meta->rsdp, boot_meta->rsdp_version);
         Arc_InitAPIC();
 
 	Arc_InitializeVFS();

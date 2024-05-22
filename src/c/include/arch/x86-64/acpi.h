@@ -1,5 +1,5 @@
 /**
- * @file apic.h
+ * @file acpi.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,12 +24,11 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_X86_64_APIC_H
-#define ARC_ARCH_X86_64_APIC_H
+#ifndef ARC_ARCH_X86_64_ACPI_H
+#define ARC_ARCH_X86_64_ACPI_H
 
 #include <stdint.h>
 
-int Arc_DefineIOAPIC(uint32_t id, uint32_t address, uint32_t gsi);
-int Arc_InitAPIC();
+int Arc_InitializeACPI(uint64_t rsdp_ptr, int rsdp_ver);
 
 #endif

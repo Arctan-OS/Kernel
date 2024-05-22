@@ -23,6 +23,7 @@ int strcmp(char *a, char *b) {
 	return sum;
 }
 
+// BUG: "APIC" and "MCFG" somehow == 0
 int strncmp(char *a, char *b, size_t len) {
 	size_t i = 0;
 	int sum = 0;
