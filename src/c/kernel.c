@@ -88,7 +88,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitSlabAllocator(100);
 
         // Initialize more complicated things
-        Arc_InitializeACPI(boot_meta->rsdp, boot_meta->rsdp_version);
+        Arc_InitializeACPI(boot_meta->rsdp);
         Arc_InitAPIC();
 
 	Arc_InitializeVFS();

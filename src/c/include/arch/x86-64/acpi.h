@@ -29,6 +29,6 @@
 
 #include <stdint.h>
 
-int Arc_InitializeACPI(uint64_t rsdp_ptr, int rsdp_ver);
+int Arc_InitializeACPI(uint64_t rsdp_ptr);
 
 #endif
