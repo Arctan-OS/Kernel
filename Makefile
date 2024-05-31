@@ -42,6 +42,11 @@ else
 	CPP_E9HACK_FLAG := -DARC_E9HACK_ENABLE
 endif
 
+ifneq (,$(wildcard ./hardware.enable))
+# hardware.enable is present, disable E9
+	CPP_E9HACK_FLAG :=
+endif
+
 CFILES := $(shell find ./src/c/ -type f -name "*.c")
 ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 

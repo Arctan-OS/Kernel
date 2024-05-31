@@ -25,10 +25,10 @@
  * @DESCRIPTION
 */
 #include <abi-bits/errno.h>
-#include "lib/atomics.h"
+#include <lib/atomics.h>
 #include <lib/perms.h>
 #include <fs/vfs.h>
-#include <mm/allocator.h>
+#include <mm/slab.h>
 #include <global.h>
 #include <time.h>
 #include <util.h>

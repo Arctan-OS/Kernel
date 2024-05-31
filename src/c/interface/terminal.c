@@ -24,8 +24,8 @@
  *
  * @DESCRIPTION
 */
-#include "fs/vfs.h"
-#include "mm/allocator.h"
+#include <fs/vfs.h>
+#include <mm/slab.h>
 #include <global.h>
 #include <interface/terminal.h>
 #include <arctan.h>

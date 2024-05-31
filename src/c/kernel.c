@@ -25,7 +25,7 @@
  * @DESCRIPTION
 */
 #include <lib/resource.h>
-#include <mm/allocator.h>
+#include <mm/slab.h>
 #include <mm/freelist.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
@@ -35,7 +35,8 @@
 #include <stdint.h>
 #include <interface/printf.h>
 #include <arch/x86-64/ctrl_regs.h>
-#include <arch/x86-64/apic.h>
+#include <arch/x86-64/lapic.h>
+#include <arch/x86-64/ioapic.h>
 #include <arch/x86-64/acpi.h>
 #include <boot/parse.h>
 
@@ -85,12 +86,14 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         // Initialize memory
 	Arc_InitPMM((struct ARC_MMap *)boot_meta->arc_mmap, boot_meta->arc_mmap_len);
 	Arc_InitVMM();
+        // Arc_InitBuddy(big_block_size, max_subdivisions);
 	Arc_InitSlabAllocator(100);
 
         // Initialize more complicated things
         Arc_InitializeACPI(boot_meta->rsdp);
-        Arc_InitAPIC();
-
+        // TODO: Implement properly
+        // Arc_InitIOAPIC();
+        Arc_InitLAPIC();
 	Arc_InitializeVFS();
 
 	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)ARC_PHYS_TO_HHDM(boot_meta->initramfs));
@@ -101,19 +104,11 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_RenameVFS("/font.fnt", "/fonts/font.fnt");
 	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
 
-	ARC_DEBUG(INFO, "%s\n", Arc_FontFile->node->parent->name);
-
 	Arc_InitializeSyscall();
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	// Quickly map framebuffer in
-	uint64_t fb_size = Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8);
-	for (uint64_t i = 0; i < fb_size; i += 0x1000) {
-		Arc_MapPageVMM(ARC_HHDM_TO_PHYS(Arc_MainTerm.framebuffer + i), (uintptr_t)(Arc_MainTerm.framebuffer + i), ARC_VMM_OVERW_FLAG | 3);
-	}
-
-	for (int i = 0; i < 600; i++) {
+	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
 			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {
 				*((uint32_t *)Arc_MainTerm.framebuffer + (y * Arc_MainTerm.fb_width) + x) = (x * y * i / 300) & 0x3FFF;

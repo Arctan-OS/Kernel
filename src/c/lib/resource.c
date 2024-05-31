@@ -25,7 +25,7 @@
  * @DESCRIPTION
 */
 #include <abi-bits/errno.h>
-#include <mm/allocator.h>
+#include <mm/slab.h>
 #include <lib/resource.h>
 #include <global.h>
 #include <util.h>

@@ -1,5 +1,5 @@
 /**
- * @file apic.h
+ * @file ioapic.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,12 +24,12 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_X86_64_APIC_H
-#define ARC_ARCH_X86_64_APIC_H
+#ifndef ARC_ARCH_X86_64_IOAPIC_H
+#define ARC_ARCH_X86_64_IOAPIC_H
 
 #include <stdint.h>
 
 int Arc_DefineIOAPIC(uint32_t id, uint32_t address, uint32_t gsi);
-int Arc_InitAPIC();
+int Arc_InitIOAPIC();
 
 #endif

@@ -25,7 +25,8 @@
  * @DESCRIPTION
 */
 #include <arch/x86-64/acpi.h>
-#include <arch/x86-64/apic.h>
+#include <arch/x86-64/lapic.h>
+#include <arch/x86-64/ioapic.h>
 #include <global.h>
 #include <util.h>
 

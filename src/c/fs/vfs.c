@@ -30,7 +30,7 @@
 #include <lib/atomics.h>
 #include <abi-bits/errno.h>
 #include <lib/resource.h>
-#include <mm/allocator.h>
+#include <mm/slab.h>
 #include <fs/vfs.h>
 #include <global.h>
 #include <util.h>

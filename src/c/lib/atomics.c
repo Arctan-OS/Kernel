@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include <mm/allocator.h>
+#include <mm/slab.h>
 #include <lib/atomics.h>
 #include <util.h>
 #include <mp/sched/abstract.h>

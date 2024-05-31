@@ -1,4 +1,4 @@
-#include <mm/allocator.h>
+#include <mm/slab.h>
 #include <util.h>
 #include <global.h>
 

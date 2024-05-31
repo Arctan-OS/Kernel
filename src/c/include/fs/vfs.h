@@ -1,5 +1,5 @@
 /**
- * @file initramfs.h
+ * @file vfs.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *

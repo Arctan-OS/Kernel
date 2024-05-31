@@ -1,6 +1,5 @@
 /**
- * @file freelist.h
- *
+ * @file slab.c
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
  * @LICENSE
@@ -26,7 +25,7 @@
 */
 #include "mm/freelist.h"
 #include "mm/pmm.h"
-#include <mm/allocator.h>
+#include <mm/slab.h>
 #include <global.h>
 #include <util.h>
 
