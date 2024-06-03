@@ -32,6 +32,16 @@
 /// The create flag.
 #define ARC_VMM_CREAT_FLAG (1 << 30)
 
+// PAT << 7 or 12 (2 MB ad 1 GB)
+// PWT << 2
+// PCD << 3
+#define ARC_VMM_PAT_WB(npte) ((0 << ((npte * 5) + 7)) | (0 << 3) | (0 << 2))
+#define ARC_VMM_PAT_UC(npte) ((0 << ((npte * 5) + 7)) | (0 << 3) | (1 << 2))
+#define ARC_VMM_PAT_UCD(npte) ((0 << ((npte * 5) + 7)) | (1 << 3) | (1 << 2))
+#define ARC_VMM_PAT_WC(npte) ((0 << ((npte * 5) + 7)) | (1 << 3) | (1 << 2))
+#define ARC_VMM_PAT_WT(npte) ((1 << ((npte * 5) + 7)) | (0 << 3) | (0 << 2))
+#define ARC_VMM_PAT_WP(npte) ((1 << ((npte * 5) + 7)) | (0 << 3) | (1 << 2))
+
 #include <stdint.h>
 
 // Input an HHDM address

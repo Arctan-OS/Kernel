@@ -24,3 +24,36 @@
  *
  * @DESCRIPTION
 */
+
+#include <mm/buddy.h>
+#include <global.h>
+void *Arc_BuddyAlloc(size_t size) {
+        // Get the top node of the current context
+        // Descend down tree until suitable size is reached
+        // If the smallest size is reached:
+        //    If size is still vastly smaller than
+        //    size, subdivide
+        // Return block
+        return NULL;
+}
+
+int Arc_BuddyFree(void *address) {
+        // Traverse tree, if a node is found
+        // with base == address, check for children
+        //   If children:
+        //      Traverse to next child with
+        //      base == address, continue
+        //      until there are no more children
+        // Mark node as free
+        return 0;
+}
+
+int Arc_InitBuddy(void *vaddr, size_t total, int subdivisions) {
+        ARC_DEBUG(INFO, "Initializing new buddy allocator (%d bytes %d) at %p\n\n", vaddr);
+
+        // Round down the size to nearest 2^subdivisions
+        // Allocate rounded size
+        // Create root
+
+        return 0;
+}

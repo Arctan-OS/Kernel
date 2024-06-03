@@ -94,8 +94,7 @@ int Arc_InitLAPIC() {
         lapic_msr |= (1 << 11);
         _x86_WRMSR(0x1B, lapic_msr);
 
-        // NOTE: Should be mapped as UC (for when we implement MTRRs)
-        Arc_MapPageVMM((uintptr_t)reg, (uintptr_t)reg, ARC_VMM_CREAT_FLAG | 3);
+        Arc_MapPageVMM((uintptr_t)reg, (uintptr_t)reg, ARC_VMM_CREAT_FLAG | 3 | ARC_VMM_PAT_UC(0));
 
         ARC_DEBUG(INFO, "LAPIC register at %p\n", ARC_PHYS_TO_HHDM(reg));
         // NOTE: Ignore bits 31:27 of reg->lapic_id on P6 and Pentium processors

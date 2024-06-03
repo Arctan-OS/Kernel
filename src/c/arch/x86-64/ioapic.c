@@ -27,6 +27,8 @@
 #include <arch/x86-64/ioapic.h>
 #include <global.h>
 #include <mm/slab.h>
+#include <mm/vmm.h>
+#include <stdint.h>
 
 struct ioapic_definition {
         uint32_t id;
@@ -79,48 +81,17 @@ int Arc_DefineIOAPIC(uint32_t id, uint32_t address, uint32_t gsi) {
         return 0;
 }
 
-/**
- * Map an IOAPIC to a specific IDTE.
- *
- * Maps GSI -> MRE of IOAPIC to begin at
- * the given IDTE.
- *
- * @param struct ioapic_definition *def - The IOAPIC to map.
- * @param int idte - The starting IDT entry.
- * @return 0 upon success.
- * */
-int ioapic_map_above_reserve(struct ioapic_definition *def, int idte) {
-        struct ioapic_register *reg = (struct ioapic_register *)ARC_PHYS_TO_HHDM(def->address);
-
-        for (int i = 0; i < def->max_redir_entry; i++, idte++) {
-                struct ioapic_redir_tbl table = { 0 };
-                table.int_vec = idte;
-                table.del_mod = 0b111; // ExtINT probably?
-                table.dest_mod = 0; // Send it to a group of APICs
-                table.destination = 0xFF; // LAPIC ID
-                table.mask = 0; // Unmask
-
-                uint64_t val = *(uint64_t *)&table;
-                reg->ioregsel = i + 0x10;
-                reg->iowin = val & 0xFFFFFFFF;
-                reg->ioregsel = i + 0x11;
-                reg->iowin = (val >> 32) & 0xFFFFFFFF;
-        }
-
-        return idte;
-}
-
 int Arc_InitIOAPIC() {
         ARC_DEBUG(INFO, "Initializing IOAPIC(s)\n");
 
-        // Disable 8259A - just mask its interrupts
-        outb(0x21, 0xFF);
-        outb(0xA1, 0xFF);
+        // TODO: Mask all IRQs on 8259
 
         ARC_DEBUG(INFO, "IOAPIC Definition:\n");
         struct ioapic_definition *def = ioapic_list;
         while (def != NULL) {
                 struct ioapic_register *reg = (struct ioapic_register *)ARC_PHYS_TO_HHDM(def->address);
+
+                Arc_MapPageVMM(def->address, (uintptr_t)reg, ARC_VMM_CREAT_FLAG | 3 | ARC_VMM_PAT_UC(0));
 
                 reg->ioregsel = 0x01;
                 int version = reg->iowin & 0xFF;
@@ -130,7 +101,8 @@ int Arc_InitIOAPIC() {
                 def->version = version;
                 def->max_redir_entry = mre + 1;
 
-                ioapic_map_above_reserve(def, 32);
+                // TODO: Map IOAPICs to send interrupts above
+                //       reserved interrupt vectors
 
                 def = def->next;
         }

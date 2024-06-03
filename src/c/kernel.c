@@ -60,6 +60,8 @@ int empty() {
 }
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
+        *((uint8_t *)0xB8002) = 'A';
+
 	Arc_BootMeta = boot_meta;
 
 	Arc_MainTerm.rx_buf = NULL;
@@ -89,12 +91,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         // Arc_InitBuddy(big_block_size, max_subdivisions);
 	Arc_InitSlabAllocator(100);
 
-        // Initialize more complicated things
-        Arc_InitializeACPI(boot_meta->rsdp);
-        // TODO: Implement properly
-        // Arc_InitIOAPIC();
-        Arc_InitLAPIC();
-	Arc_InitializeVFS();
 
 	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)ARC_PHYS_TO_HHDM(boot_meta->initramfs));
 
@@ -105,8 +101,20 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
 
 	Arc_InitializeSyscall();
+        // Initialize more complicated things
+        Arc_InitializeACPI(boot_meta->rsdp);
+        // TODO: Implement properly
+        Arc_InitIOAPIC();
+        Arc_InitLAPIC();
+	Arc_InitializeVFS();
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
+
+        // Quickly map framebuffer in
+	uint64_t fb_size = Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8);
+	for (uint64_t i = 0; i < fb_size; i += 0x1000) {
+		Arc_MapPageVMM(ARC_HHDM_TO_PHYS(Arc_MainTerm.framebuffer + i), (uintptr_t)(Arc_MainTerm.framebuffer + i), ARC_VMM_OVERW_FLAG | 3 | ARC_VMM_PAT_WC(0));
+	}
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {

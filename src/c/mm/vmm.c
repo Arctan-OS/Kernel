@@ -26,11 +26,14 @@
 */
 #include <arch/x86-64/ctrl_regs.h>
 #include <arctan.h>
-#include "mm/pmm.h"
+#include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <global.h>
+#include <cpuid.h>
 
 static uint64_t *pml4 = NULL;
+
+#define PAGE_ATTRIBUTE(n, val) (uint64_t)((uint64_t)(val & 0b111) << (n * 8))
 
 uint64_t *Arc_GetPageTableVMM(uint64_t *parent, int level, uint64_t vaddr, uint32_t flags) {
 	int shift = ((level - 1) * 9) + 12;
@@ -77,6 +80,10 @@ int Arc_MapPageVMM(uint64_t paddr, uint64_t vaddr, uint32_t flags) {
 	return 0;
 }
 
+int Arc_UnmapPageVMM(uint64_t vaddr) {
+        return 0;
+}
+
 void Arc_SetPML4(uint64_t *new_pml4) {
 	pml4 = new_pml4;
 
@@ -88,5 +95,31 @@ void Arc_InitVMM() {
 	ARC_DEBUG(INFO, "Initializing VMM\n");
 	_x86_getCR3();
 	pml4 = (uint64_t *)ARC_PHYS_TO_HHDM(_x86_CR3);
+
+        register uint32_t eax;
+        register uint32_t ebx;
+        register uint32_t ecx;
+        register uint32_t edx;
+
+        __cpuid(0x1, eax, ebx, ecx, edx);
+
+        if (((edx >> 16) & 1) == 1) {
+                ARC_DEBUG(INFO, "PATs present, initializing\n");
+
+                uint64_t msr = _x86_RDMSR(0x277);
+
+                ARC_DEBUG(INFO, "Previous PATs: 0x%016"PRIX64"\n", msr);
+                msr = 0;
+                msr |= PAGE_ATTRIBUTE(0, 0x06); // WB
+                msr |= PAGE_ATTRIBUTE(1, 0x00); // UC
+                msr |= PAGE_ATTRIBUTE(2, 0x07); // UC-
+                msr |= PAGE_ATTRIBUTE(3, 0x01); // WC
+                msr |= PAGE_ATTRIBUTE(4, 0x04); // WT
+                msr |= PAGE_ATTRIBUTE(5, 0x05); // WP
+                ARC_DEBUG(INFO, "Current PATs : 0x%016"PRIX64"\n", msr);
+
+                _x86_WRMSR(0x277, msr);
+        }
+
 	ARC_DEBUG(INFO, "Initialized VMM (%p)\n", pml4);
 }

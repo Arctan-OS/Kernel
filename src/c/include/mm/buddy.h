@@ -24,3 +24,9 @@
  *
  * @DESCRIPTION
 */
+
+#include <stddef.h>
+
+void *Arc_BuddyAlloc(size_t size);
+int Arc_BuddyFree(void *address);
+int Arc_InitBuddy(void *vaddr, size_t total, int subdivisions);
