@@ -81,7 +81,6 @@ static void *initramfs_find_file(void *fs, char *filename) {
 		next:;
 		offset += ARC_DATA_OFFSET(header) + ARC_DATA_SIZE(header);
 		header = (struct ARC_HeaderCPIO *)(fs + offset);
-
 	}
 
 	ARC_DEBUG(ERR, "Could not find file \"%s\"\n", filename);

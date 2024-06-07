@@ -3,37 +3,38 @@
 #include <global.h>
 
 int strcmp(char *a, char *b) {
-	int sum = 0;
-	size_t max = strlen(b);
+	uint8_t *ua = (uint8_t *)a;
+	uint8_t *ub = (uint8_t *)b;
 
-	while (*a != 0) {
-		char c = 0;
+	size_t max = strlen(a);
+	size_t b_len = strlen(b);
 
-		if (max > 0) {
-			c = *b;
-			b++;
-		}
-
-		sum += *a - c;
-
-		a++;
-		max--;
+	if (max > b_len) {
+		max = b_len;
 	}
 
-	return sum;
+	int i = 0;
+	for (; i < max - 1; i++) {
+		if (ua[i] != ub[i] || ua[i] == 0 || ub[i] == 0) {
+			break;
+		}
+	}
+
+	return ua[i] - ub[i];
 }
 
-// BUG: "APIC" and "MCFG" somehow == 0
 int strncmp(char *a, char *b, size_t len) {
-	size_t i = 0;
-	int sum = 0;
+	uint8_t *ua = (uint8_t *)a;
+	uint8_t *ub = (uint8_t *)b;
 
-	while (i < len && *a != 0 && *b != 0) {
-		sum += a[i] - b[i];
- 		i++;
+	int i = 0;
+	for (; i < len - 1; i++) {
+		if (ua[i] != ub[i] || ua[i] == 0 || ub[i] == 0) {
+			break;
+		}
 	}
 
-	return sum + (len - i);
+	return ua[i] - ub[i];
 }
 
 void memset(void *a, uint8_t value, size_t size) {

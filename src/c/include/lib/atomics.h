@@ -27,7 +27,6 @@
 #ifndef ARC_LIB_ATOMICS_H
 #define ARC_LIB_ATOMICS_H
 
-#include <stdint.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 

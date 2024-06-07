@@ -1,5 +1,5 @@
 /**
- * @file archinit.h
+ * @file apic.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,14 +24,25 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_ARCHINIT_H
-#define ARC_ARCH_ARCHINIT_H
-
+#include <lib/resource.h>
+#include <stdint.h>
 #include <global.h>
+#include <util.h>
+#include <arch/x86-64/acpi.h>
 
-/*
-  There will be a function here that will initialize all required
-  functions on the CPU (i.e. SSE).
-*/
+int init_apic(struct ARC_Resource *res, void *arg) {
+	(void)res;
+	(void)arg;
+	ARC_DEBUG(INFO, "The APIC %p\n", arg);
+	return 0;
+}
 
-#endif
+int uninit_apic() {
+	return 0;
+};
+
+ARC_REGISTER_DRIVER(3, apic_driver) = {
+        .index = ARC_DRI_IAPIC,
+        .init = init_apic,
+	.uninit = uninit_apic
+};

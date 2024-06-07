@@ -39,6 +39,7 @@
 
 #define ARC_VFS_FS_EXT2      1
 #define ARC_VFS_FS_INITRAMFS 2
+#define ARC_VFS_FS_DEV   3
 
 #define ARC_VFS_SEEK_SET 1
 #define ARC_VFS_SEEK_CUR 2
@@ -140,6 +141,10 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
  * @return The number of words read.
  * */
 int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file);
+/**
+ * Read directly from a VFSNode.
+ * */
+int Arc_HeadlessReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node);
 
 /**
  * Write to the given file.
@@ -154,6 +159,11 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file);
  * @return The number of words written.
  * */
 int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file);
+
+/**
+ * Write directly to a VFSNode.
+ * */
+int Arc_HeadlessWriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node);
 
 /**
  * Change the offset in the given file.

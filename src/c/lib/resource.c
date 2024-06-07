@@ -29,6 +29,7 @@
 #include <lib/resource.h>
 #include <global.h>
 #include <util.h>
+#include <lib/atomics.h>
 
 extern struct ARC_DriverDef __DRIVERS0_START[];
 extern struct ARC_DriverDef __DRIVERS1_START[];
@@ -70,7 +71,7 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 	if (def != NULL) {
 		def->init(resource, args);
 	} else {
-		ARC_DEBUG(INFO, "Driver has no initialization function\n")
+		ARC_DEBUG(ERR, "Driver has no initialization function\n")
 	}
 
 	return resource;
@@ -80,6 +81,11 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 	if (resource == NULL) {
 		ARC_DEBUG(ERR, "Resource is NULL, cannot uninitialize\n");
 		return 1;
+	}
+
+	if (resource->ref_count > 0) {
+		ARC_DEBUG(ERR, "Resource %s is in use!\n", resource->name);
+		return 2;
 	}
 
 	ARC_DEBUG(INFO, "Uninitializing resource: %s\n", resource->name);
@@ -118,9 +124,8 @@ struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource) {
 		return NULL;
 	}
 
-	// Lock reference lock
-
 	struct ARC_Reference *ref = (struct ARC_Reference *)Arc_SlabAlloc(sizeof(struct ARC_Reference));
+
 
 	if (ref == NULL) {
 		goto reference_fall;
@@ -130,13 +135,14 @@ struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource) {
 
 	ref->resource = resource;
 
-	resource->ref_count += 1;
+	resource->ref_count++; // TODO: Atomize
+	Arc_MutexLock(&resource->references->branch_mutex);
 	ref->next = resource->references;
 	resource->references->prev = ref;
 	resource->references = ref;
+	Arc_MutexUnlock(&ref->next->branch_mutex);
 
 reference_fall:
-	// Unlock lock
 	return ref;
 }
 
@@ -146,11 +152,13 @@ int Arc_UnreferenceResource(struct ARC_Reference *reference) {
 		return EINVAL;
 	}
 
-	// Lock reference lock
-
 	struct ARC_Resource *res = reference->resource;
 
-	res->ref_count -= 1;
+        Arc_MutexLock(&reference->prev->branch_mutex);
+        Arc_MutexLock(&reference->branch_mutex);
+        Arc_MutexLock(&reference->next->branch_mutex);
+
+	res->ref_count--; // TODO: Atomize
 
 	struct ARC_Reference *next = reference->next;
 	struct ARC_Reference *prev = reference->prev;
@@ -165,9 +173,11 @@ int Arc_UnreferenceResource(struct ARC_Reference *reference) {
 		next->prev = prev;
 	}
 
-	// Unlock lock
+        Arc_MutexUnlock(&reference->prev->branch_mutex);
+        Arc_MutexUnlock(&reference->branch_mutex);
+        Arc_MutexUnlock(&reference->next->branch_mutex);
 
-	Arc_SlabFree(reference);
+        Arc_SlabFree(reference);
 
 	return 0;
 }

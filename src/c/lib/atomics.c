@@ -56,8 +56,6 @@ int Arc_QLockStaticInit(struct ARC_QLock *head) {
 }
 
 int Arc_QLock(struct ARC_QLock *head) {
-	ARC_DEBUG(INFO, "QLocking %p\n", head);
-
 	if (head->is_frozen) {
 		ARC_DEBUG(ERR, "Head %p is frozen!\n", head);
 		return -3;
@@ -66,7 +64,6 @@ int Arc_QLock(struct ARC_QLock *head) {
 	int64_t tid = Arc_GetCurrentTID();
 
 	if (head->next != NULL && ((struct internal_qlock_node *)head->next)->tid == tid) {
-		ARC_DEBUG(INFO, "QLock %p is already owned by %d\n", head, tid);
 		return 0;
 	}
 
@@ -115,8 +112,6 @@ int Arc_QUnlock(struct ARC_QLock *head) {
 		ARC_DEBUG(ERR, "Lock is not owned by %d or is owned by no-one\n", Arc_GetCurrentTID());
 		return -1;
 	}
-
-	ARC_DEBUG(INFO, "Unlocking %p\n", head);
 
 	Arc_MutexLock(&head->lock);
 

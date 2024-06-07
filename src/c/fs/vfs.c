@@ -358,11 +358,11 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 		Arc_QYield(&node->branch_lock);
 
-		if (strncmp(component, "..", component_length) == 0) {
+		if (*component == '.' && component_length == 2 && *(component + 1) == '.') {
 			// .. dir, go up one
 			node = node->parent == NULL ? node : node->parent;
 			continue;
-		} else if (strncmp(component, ".", component_length) == 0) {
+		} else if (*component == '.' && component_length == 1) {
 			// . dir, skip
 			continue;
 		}
@@ -509,7 +509,7 @@ int Arc_InitializeVFS() {
 	Arc_QLockStaticInit(&vfs_root.branch_lock);
 	Arc_MutexStaticInit(&vfs_root.property_lock);
 
-	ARC_DEBUG(INFO, "Created VFS root\n");
+	ARC_DEBUG(INFO, "Created VFS root (%p)\n", &vfs_root);
 
 	return 0;
 }
@@ -693,6 +693,18 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) 
 	return res->driver->read(buffer, size, count, file, res);
 }
 
+int Arc_HeadlessReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node) {
+        if (node == NULL || node->resource == NULL) {
+                return -1;
+        }
+
+        node->resource->ref_count++; // TODO: Atomize
+        int ret = node->resource->driver->read(buffer, size, count, NULL, node->resource);
+        node->resource->ref_count--; // TODO: Atomize
+
+        return ret;
+}
+
 int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) {
 	if (buffer == NULL || file == NULL) {
 		return -1;
@@ -713,6 +725,18 @@ int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file)
 	}
 
 	return res->driver->write(buffer, size, count, file, res);
+}
+
+int Arc_HeadlessWriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node) {
+        if (node == NULL || node->resource == NULL) {
+                return -1;
+        }
+
+        node->resource->ref_count++; // TODO: Atomize
+        int ret = node->resource->driver->write(buffer, size, count, NULL, node->resource);
+        node->resource->ref_count--; // TODO: Atomize
+
+        return ret;
 }
 
 int Arc_SeekVFS(struct ARC_File *file, long offset, int whence) {

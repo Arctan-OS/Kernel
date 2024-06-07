@@ -28,7 +28,13 @@
 #define ARC_ARCH_X86_64_ACPI_H
 
 #include <stdint.h>
+#include <stddef.h>
 
+#define ARC_DRI_ACPI 3
+#define ARC_DRI_IRSDT 0
+#define ARC_DRI_IAPIC 1
+#define ARC_DRI_IFADT 2
+int Arc_ChecksumACPI(void *data, size_t length);
 int Arc_InitializeACPI(uint64_t rsdp_ptr);
 
 #endif
