@@ -42,25 +42,13 @@ struct rsdp {
 	uint8_t resv0[3];
 }__attribute__((packed));
 
-struct rsdt_base_entry {
-	char signature[4];
-	uint32_t length;
-	uint8_t revision;
-	uint8_t checksum;
-	uint8_t OEMID[6];
-	uint8_t OEMTID[8];
-	uint32_t OEMREV;
-	char creator_id[4];
-	uint32_t creator_rev;
-}__attribute__((packed));
-
 struct rsdt {
-	struct rsdt_base_entry base;
+	struct Arc_RSDTBaseEntry base;
 	uint32_t entries[];
 }__attribute__((packed));
 
 struct xsdt {
-	struct rsdt_base_entry base;
+	struct Arc_RSDTBaseEntry base;
 	uint64_t entries[];
 }__attribute__((packed));
 
@@ -86,7 +74,7 @@ int do_rsdt(void *address) {
 
 	int entries = (table->base.length - sizeof(struct rsdt)) / 4;
 	for (int i = 0; i < entries; i++) {
-		struct rsdt_base_entry *entry = (void *)ARC_PHYS_TO_HHDM(table->entries[i]);
+		struct Arc_RSDTBaseEntry *entry = (void *)ARC_PHYS_TO_HHDM(table->entries[i]);
 
 		int index = -1;
 		char *path = NULL;
@@ -107,13 +95,12 @@ int do_rsdt(void *address) {
 		Arc_MountVFS(path, res, ARC_VFS_FS_DEV);
 	}
 
-
 	return 0;
 }
 
 int do_xsdt(void *address) {
 	struct xsdt *table = (struct xsdt *)address;
-	ARC_DEBUG(INFO, "Le epic\n");
+	ARC_DEBUG(INFO, "XSDT table\n");
 	return 0;
 }
 
@@ -130,7 +117,7 @@ int init_rsdt(struct ARC_Resource *res, void *arg) {
 		return do_xsdt((void *)ARC_PHYS_TO_HHDM(rsdp->xsdt_addr));
 	} else {
 		// Fail
-		ARC_DEBUG(INFO, "Epic fail\n");
+		ARC_DEBUG(INFO, "Invalid checksum\n");
 		return -1;
 	}
 
