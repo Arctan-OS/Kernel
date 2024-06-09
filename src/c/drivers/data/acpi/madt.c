@@ -29,7 +29,8 @@
 #include <global.h>
 #include <util.h>
 #include <arch/x86-64/acpi.h>
-#include <arch/x86-64/ioapic.h>
+#include <arch/x86-64/apic/apic.h>
+#include <mm/slab.h>
 
 #define ENTRY_TYPE_LAPIC               0x00
 #define ENTRY_TYPE_IOAPIC              0x01
@@ -56,25 +57,12 @@ struct apic {
 	uint8_t entries[];
 }__attribute__((packed));
 
-struct apic_entry_lapic {
-	uint8_t type;
-	uint8_t length;
-	uint8_t acpi_uid;
-	uint8_t id;
-	uint32_t flags;
-}__attribute__((packed));
-
-struct apic_entry_ioapic {
-	uint8_t type;
-	uint8_t length;
-	uint8_t id;
-	uint8_t resv0;
-	uint32_t address;
-	uint32_t gsi_base;
-}__attribute__((packed));
+struct dri_state {
+	uint8_t *entry;
+	struct dri_state *next;
+};
 
 int init_apic(struct ARC_Resource *res, void *arg) {
-	(void)res;
 	struct apic *apic = (struct apic *)arg;
 
 	if (Arc_ChecksumACPI(apic, sizeof(struct apic)) != 0) {
@@ -82,33 +70,29 @@ int init_apic(struct ARC_Resource *res, void *arg) {
 		return -1;
 	}
 
+	Arc_MutexLock(&res->dri_state_mutex);
+
+	struct dri_state *last = NULL;
+
 	size_t bytes = apic->base.length - sizeof(struct apic);
 	for (size_t i = 0; i < bytes;) {
 		int size = apic->entries[i + 1];
 
-		switch (apic->entries[i]) {
-		case ENTRY_TYPE_LAPIC: {
-			struct apic_entry_lapic *entry = (struct apic_entry_lapic *)&apic->entries[i];
-			ARC_DEBUG(INFO, "Found LAPIC (%d, %s, %s)\n", entry->id, (entry->flags & 1) ? "enabled" : "disabled", (entry->flags & 1) ? "ignore" : (((entry->flags >> 1) & 1) ? "online capable" : "not online capable"));
+		struct dri_state *state = (struct dri_state *)Arc_SlabAlloc(sizeof(struct dri_state));
 
-			break;
+		if (res->driver_state == NULL) {
+			res->driver_state = state;
+		} else {
+			last->next = state;
 		}
+		last = state;
 
-		case ENTRY_TYPE_IOAPIC: {
-			struct apic_entry_ioapic *entry = (struct apic_entry_ioapic *)&apic->entries[i];
-			ARC_DEBUG(INFO, "Found IOAPIC (%d, 0x%x, %d)\n", entry->id, entry->address, entry->gsi_base);
-			Arc_DefineIOAPIC(entry->id, entry->address, entry->gsi_base);
-
-			break;
-		}
-
-		default: {
-			ARC_DEBUG(WARN, "Unimplemented MADT type 0x%x\n", apic->entries[i]);
-		}
-		}
+		state->entry = (void *)&apic->entries[i];
 
 		i += size;
 	}
+
+	Arc_MutexUnlock(&res->dri_state_mutex);
 
 	return 0;
 }
@@ -117,8 +101,34 @@ int uninit_apic() {
 	return 0;
 };
 
+int read_apic(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
+	(void)file;
+
+	if (buffer == NULL || size == 0 || count < 0 || res == NULL) {
+		return -1;
+	}
+
+	Arc_MutexLock(&res->dri_state_mutex);
+	struct dri_state *entry = res->driver_state;
+	for (size_t i = 0; i < count; i++) {
+		entry = entry->next;
+
+		if (entry == NULL) {
+			Arc_MutexUnlock(&res->dri_state_mutex);
+			return -2;
+		}
+	}
+	Arc_MutexUnlock(&res->dri_state_mutex);
+
+	uint8_t entry_size = *((uint8_t *)entry->entry + 1);
+	memcpy((uint8_t *)buffer, entry->entry, size < entry_size ? size : entry_size);
+
+	return entry_size;
+}
+
 ARC_REGISTER_DRIVER(3, apic_driver) = {
         .index = ARC_DRI_IAPIC,
         .init = init_apic,
-	.uninit = uninit_apic
+	.uninit = uninit_apic,
+	.read = read_apic,
 };

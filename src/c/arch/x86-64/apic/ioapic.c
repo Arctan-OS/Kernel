@@ -1,5 +1,5 @@
 /**
- * @file lapic.h
+ * @file ioapic.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,11 +24,28 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_X86_64_LAPIC_H
-#define ARC_ARCH_X86_64_LAPIC_H
-
+#include <arch/x86-64/apic/ioapic.h>
+#include <global.h>
+#include <mm/slab.h>
+#include <mm/vmm.h>
 #include <stdint.h>
 
-int Arc_InitLAPIC();
+struct ioapic_register {
+        /// Register select
+        uint32_t ioregsel __attribute__((aligned(16)));
+        /// Data
+        uint32_t iowin __attribute__((aligned(16)));
+}__attribute__((packed));
 
-#endif
+struct ioapic_redir_tbl {
+        uint8_t int_vec;
+        uint8_t del_mod : 3;
+        uint8_t dest_mod : 1;
+        uint8_t del_stat : 1;
+        uint8_t int_pol : 1;
+        uint8_t irr : 1;
+        uint8_t trigger : 1;
+        uint8_t mask : 1;
+        uint64_t resv0 : 39;
+        uint8_t destination;
+}__attribute__((packed));

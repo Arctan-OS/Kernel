@@ -691,7 +691,8 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) 
 
 	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
 
-	if (res == NULL) {
+	if (res == NULL || res->driver->read == NULL) {
+		ARC_DEBUG(ERR, "One or more is NULL: %p %p\n", res, res->driver->read);
 		return -1;
 	}
 
@@ -699,7 +700,8 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) 
 }
 
 int Arc_HeadlessReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node) {
-        if (node == NULL || node->resource == NULL) {
+        if (node == NULL || node->resource == NULL || node->resource->driver->read == NULL) {
+		ARC_DEBUG(ERR, "One or more is NULL: %p %p %p\n", node, node->resource, node->resource->driver->read);
                 return -1;
         }
 
@@ -726,6 +728,7 @@ int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file)
 	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
 
 	if (res == NULL) {
+		ARC_DEBUG(ERR, "One or more is NULL: %p %p\n", res, res->driver->write);
 		return -1;
 	}
 
@@ -733,7 +736,8 @@ int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file)
 }
 
 int Arc_HeadlessWriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node) {
-        if (node == NULL || node->resource == NULL) {
+        if (node == NULL || node->resource == NULL || node->resource->driver->write == NULL) {
+		ARC_DEBUG(ERR, "One or more is NULL: %p %p %p\n", node, node->resource, node->resource->driver->write);
                 return -1;
         }
 
@@ -1109,7 +1113,7 @@ int Arc_ListVFS(char *path, int recurse) {
 	if (*path == '/') {
 		info.start = &vfs_root;
 	} else {
-		// info_a.start = get_current_directory();
+		// info.start = get_current_directory();
 	}
 
 	if (vfs_traverse(path, &info, 0) != 0) {
@@ -1122,4 +1126,26 @@ int Arc_ListVFS(char *path, int recurse) {
 	vfs_list(&vfs_root, recurse, recurse);
 
 	return 0;
+}
+
+struct ARC_VFSNode *Arc_GetNodeVFS(char *path, int link_depth) {
+	if (path == NULL) {
+		return NULL;
+	}
+
+	struct vfs_traverse_info info = { .create_level = VFS_NO_CREAT };
+
+	if (*path == '/') {
+		info.start = &vfs_root;
+	} else {
+		//info.start = get_current_directory();
+	}
+
+	int code = 0;
+	if ((code = vfs_traverse(path, &info, link_depth)) != 0) {
+		ARC_DEBUG(ERR, "Couldn't get node (%d)", code);
+		return NULL;
+	}
+
+	return info.node;
 }

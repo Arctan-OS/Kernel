@@ -1,5 +1,5 @@
 /**
- * @file ioapic.h
+ * @file lapic.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,12 +24,16 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_X86_64_IOAPIC_H
-#define ARC_ARCH_X86_64_IOAPIC_H
+#ifndef ARC_ARCH_X86_64_APIC_LAPIC_H
+#define ARC_ARCH_X86_64_APIC_LAPIC_H
 
-#include <stdint.h>
+/*
+ * This header contains functions which manage the
+ * LAPIC
+ * */
 
-int Arc_DefineIOAPIC(uint32_t id, uint32_t address, uint32_t gsi);
-int Arc_InitIOAPIC();
+int Arc_InitLAPIC();
+
+
 
 #endif

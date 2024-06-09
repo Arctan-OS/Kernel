@@ -35,9 +35,8 @@
 #include <stdint.h>
 #include <interface/printf.h>
 #include <arch/x86-64/ctrl_regs.h>
-#include <arch/x86-64/lapic.h>
-#include <arch/x86-64/ioapic.h>
 #include <arch/x86-64/acpi.h>
+#include <arch/x86-64/apic/apic.h>
 #include <boot/parse.h>
 
 #include <arch/x86-64/idt.h>
@@ -98,15 +97,14 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
         Arc_InitializeACPI(boot_meta->rsdp);
         // TODO: Implement properly
-        Arc_InitIOAPIC();
-        Arc_InitLAPIC();
+        Arc_InitAPIC();
 	Arc_InitializeSyscall();
 
 	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)ARC_PHYS_TO_HHDM(boot_meta->initramfs));
 	Arc_MountVFS("/initramfs/", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
 	Arc_LinkVFS("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
 	Arc_RenameVFS("/font.fnt", "/fonts/font.fnt");
-//	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
+	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 

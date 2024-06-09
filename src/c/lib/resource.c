@@ -55,6 +55,7 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 	resource->name = strdup(name);
 	resource->dri_group = dri_group;
 	resource->dri_index = dri_index;
+	Arc_MutexStaticInit(&resource->dri_state_mutex);
 
 	if (dri_group == 0xAB && dri_index == 0xAB) {
 		ARC_DEBUG(INFO, "Initialized place-holder resource\n");

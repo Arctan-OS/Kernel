@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include <arch/x86-64/lapic.h>
+#include <arch/x86-64/apic/lapic.h>
 #include <arch/x86-64/ctrl_regs.h>
 #include <global.h>
 #include <cpuid.h>

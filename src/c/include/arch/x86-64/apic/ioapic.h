@@ -1,5 +1,5 @@
 /**
- * @file apic.c
+ * @file ioapic.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,3 +24,12 @@
  *
  * @DESCRIPTION
 */
+#ifndef ARC_ARCH_X86_64_APIC_IOAPIC_H
+#define ARC_ARCH_X86_64_APIC_IOAPIC_H
+
+/*
+ * This header defines functions that control
+ * IOAPICs
+ * */
+
+#endif
