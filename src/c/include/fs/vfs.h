@@ -200,5 +200,6 @@ int Arc_CreateVFS(char *path, uint32_t mode, int type);
 int Arc_RemoveVFS(char *filepath, bool physical, bool recurse);
 int Arc_LinkVFS(char *a, char *b, uint32_t mode);
 int Arc_RenameVFS(char *a, char *b);
+int Arc_ListVFS(char *path, int recurse);
 
 #endif

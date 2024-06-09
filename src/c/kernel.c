@@ -106,9 +106,11 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_MountVFS("/initramfs/", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
 	Arc_LinkVFS("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
 	Arc_RenameVFS("/font.fnt", "/fonts/font.fnt");
-	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
+//	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
+
+	Arc_ListVFS("/", 8);
 
         // Quickly map framebuffer in
 	uint64_t fb_size = Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8);

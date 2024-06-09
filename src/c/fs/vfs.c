@@ -493,7 +493,12 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		node = child;
 		info->node = node;
 	}
-
+	// TODO: Fix functions using this function, as they do
+	//       not account for the following:
+	//            node->ref_count remains incremented by 1
+	//            node->branch_lock is held
+	//       Lock and ref_count need to be decremented by
+	//       caller once node is no longer being used
 	return 0;
 
 cleanup:;
@@ -1027,14 +1032,18 @@ int Arc_RenameVFS(char *a, char *b) {
 	if (node_b->children != NULL) {
 		node_b->children->prev = node_a;
 	}
-	node_b->children = node_a;
 
 	// Let node_a see the patch
 	if (Arc_QLock(&node_a->branch_lock) != 0) {
 		ARC_DEBUG(ERR, "Lock error\n");
 	}
 	Arc_QYield(&node_a->branch_lock);
+
 	node_a->parent = node_b;
+	node_a->next = node_b->children;
+	node_a->prev = NULL;
+	node_b->children = node_a;
+
 	Arc_QUnlock(&node_a->branch_lock);
 	Arc_QUnlock(&node_b->branch_lock);
 
@@ -1067,7 +1076,50 @@ int Arc_RenameVFS(char *a, char *b) {
 	return 0;
 }
 
-#undef VFS_NO_CREAT
-#undef VFS_GR_CREAT
-#undef VFS_FS_CREAT
-#undef VFS_NOLCMP
+int vfs_list(struct ARC_VFSNode *node, int recurse, int org) {
+	if (node == NULL) {
+		return -1;
+	}
+
+	struct ARC_VFSNode *child = node->children;
+	while (child != NULL) {
+		for (int i = 0; i < org - recurse; i++) {
+			printf("\t");
+		}
+
+		printf("%s\n", child->name);
+
+		if (recurse > 0) {
+			vfs_list(child, recurse - 1, org);
+		}
+
+		child = child->next;
+	}
+
+	return 0;
+}
+
+int Arc_ListVFS(char *path, int recurse) {
+	if (path == NULL) {
+		return -1;
+	}
+
+	struct vfs_traverse_info info = { .create_level = VFS_NO_CREAT };
+
+	if (*path == '/') {
+		info.start = &vfs_root;
+	} else {
+		// info_a.start = get_current_directory();
+	}
+
+	if (vfs_traverse(path, &info, 0) != 0) {
+		return -1;
+	}
+
+	info.node->ref_count--; // TODO: Atomize
+
+	printf("Listing of %s\n", path);
+	vfs_list(&vfs_root, recurse, recurse);
+
+	return 0;
+}
