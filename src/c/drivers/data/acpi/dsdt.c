@@ -1,5 +1,5 @@
 /**
- * @file acpi.h
+ * @file dsdt.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,32 +24,21 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_X86_64_ACPI_H
-#define ARC_ARCH_X86_64_ACPI_H
+#include <lib/resource.h>
+#include <arch/x86-64/acpi.h>
+#include <global.h>
 
-#include <stdint.h>
-#include <stddef.h>
+int init_dsdt(struct ARC_Resource *res, void *arg) {
+	ARC_DEBUG(INFO, "Initializing DSDT: %p\n", arg);
+	return 0;
+}
 
-#define ARC_DRI_ACPI  0x03
-#define ARC_DRI_IRSDT 0x00
-#define ARC_DRI_IAPIC 0x01
-#define ARC_DRI_IFADT 0x02
-#define ARC_DRI_IDSDT 0x03
-#define ARC_DRI_IHPET 0x04
+int uninit_dsdt() {
+	return 0;
+}
 
-struct ARC_RSDTBaseEntry {
-	char signature[4];
-	uint32_t length;
-	uint8_t revision;
-	uint8_t checksum;
-	uint8_t OEMID[6];
-	uint8_t OEMTID[8];
-	uint32_t OEMREV;
-	char creator_id[4];
-	uint32_t creator_rev;
-}__attribute__((packed));
-
-int Arc_ChecksumACPI(void *data, size_t length);
-int Arc_InitializeACPI(uint64_t rsdp_ptr);
-
-#endif
+ARC_REGISTER_DRIVER(3, dsdt) = {
+        .index = ARC_DRI_IDSDT,
+	.init = init_dsdt,
+	.uninit = uninit_dsdt,
+};

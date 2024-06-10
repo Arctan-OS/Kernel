@@ -29,9 +29,14 @@
 #include <global.h>
 
 int Arc_ChecksumACPI(void *data, size_t length) {
-	(void)data;
-	(void)length;
-	return 0;
+	int8_t *bytes = (int8_t *)data;
+	int8_t sum = *bytes;
+
+	for (size_t i = 1; i < length; i++) {
+		sum += bytes[i];
+	}
+
+	return sum;
 }
 
 int Arc_InitializeACPI(uint64_t rsdp_ptr) {

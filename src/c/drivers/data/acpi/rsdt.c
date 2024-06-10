@@ -43,12 +43,12 @@ struct rsdp {
 }__attribute__((packed));
 
 struct rsdt {
-	struct Arc_RSDTBaseEntry base;
+	struct ARC_RSDTBaseEntry base;
 	uint32_t entries[];
 }__attribute__((packed));
 
 struct xsdt {
-	struct Arc_RSDTBaseEntry base;
+	struct ARC_RSDTBaseEntry base;
 	uint64_t entries[];
 }__attribute__((packed));
 
@@ -74,7 +74,7 @@ int do_rsdt(void *address) {
 
 	int entries = (table->base.length - sizeof(struct rsdt)) / 4;
 	for (int i = 0; i < entries; i++) {
-		struct Arc_RSDTBaseEntry *entry = (void *)ARC_PHYS_TO_HHDM(table->entries[i]);
+		struct ARC_RSDTBaseEntry *entry = (void *)ARC_PHYS_TO_HHDM(table->entries[i]);
 
 		int index = -1;
 		char *path = NULL;
@@ -84,6 +84,12 @@ int do_rsdt(void *address) {
 		if (strncmp(entry->signature, "APIC", 4) == 0) {
 			index = ARC_DRI_IAPIC;
 			path = "/dev/acpi/rsdt/apic/";
+		} else if (strncmp(entry->signature, "FACP", 4) == 0) {
+			index = ARC_DRI_IFADT;
+			path = "/dev/acpi/rsdt/fadt/";
+		} else if (strncmp(entry->signature, "HPET", 4) == 0) {
+			index = ARC_DRI_IHPET;
+			path = "/dev/acpi/rsdt/hpet/";
 		}
 
 		if (index == -1 || path == NULL) {

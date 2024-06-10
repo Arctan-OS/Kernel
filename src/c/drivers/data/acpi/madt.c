@@ -32,26 +32,8 @@
 #include <arch/x86-64/apic/apic.h>
 #include <mm/slab.h>
 
-#define ENTRY_TYPE_LAPIC               0x00
-#define ENTRY_TYPE_IOAPIC              0x01
-#define ENTRY_TYPE_INT_OVERRIDE_SRC    0x02
-#define ENTRY_TYPE_NMI_SOURCE          0x03
-#define ENTRY_TYPE_LAPIC_NMI           0x04
-#define ENTRY_TYPE_LAPIC_ADDR_OVERRIDE 0x05
-#define ENTRY_TYPE_IOSAPIC             0x06
-#define ENTRY_TYPE_LSAPIC              0x07
-#define ENTRY_TYPE_PIS                 0x08
-#define ENTRY_TYPE_Lx2APIC             0x09
-#define ENTRY_TYPE_Lx2APIC_NMI         0x0A
-#define ENTRY_TYPE_GICC                0x0B
-#define ENTRY_TYPE_GICD                0x0C
-#define ENTRY_TYPE_GIC_MSI             0x0D
-#define ENTRY_TYPE_GICR                0x0E
-#define ENTRY_TYPE_ITS                 0x0F
-#define ENTRY_TYPE_MP_WAKEUP           0x10
-
 struct apic {
-	struct Arc_RSDTBaseEntry base;
+	struct ARC_RSDTBaseEntry base;
 	uint32_t lapic_addr;
 	uint32_t flags;
 	uint8_t entries[];
@@ -65,7 +47,7 @@ struct dri_state {
 int init_apic(struct ARC_Resource *res, void *arg) {
 	struct apic *apic = (struct apic *)arg;
 
-	if (Arc_ChecksumACPI(apic, sizeof(struct apic)) != 0) {
+	if (Arc_ChecksumACPI(apic, apic->base.length) != 0) {
 		ARC_DEBUG(ERR, "Invalid checksum\n");
 		return -1;
 	}
@@ -99,7 +81,7 @@ int init_apic(struct ARC_Resource *res, void *arg) {
 
 int uninit_apic() {
 	return 0;
-};
+}
 
 int read_apic(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
 	(void)file;
