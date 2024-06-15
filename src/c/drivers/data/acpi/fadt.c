@@ -26,7 +26,7 @@
 */
 #include <global.h>
 #include <fs/vfs.h>
-#include <arch/x86-64/acpi.h>
+#include <arch/x86-64/acpi/acpi.h>
 
 struct fadt {
         struct ARC_RSDTBaseEntry base;

@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <global.h>
 #include <util.h>
-#include <arch/x86-64/acpi.h>
+#include <arch/x86-64/acpi/acpi.h>
 
 struct rsdp {
 	char signature[8];
@@ -55,7 +55,7 @@ struct xsdt {
 int do_rsdt(void *address) {
 	struct rsdt *table = (struct rsdt *)address;
 
-	if (strncmp("RSDT", table->base.signature, 4) != 0) {
+	if (table->base.signature != ARC_ACPI_TBLSIG_RSDT) {
 		return -1;
 	}
 
@@ -79,21 +79,32 @@ int do_rsdt(void *address) {
 		int index = -1;
 		char *path = NULL;
 
-		ARC_DEBUG(INFO, "%d: %.*s (%d)\n", i, 4, entry->signature, strncmp(entry->signature, "APIC", 4));
-
-		if (strncmp(entry->signature, "APIC", 4) == 0) {
+		switch (entry->signature) {
+		case ARC_ACPI_TBLSIG_APIC: {
 			index = ARC_DRI_IAPIC;
 			path = "/dev/acpi/rsdt/apic/";
-		} else if (strncmp(entry->signature, "FACP", 4) == 0) {
-			index = ARC_DRI_IFADT;
-			path = "/dev/acpi/rsdt/fadt/";
-		} else if (strncmp(entry->signature, "HPET", 4) == 0) {
-			index = ARC_DRI_IHPET;
-			path = "/dev/acpi/rsdt/hpet/";
+
+			break;
 		}
 
-		if (index == -1 || path == NULL) {
+		case ARC_ACPI_TBLSIG_FACP: {
+			index = ARC_DRI_IFADT;
+			path = "/dev/acpi/rsdt/fadt/";
+
+			break;
+		}
+
+		case ARC_ACPI_TBLSIG_HPET: {
+			index = ARC_DRI_IHPET;
+			path = "/dev/acpi/rsdt/hpet/";
+
+			break;
+		}
+
+		default: {
+			ARC_DEBUG(INFO, "Unimplemented RSDT table \"%.*s\", 0x%"PRIX32"\n", 4, (char *)&entry->signature, entry->signature);
 			continue;
+		}
 		}
 
 		struct ARC_Resource *res = Arc_InitializeResource(path, ARC_DRI_ACPI, index, (void *)entry);

@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include <arch/x86-64/acpi.h>
+#include <arch/x86-64/acpi/acpi.h>
 #include <lib/resource.h>
 
 struct hpet {

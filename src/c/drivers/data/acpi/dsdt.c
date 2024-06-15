@@ -25,11 +25,48 @@
  * @DESCRIPTION
 */
 #include <lib/resource.h>
-#include <arch/x86-64/acpi.h>
+#include <arch/x86-64/acpi/acpi.h>
+#include <arch/x86-64/acpi/caml/caml.h>
 #include <global.h>
 
+// This is the structure for tables of signature
+// DSDT, SSDT, PSDT (obsolete post ACPI 1.0, treat as
+// SSDT if one does appear)
+struct xsdt {
+	struct ARC_RSDTBaseEntry base;
+	uint8_t bytes[];
+}__attribute__((packed));
+
 int init_dsdt(struct ARC_Resource *res, void *arg) {
-	ARC_DEBUG(INFO, "Initializing DSDT: %p\n", arg);
+	struct xsdt *table = (struct xsdt *)arg;
+
+	if (Arc_ChecksumACPI(table, table->base.length) != 0) {
+		return -1;
+	}
+
+	// TODO: Possibly check for functional differences depending
+	//       on if the table is a DSDT, SSDT, or PSDT. Most likely
+	//       non exist, except for loading order, but still
+	//       check
+	switch (table->base.signature) {
+	case ARC_ACPI_TBLSIG_DSDT: {
+		ARC_DEBUG(INFO, "Found DSDT at %p, loading\n", table);
+		break;
+	}
+
+	case ARC_ACPI_TBLSIG_SSDT: {
+		ARC_DEBUG(INFO, "Found SSDT at %p, loading\n", table);
+		break;
+	}
+
+	case ARC_ACPI_TBLSIG_PSDT: {
+		ARC_DEBUG(INFO, "Found PSDT at %p, loading\n", table);
+		break;
+	}
+	}
+
+	cAML_ParseDefinitionBlock(table->bytes, table->base.length - sizeof(struct xsdt));
+
 	return 0;
 }
 

@@ -1,5 +1,5 @@
 /**
- * @file acpi.h
+ * @file acpi.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,32 +24,30 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_X86_64_ACPI_H
-#define ARC_ARCH_X86_64_ACPI_H
+#include <arch/x86-64/acpi/acpi.h>
+#include <fs/vfs.h>
+#include <global.h>
 
-#include <stdint.h>
-#include <stddef.h>
+int Arc_ChecksumACPI(void *data, size_t length) {
+	int8_t *bytes = (int8_t *)data;
+	int8_t sum = *bytes;
 
-#define ARC_DRI_ACPI  0x03
-#define ARC_DRI_IRSDT 0x00
-#define ARC_DRI_IAPIC 0x01
-#define ARC_DRI_IFADT 0x02
-#define ARC_DRI_IDSDT 0x03
-#define ARC_DRI_IHPET 0x04
+	for (size_t i = 1; i < length; i++) {
+		sum += bytes[i];
+	}
 
-struct ARC_RSDTBaseEntry {
-	char signature[4];
-	uint32_t length;
-	uint8_t revision;
-	uint8_t checksum;
-	uint8_t OEMID[6];
-	uint8_t OEMTID[8];
-	uint32_t OEMREV;
-	char creator_id[4];
-	uint32_t creator_rev;
-}__attribute__((packed));
+	return sum;
+}
 
-int Arc_ChecksumACPI(void *data, size_t length);
-int Arc_InitializeACPI(uint64_t rsdp_ptr);
+int Arc_InitializeACPI(uint64_t rsdp_ptr) {
+        if (Arc_CreateVFS("/dev/acpi/", 0, ARC_VFS_N_DIR) != 0) {
+                ARC_DEBUG(ERR, "Failed to create ACPI directory\n");
+                return -1;
+        }
 
-#endif
+        struct ARC_Resource *rsdt = Arc_InitializeResource("/dev/acpi/rsdt", ARC_DRI_ACPI, ARC_DRI_IRSDT, (void *)rsdp_ptr);
+        Arc_CreateVFS("/dev/acpi/rsdt", 0, ARC_VFS_N_DIR);
+        Arc_MountVFS("/dev/acpi/rsdt", rsdt, ARC_VFS_FS_DEV);
+
+        return 0;
+}

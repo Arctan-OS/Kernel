@@ -1,5 +1,5 @@
 /**
- * @file acpi.h
+ * @file caml.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,30 +24,12 @@
  *
  * @DESCRIPTION
 */
-#include <arch/x86-64/acpi.h>
-#include <fs/vfs.h>
-#include <global.h>
+#ifndef ARC_ARCH_X86_64_ACPI_CAML_CAML_H
+#define ARC_ARCH_X86_64_ACPI_CAML_CAML_H
 
-int Arc_ChecksumACPI(void *data, size_t length) {
-	int8_t *bytes = (int8_t *)data;
-	int8_t sum = *bytes;
+#include <stddef.h>
+#include <stdint.h>
 
-	for (size_t i = 1; i < length; i++) {
-		sum += bytes[i];
-	}
+int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size);
 
-	return sum;
-}
-
-int Arc_InitializeACPI(uint64_t rsdp_ptr) {
-        if (Arc_CreateVFS("/dev/acpi/", 0, ARC_VFS_N_DIR) != 0) {
-                ARC_DEBUG(ERR, "Failed to create ACPI directory\n");
-                return -1;
-        }
-
-        struct ARC_Resource *rsdt = Arc_InitializeResource("/dev/acpi/rsdt", ARC_DRI_ACPI, ARC_DRI_IRSDT, (void *)rsdp_ptr);
-        Arc_CreateVFS("/dev/acpi/rsdt", 0, ARC_VFS_N_DIR);
-        Arc_MountVFS("/dev/acpi/rsdt", rsdt, ARC_VFS_FS_DEV);
-
-        return 0;
-}
+#endif

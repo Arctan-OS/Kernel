@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <global.h>
 #include <util.h>
-#include <arch/x86-64/acpi.h>
+#include <arch/x86-64/acpi/acpi.h>
 #include <arch/x86-64/apic/apic.h>
 #include <mm/slab.h>
 

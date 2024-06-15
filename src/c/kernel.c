@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <interface/printf.h>
 #include <arch/x86-64/ctrl_regs.h>
-#include <arch/x86-64/acpi.h>
+#include <arch/x86-64/acpi/acpi.h>
 #include <arch/x86-64/apic/apic.h>
 #include <boot/parse.h>
 
