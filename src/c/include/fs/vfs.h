@@ -56,11 +56,10 @@
  * A single node in a VFS tree.
  * */
 struct ARC_VFSNode {
-	/// Lock on branching of this node (link, parent, children, next, prev, name)
+	/// Lock on branching of this node (link, parent, children, next, prev, name, and the node itself)
 	struct ARC_QLock branch_lock;
 	/// Lock on the properties of this node (type, mount, stat, is_open)
 	ARC_GenericMutex property_lock;
-
 	/// Pointer to the device. References can be found through consulting resource.
 	struct ARC_Resource *resource;
 	/// The type of node.

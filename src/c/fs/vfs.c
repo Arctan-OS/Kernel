@@ -559,6 +559,8 @@ int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 
 	Arc_MutexUnlock(&mount->property_lock);
 
+	Arc_QUnlock(&mount->branch_lock);
+
 	ARC_DEBUG(INFO, "Successfully mounted resource %p at %s (%d, %p)\n", resource, mountpoint, fs_type, mount);
 
 	return 0;
@@ -592,6 +594,8 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount) {
 
 	// TODO: Synchronize
 	// TODO: Destroy nodes
+
+	Arc_QUnlock(&mount->branch_lock);
 
 	ARC_DEBUG(INFO, "Successfully unmount %p\n", mount);
 
@@ -670,11 +674,12 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 
 	desc->reference = Arc_ReferenceResource(node->resource);
 
+	Arc_QUnlock(&node->branch_lock);
+
 	ARC_DEBUG(INFO, "Opened file successfully\n");
 
 	return 0;
 }
-
 
 int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) {
 	if (buffer == NULL || file == NULL) {
@@ -833,9 +838,12 @@ int Arc_CreateVFS(char *path, uint32_t mode, int type) {
 		// info.start = get_current_directory();
 	}
 
-	ARC_DEBUG(INFO, "Creating node graph %s from node %p\n", path, info.start)
+	ARC_DEBUG(INFO, "Creating node graph %s from node %p\n", path, info.start);
 
-	return vfs_traverse(path, &info, 0);
+	int ret = vfs_traverse(path, &info, 0);
+	Arc_QUnlock(&info.node->branch_lock);
+
+	return ret;
 }
 
 int Arc_RemoveVFS(char *filepath, bool physical, bool recurse) {
@@ -944,6 +952,9 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	struct ARC_VFSNode *src = info_a.node;
 	struct ARC_VFSNode *lnk = info_b.node;
 
+	Arc_QUnlock(&src->branch_lock);
+	Arc_QUnlock(&lnk->branch_lock);
+
 	// Resolve link if src is a link
 	if (src->type == ARC_VFS_N_LINK) {
 		src = src->link;
@@ -993,7 +1004,7 @@ int Arc_RenameVFS(char *a, char *b) {
 	}
 
 	// Lock parent ASAP ensuring node_a is not modified
-	if (Arc_QLock(&info_a.node->parent->branch_lock)) {
+	if (Arc_QLock(&info_a.node->parent->branch_lock) != 0) {
 		ARC_DEBUG(ERR, "Lock error\n");
 	}
 	Arc_QYield(&info_a.node->parent->branch_lock);
@@ -1026,23 +1037,15 @@ int Arc_RenameVFS(char *a, char *b) {
 	} else {
 		parent->children = node_a->next;
 	}
-	Arc_QUnlock(&parent->branch_lock);
 
 	// Patch node_a onto node_b
-	if (Arc_QLock(&node_b->branch_lock) != 0) {
-		ARC_DEBUG(ERR, "Lock error\n");
-	}
-	Arc_QYield(&node_b->branch_lock);
+	// node_b->branch_lock is locked by vfs_traverse
 	if (node_b->children != NULL) {
 		node_b->children->prev = node_a;
 	}
 
 	// Let node_a see the patch
-	if (Arc_QLock(&node_a->branch_lock) != 0) {
-		ARC_DEBUG(ERR, "Lock error\n");
-	}
-	Arc_QYield(&node_a->branch_lock);
-
+	// node_a->branch_lock is locked by vfs_traverse
 	node_a->parent = node_b;
 	node_a->next = node_b->children;
 	node_a->prev = NULL;
@@ -1125,6 +1128,8 @@ int Arc_ListVFS(char *path, int recurse) {
 	printf("Listing of %s\n", path);
 	vfs_list(&vfs_root, recurse, recurse);
 
+	Arc_QUnlock(&info.node->branch_lock);
+
 	return 0;
 }
 
@@ -1146,6 +1151,8 @@ struct ARC_VFSNode *Arc_GetNodeVFS(char *path, int link_depth) {
 		ARC_DEBUG(ERR, "Couldn't get node (%d)", code);
 		return NULL;
 	}
+
+	Arc_QUnlock(&info.node->branch_lock);
 
 	return info.node;
 }
