@@ -31,59 +31,68 @@
 #include <mm/slab.h>
 #include <util.h>
 
-struct ARC_VFSNode *root = NULL;
-struct ARC_VFSNode *current = NULL;
+#define ADVANCE_STATE(state) state->buffer++; state->max--;
+#define ADVANCE_STATE_BY(state, cnt) state->buffer += cnt; state->max -= cnt;
+#define CHECK_STATE(state) \
+        if (state->buffer == NULL || state->max <= 0 || state->current == NULL || state->root == NULL) { \
+		ARC_DEBUG(ERR, "Invalid state detected! (%p, %ld, %p, %p)\n", state->buffer, state->max, state->current, state->root); \
+		return -1; \
+	}
 
-// TODO: Create a structure which will hold the
-//       current state of the parser, with this
-//       state the buffer will be advanced across
-//       as each cAML_Parse... function is called.
-//       This state should also hold the above
-//       variables (root and current)
+struct caml_state {
+	uint8_t *buffer;
+	size_t max;
+	struct ARC_VFSNode *root;
+	struct ARC_VFSNode *current;
+};
 
-int cAML_ParseDataObject(uint8_t *buffer, size_t max) {
+int cAML_ParseDataObject(struct caml_state *state) {
 	return 0;
 }
 
-int cAML_ParseDataRefObject(uint8_t *buffer, size_t max) {
+int cAML_ParseDataRefObject(struct caml_state *state) {
 	return 0;
 }
 
-char *cAML_ParseNamestring(uint8_t *buffer, size_t max) {
-	struct ARC_VFSNode *parent = current;
+char *cAML_ParseNamestring(struct caml_state *state) {
+	struct ARC_VFSNode *parent = state->current;
 	char *name = NULL;
 
-	if (*buffer == ROOT_CHR) {
+	if (*state->buffer == ROOT_CHR) {
 		printf("Root character\n");
-		parent = root;
-		buffer++;
+		parent = state->root;
+		ADVANCE_STATE(state);
 	}
 
-	while (*buffer == PARENT_PREFIX_CHR && *(buffer++) == PARENT_PREFIX_CHR) {
+	while (*state->buffer == PARENT_PREFIX_CHR) {
 		parent = parent->parent;
+		ADVANCE_STATE(state);
 	}
 
-	switch (*buffer) {
+	switch (*state->buffer) {
 	case DUAL_NAME_PREFIX: {
-		buffer++;
+		ADVANCE_STATE(state);
 		name = Arc_SlabAlloc(8);
-		memcpy(name, buffer, 8);
+		memcpy(name, state->buffer, 8);
+		ADVANCE_STATE_BY(state, 8);
 
 		break;
 	}
 
 	case MULTI_NAME_PREFIX: {
-		uint8_t length = *(++buffer);
-		buffer++;
+		ADVANCE_STATE(state);
+		uint8_t length = *(state->buffer);
 		name = Arc_SlabAlloc(length * 4);
-		memcpy(name, buffer, length * 4);
+		memcpy(name, state->buffer, length * 4);
+		ADVANCE_STATE_BY(state, length * 4);
 
 		break;
 	}
 
 	default: {
 		name = Arc_SlabAlloc(4);
-		memcpy(name, buffer, 4);
+		memcpy(name, state->buffer, 4);
+		ADVANCE_STATE_BY(state, 4);
 
 		break;
 	}
@@ -92,38 +101,50 @@ char *cAML_ParseNamestring(uint8_t *buffer, size_t max) {
 	return name;
 }
 
-int cAML_ParsePackage(uint8_t *buffer, size_t max) {
-	size_t i = 0;
-	uint8_t lead = buffer[i++];
+int cAML_ParsePackage(struct caml_state *state) {
+	uint8_t lead = *state->buffer;
 	size_t package_size = 0;
+
+	ADVANCE_STATE(state);
 
 	switch (lead) {
 	case SCOPE_OP: {
-		uint8_t pkglead = buffer[i];
+		uint8_t pkglead = *state->buffer;
 		uint8_t count = (pkglead >> 6) & 0b11;
 		package_size = pkglead & 0x3F;
 
+		ADVANCE_STATE(state);
+
 		if (count > 0) {
 			package_size = pkglead & 0xF;
-			for (int j = 0; j < count; j++) {
-				package_size |= buffer[i + j + 1] << (j * 8 + 4);
+			for (int i = 0; i < count; i++) {
+				package_size |= *state->buffer << (i * 8 + 4);
+				ADVANCE_STATE(state);
 			}
 		}
 
-		ARC_DEBUG(INFO, "Reading scope %p: Lead(0x%X) PkgLength(0x%X)\n", buffer, lead, package_size);
+		ARC_DEBUG(INFO, "Reading scope %p: Lead(0x%X) PkgLength(0x%X)\n", state->buffer, lead, package_size);
 
-		package_size++;
-		i += count + 1;
+		// Exclude size of PkgLength header, as buffer
+		// has already been advanced over it
+		package_size -= count + 1;
+
+		ADVANCE_STATE_BY(state, package_size);
 
 		break;
 	}
-	case NAME_OP: {
-		ARC_DEBUG(INFO, "Reading name %p: Lead(0x%X) PkgLength(0x%X)\n", buffer, lead, package_size);
 
-		char *name = cAML_ParseNamestring(&buffer[i], max - i);
+	case NAME_OP: {
+		ARC_DEBUG(INFO, "Reading name %p: Lead(0x%X) PkgLength(0x%X)\n", state->buffer, lead, package_size);
+
+		char *name = cAML_ParseNamestring(state);
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 
 		break;
+	}
+
+	default: {
+		ARC_DEBUG(ERR, "Unhandled lead 0x%X\n", lead);
 	}
 	}
 
@@ -131,21 +152,22 @@ int cAML_ParsePackage(uint8_t *buffer, size_t max) {
 }
 
 int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
-	ARC_DEBUG(INFO, "Parsing defintion block %p (%d B)\n", buffer, size);
+	struct caml_state *state = (struct caml_state *)Arc_SlabAlloc(sizeof(struct caml_state));
 
-	root = Arc_GetNodeVFS("/dev/acpi/rsdt/fadt/dsdt/", 0);
-	current = root;
+	state->root = Arc_GetNodeVFS("/dev/acpi/rsdt/fadt/dsdt/", 0);
+	state->current = state->root;
+	state->buffer = buffer;
+	state->max = size;
 
-	for (size_t i = 0; i < size;) {
-		size_t ret = cAML_ParsePackage(&buffer[i], size - i);
+	CHECK_STATE(state);
 
-		if (ret == 0) {
-			ARC_DEBUG(INFO, "Infinite loop detected, breaking\n");
-			break;
-		}
+	ARC_DEBUG(INFO, "Parsing definition block %p (%d B)\n", buffer, size);
 
-		i += ret;
+	while (cAML_ParsePackage(state) > 0) {
+		CHECK_STATE(state);
 	}
+
+	Arc_SlabFree(state);
 
 	return 0;
 }
