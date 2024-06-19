@@ -121,6 +121,7 @@ static int initramfs_file_init(struct ARC_Resource *res, void *args) {
 	struct internal_driver_state *org_state = (struct internal_driver_state *)args;
 	struct internal_driver_state *state = (struct internal_driver_state *)Arc_SlabAlloc(sizeof(struct internal_driver_state));
 
+
 	state->initramfs_base = org_state->initramfs_base;
 	state->resource = res;
 	res->driver_state = state;

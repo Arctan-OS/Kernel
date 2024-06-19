@@ -1,5 +1,5 @@
 /**
- * @file caml.h
+ * @file parse.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,8 +24,8 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_X86_64_ACPI_CAML_CAML_H
-#define ARC_ARCH_X86_64_ACPI_CAML_CAML_H
+#ifndef ARC_ARCH_X86_64_ACPI_CAML_PARSE_H
+#define ARC_ARCH_X86_64_ACPI_CAML_PARSE_H
 
 #include <stddef.h>
 #include <stdint.h>

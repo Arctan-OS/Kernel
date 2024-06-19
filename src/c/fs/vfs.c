@@ -323,34 +323,54 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		 return -1;
 	}
 
-	size_t last_div = 0;
+	size_t x = 0;
+	size_t y = 0;
+
 	for (size_t i = 0; i < max; i++) {
-		if (filepath[i] != '/' && i != max - 1) {
-			// Code executes only if:
-			//     Current character is not a '/'
-			//     Or we are not at the end of a line
-			continue;
-		}
-
 		if (i == max - 1 && (info->create_level & VFS_NOLCMP) != 0) {
-			// If we are at the last component, and VFS_NOLCMP is set
-			// then continue
+			// End of the string reached, VFS_NOLCMP set, break
+			break;
+		}
+
+		if (filepath[i] == '/' || i == max - 1) {
+			// Separator encountered, or at the end of the string
+			y = i;
+		}
+
+		if (y <= x) {
+			// If number of characters between last separator
+			// and this one is none, skip
 			continue;
 		}
 
-		size_t component_length = i - last_div;
-
-		if (component_length <= 0) {
-			continue;
-		}
-
-		char *component = (char *)(filepath + last_div);
+		char *component = (char *)(filepath + x);
 
 		if (*component == '/') {
+			// Component begins with separator, cull it off
 			component++;
 		}
 
-		last_div = i;
+		size_t component_length = y - x;
+
+		if (filepath[y] == '/') {
+			// Component ends with separator, cull it off
+			component_length--;
+		} else {
+			// Component does not end with separaotr,
+			// component_length is the difference of two
+			// indices, add one to make it a true length
+			component_length++;
+		}
+
+		// Make note of last separator
+		x = y;
+
+		if (component_length <= 0) {
+			// The actual component, after all the culling, is
+			// non-exsitent, skip
+			continue;
+		}
+
 		if (node->type == ARC_VFS_N_MOUNT) {
 			info->mount = node;
 			info->mountpath = component;
@@ -980,6 +1000,9 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	return 0;
 }
 
+// TODO: But what if it is a directory? What happens with all of
+//       the names then? This only works for single files, account
+//       for directories!
 int Arc_RenameVFS(char *a, char *b) {
 	if (a == NULL || b == NULL) {
 		ARC_DEBUG(ERR, "Src (%p) or dest (%p) path NULL\n", a, b);
@@ -1153,6 +1176,26 @@ struct ARC_VFSNode *Arc_GetNodeVFS(char *path, int link_depth) {
 	}
 
 	Arc_QUnlock(&info.node->branch_lock);
+
+	return info.node;
+}
+
+struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type) {
+	if (relative_path == NULL || start == NULL) {
+		ARC_DEBUG(ERR, "No path given\n");
+		return NULL;
+	}
+
+	ARC_DEBUG(INFO, "Creating %p/%s (%o, %d)\n", start, relative_path, mode, type);
+
+	struct vfs_traverse_info info = { .start = start, .mode = mode, .type = type, .create_level = VFS_FS_CREAT };
+
+	int ret = vfs_traverse(relative_path, &info, 0);
+	Arc_QUnlock(&info.node->branch_lock);
+
+	if (ret != 0) {
+		return NULL;
+	}
 
 	return info.node;
 }

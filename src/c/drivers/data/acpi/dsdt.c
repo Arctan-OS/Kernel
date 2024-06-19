@@ -26,7 +26,7 @@
 */
 #include <lib/resource.h>
 #include <arch/x86-64/acpi/acpi.h>
-#include <arch/x86-64/acpi/caml/caml.h>
+#include <arch/x86-64/acpi/caml/parse.h>
 #include <global.h>
 
 // This is the structure for tables of signature

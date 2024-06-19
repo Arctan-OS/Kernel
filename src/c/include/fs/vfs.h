@@ -201,5 +201,6 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode);
 int Arc_RenameVFS(char *a, char *b);
 int Arc_ListVFS(char *path, int recurse);
 struct ARC_VFSNode *Arc_GetNodeVFS(char *path, int link_depth);
+struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type);
 
 #endif

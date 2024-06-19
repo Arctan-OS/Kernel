@@ -1,5 +1,5 @@
 /**
- * @file caml.c
+ * @file parse.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include <arch/x86-64/acpi/caml/caml.h>
+#include <arch/x86-64/acpi/caml/parse.h>
 #include <arch/x86-64/acpi/caml/ops.h>
 #include <fs/vfs.h>
 #include <global.h>
@@ -45,6 +45,26 @@ struct caml_state {
 	struct ARC_VFSNode *root;
 	struct ARC_VFSNode *current;
 };
+
+size_t cAML_ParsePkgLength(struct caml_state *state) {
+	uint8_t pkglead = *state->buffer;
+	uint8_t count = (pkglead >> 6) & 0b11;
+	size_t package_size = pkglead & 0x3F;
+
+	ADVANCE_STATE(state);
+
+	if (count > 0) {
+		package_size = pkglead & 0xF;
+		for (int i = 0; i < count; i++) {
+			package_size |= *state->buffer << (i * 8 + 4);
+			ADVANCE_STATE(state);
+		}
+	}
+
+	// Exclude size of PkgLength header, as buffer
+	// has already been advanced over it
+	return package_size - (count + 1);
+}
 
 int cAML_ParseDataObject(struct caml_state *state) {
 	return 0;
@@ -92,6 +112,7 @@ char *cAML_ParseNamestring(struct caml_state *state) {
 	default: {
 		name = Arc_SlabAlloc(4);
 		memcpy(name, state->buffer, 4);
+
 		ADVANCE_STATE_BY(state, 4);
 
 		break;
@@ -103,31 +124,15 @@ char *cAML_ParseNamestring(struct caml_state *state) {
 
 int cAML_ParsePackage(struct caml_state *state) {
 	uint8_t lead = *state->buffer;
-	size_t package_size = 0;
+	size_t org_max = state->max;
 
 	ADVANCE_STATE(state);
 
 	switch (lead) {
 	case SCOPE_OP: {
-		uint8_t pkglead = *state->buffer;
-		uint8_t count = (pkglead >> 6) & 0b11;
-		package_size = pkglead & 0x3F;
-
-		ADVANCE_STATE(state);
-
-		if (count > 0) {
-			package_size = pkglead & 0xF;
-			for (int i = 0; i < count; i++) {
-				package_size |= *state->buffer << (i * 8 + 4);
-				ADVANCE_STATE(state);
-			}
-		}
+		size_t package_size = cAML_ParsePkgLength(state);
 
 		ARC_DEBUG(INFO, "Reading scope %p: Lead(0x%X) PkgLength(0x%X)\n", state->buffer, lead, package_size);
-
-		// Exclude size of PkgLength header, as buffer
-		// has already been advanced over it
-		package_size -= count + 1;
 
 		ADVANCE_STATE_BY(state, package_size);
 
@@ -135,10 +140,14 @@ int cAML_ParsePackage(struct caml_state *state) {
 	}
 
 	case NAME_OP: {
-		ARC_DEBUG(INFO, "Reading name %p: Lead(0x%X) PkgLength(0x%X)\n", state->buffer, lead, package_size);
+		ARC_DEBUG(INFO, "Reading name %p: Lead(0x%X)\n", state->buffer, lead);
 
 		char *name = cAML_ParseNamestring(state);
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
+
+		Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR);
+
+		org_max = state->max;
 
 		break;
 	}
@@ -148,13 +157,13 @@ int cAML_ParsePackage(struct caml_state *state) {
 	}
 	}
 
-	return package_size;
+	return org_max - state->max;
 }
 
 int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
 	struct caml_state *state = (struct caml_state *)Arc_SlabAlloc(sizeof(struct caml_state));
 
-	state->root = Arc_GetNodeVFS("/dev/acpi/rsdt/fadt/dsdt/", 0);
+	state->root = Arc_GetNodeVFS("/dev/acpi/", 0);
 	state->current = state->root;
 	state->buffer = buffer;
 	state->max = size;
