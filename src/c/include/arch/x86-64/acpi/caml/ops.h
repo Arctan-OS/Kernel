@@ -50,4 +50,6 @@
 #define ROOT_CHR 0x5C
 #define PARENT_PREFIX_CHR 0x5E
 
+#define ONES_OP 0xFF
+
 #endif

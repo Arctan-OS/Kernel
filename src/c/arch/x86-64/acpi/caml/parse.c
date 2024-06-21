@@ -32,18 +32,24 @@
 #include <util.h>
 
 #define ADVANCE_STATE(state) state->buffer++; state->max--;
+#define REGRESS_STATE(state) state->buffer--; state->max++;
 #define ADVANCE_STATE_BY(state, cnt) state->buffer += cnt; state->max -= cnt;
+#define REGRESS_STATE_BY(state, cnt) state->buffer -= cnt; state->maxt += cnt;
 #define CHECK_STATE(state) \
         if (state->buffer == NULL || state->max <= 0 || state->current == NULL || state->root == NULL) { \
 		ARC_DEBUG(ERR, "Invalid state detected! (%p, %ld, %p, %p)\n", state->buffer, state->max, state->current, state->root); \
 		return -1; \
 	}
 
+#define CALL_CHECK(call) if (call == 0) { return 0; }
+
 struct caml_state {
 	uint8_t *buffer;
 	size_t max;
 	struct ARC_VFSNode *root;
 	struct ARC_VFSNode *current;
+	uint64_t uret; // Bytes, Words, Dwords, Qwords, Zero, One, Ones
+	void *pret; // Pointers
 };
 
 size_t cAML_ParsePkgLength(struct caml_state *state) {
@@ -66,12 +72,122 @@ size_t cAML_ParsePkgLength(struct caml_state *state) {
 	return package_size - (count + 1);
 }
 
+int cAML_ParseComputationalData(struct caml_state *state) {
+	uint8_t lead = *state->buffer;
+
+	ADVANCE_STATE(state);
+
+	switch (lead) {
+	case ZERO_OP:
+	case ONE_OP:
+	case ONES_OP: {
+		state->uret = lead;
+
+		return 0;
+	}
+
+	case BYTE_PREFIX: {
+		state->uret = *state->buffer;
+		ADVANCE_STATE(state);
+
+		return 0;
+	}
+
+	case WORD_PREFIX: {
+		state->uret = *state->buffer;
+		ADVANCE_STATE(state);
+		state->uret |= *state->buffer << 8;
+		ADVANCE_STATE(state);
+
+		return 0;
+	}
+
+	case DWORD_PREFIX: {
+		state->uret = *state->buffer;
+		ADVANCE_STATE(state);
+		state->uret |= *state->buffer << 8;
+		ADVANCE_STATE(state);
+		state->uret |= *state->buffer << 16;
+		ADVANCE_STATE(state);
+		state->uret |= *state->buffer << 24;
+		ADVANCE_STATE(state);
+
+		return 0;
+	}
+
+	case QWORD_PREFIX: {
+		state->uret = *state->buffer;
+		ADVANCE_STATE(state);
+		state->uret |= *state->buffer << 8;
+		ADVANCE_STATE(state);
+		state->uret |= *state->buffer << 16;
+		ADVANCE_STATE(state);
+		state->uret |= *state->buffer << 24;
+		ADVANCE_STATE(state);
+		state->uret = (uint64_t)(*state->buffer) << 32;
+		ADVANCE_STATE(state);
+		state->uret |= (uint64_t)*state->buffer << 40;
+		ADVANCE_STATE(state);
+		state->uret |= (uint64_t)(*state->buffer) << 48;
+		ADVANCE_STATE(state);
+		state->uret |= (uint64_t)(*state->buffer) << 56;
+		ADVANCE_STATE(state);
+
+		return 0;
+	}
+
+	case STRING_PREFIX: {
+		size_t length = 1;
+		for (; state->buffer[length - 1] != 0; length++);
+
+		char *str = (char *)Arc_SlabAlloc(length);
+		memcpy(str, state->buffer, length);
+		state->pret = str;
+
+		ADVANCE_STATE_BY(state, length + 2); // + 1 for the NULL char, + 1 to get to the next byte
+
+		return 0;
+	}
+
+	default: {
+		ARC_DEBUG(ERR, "Unhandled lead 0x%X\n", lead);
+	}
+	}
+
+	REGRESS_STATE(state);
+
+	return 1;
+}
+
+int cAML_ParseDefPkg(struct caml_state *state) {
+	ARC_DEBUG(WARN, "Unimplemented function\n");
+	return 0;
+}
+
+int cAML_ParseDefVarPkg(struct caml_state *state) {
+	ARC_DEBUG(WARN, "Unimplemented function\n");
+	return 0;
+}
+
 int cAML_ParseDataObject(struct caml_state *state) {
+	CALL_CHECK(cAML_ParseComputationalData(state));
+	CALL_CHECK(cAML_ParseDefPkg(state));
+	CALL_CHECK(cAML_ParseDefVarPkg(state));
+
+	return 1;
+}
+
+int cAML_ParseObjectRef(struct caml_state *state) {
+	ARC_DEBUG(WARN, "Unimplemented function\n");
 	return 0;
 }
 
 int cAML_ParseDataRefObject(struct caml_state *state) {
-	return 0;
+	CALL_CHECK(cAML_ParseDataObject(state));
+	CALL_CHECK(cAML_ParseObjectRef(state));
+
+	// Didn't parse anything
+	return 1;
 }
 
 char *cAML_ParseNamestring(struct caml_state *state) {
@@ -112,7 +228,6 @@ char *cAML_ParseNamestring(struct caml_state *state) {
 	default: {
 		name = Arc_SlabAlloc(4);
 		memcpy(name, state->buffer, 4);
-
 		ADVANCE_STATE_BY(state, 4);
 
 		break;
@@ -130,9 +245,11 @@ int cAML_ParsePackage(struct caml_state *state) {
 
 	switch (lead) {
 	case SCOPE_OP: {
+		ARC_DEBUG(INFO, "Reading scope %p:\n", state->buffer);
+
 		size_t package_size = cAML_ParsePkgLength(state);
 
-		ARC_DEBUG(INFO, "Reading scope %p: Lead(0x%X) PkgLength(0x%X)\n", state->buffer, lead, package_size);
+		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
 
 		ADVANCE_STATE_BY(state, package_size);
 
@@ -140,20 +257,36 @@ int cAML_ParsePackage(struct caml_state *state) {
 	}
 
 	case NAME_OP: {
-		ARC_DEBUG(INFO, "Reading name %p: Lead(0x%X)\n", state->buffer, lead);
+		ARC_DEBUG(INFO, "Reading name %p:\n", state->buffer);
 
 		char *name = cAML_ParseNamestring(state);
+		cAML_ParseDataRefObject(state);
+
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
+		ARC_DEBUG(INFO, "\tUret: %d\n", state->uret);
+		ARC_DEBUG(INFO, "\tPret: %p\n", state->pret);
 
 		Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR);
 
-		org_max = state->max;
+		break;
+	}
+
+	case METHOD_OP: {
+		ARC_DEBUG(INFO, "Reading method %p:\n", state->buffer);
+
+		size_t package_size = cAML_ParsePkgLength(state);
+
+		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
+
+		ADVANCE_STATE_BY(state, package_size);
 
 		break;
 	}
 
 	default: {
 		ARC_DEBUG(ERR, "Unhandled lead 0x%X\n", lead);
+
+		return 0;
 	}
 	}
 
@@ -162,6 +295,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 
 int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
 	struct caml_state *state = (struct caml_state *)Arc_SlabAlloc(sizeof(struct caml_state));
+	memset(state, 0, sizeof(struct caml_state));
 
 	state->root = Arc_GetNodeVFS("/dev/acpi/", 0);
 	state->current = state->root;
