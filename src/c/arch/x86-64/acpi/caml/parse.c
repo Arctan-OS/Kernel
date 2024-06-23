@@ -29,6 +29,7 @@
 #include <fs/vfs.h>
 #include <global.h>
 #include <mm/slab.h>
+#include <stdint.h>
 #include <util.h>
 
 #define ADVANCE_STATE(state) state->buffer++; state->max--;
@@ -51,6 +52,8 @@ struct caml_state {
 	uint64_t uret; // Bytes, Words, Dwords, Qwords, Zero, One, Ones
 	void *pret; // Pointers
 };
+
+int cAML_ParsePackage(struct caml_state *state);
 
 size_t cAML_ParsePkgLength(struct caml_state *state) {
 	uint8_t pkglead = *state->buffer;
@@ -190,12 +193,41 @@ int cAML_ParseDataRefObject(struct caml_state *state) {
 	return 1;
 }
 
+int cAML_ParseTermList(struct caml_state *state, size_t size, struct ARC_VFSNode *root) {
+	// In the grammer, a TermList is just comprised
+	// of a linear set of bytes which is basically
+	// equivalent to how parsing is started. This means
+	// that a new state can just be allocated to
+	// do all of the parsing for within this scope
+
+	// Save state
+	struct ARC_VFSNode *_current = state->current;
+	uint64_t _uret = state->uret;
+	void *_pret = state->pret;
+
+	// Set state
+	state->max = size;
+	state->current = root;
+
+	while (cAML_ParsePackage(state) > 0) {
+		// Basically the same thing
+		CHECK_STATE(state);
+	}
+
+	// Restore state
+	state->current = _current;
+	state->uret = _uret;
+	state->pret = _pret;
+
+	return 0;
+}
+
+// TODO: SimpleName, SuperName, refine NullName handling
 char *cAML_ParseNamestring(struct caml_state *state) {
 	struct ARC_VFSNode *parent = state->current;
 	char *name = NULL;
 
 	if (*state->buffer == ROOT_CHR) {
-		printf("Root character\n");
 		parent = state->root;
 		ADVANCE_STATE(state);
 	}
@@ -204,6 +236,8 @@ char *cAML_ParseNamestring(struct caml_state *state) {
 		parent = parent->parent;
 		ADVANCE_STATE(state);
 	}
+
+	state->current = parent;
 
 	switch (*state->buffer) {
 	case DUAL_NAME_PREFIX: {
@@ -225,6 +259,12 @@ char *cAML_ParseNamestring(struct caml_state *state) {
 		break;
 	}
 
+	case 0x00: {
+		// NullName
+		ADVANCE_STATE(state);
+		return "";
+	}
+
 	default: {
 		name = Arc_SlabAlloc(4);
 		memcpy(name, state->buffer, 4);
@@ -235,6 +275,27 @@ char *cAML_ParseNamestring(struct caml_state *state) {
 	}
 
 	return name;
+}
+
+int cAML_EXTOPs(struct caml_state *state) {
+	switch (*state->buffer) {
+	case EXTOP_REGION_OP: {
+		ARC_DEBUG_INFO("Region\n");
+	}
+
+	case EXTOP_DEVICE_OP: {
+		ARC_DEBUG(INFO, "Device\n");
+	}
+
+	default: {
+		ARC_DEBUG_ERR("Unhandled EXTOP: 0x%X\n", *state->buffer);
+		break;
+	}
+	}
+
+	ADVANCE_STATE(state);
+
+	return 0;
 }
 
 int cAML_ParsePackage(struct caml_state *state) {
@@ -249,9 +310,16 @@ int cAML_ParsePackage(struct caml_state *state) {
 
 		size_t package_size = cAML_ParsePkgLength(state);
 
-		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
+		size_t delta = state->max;
+		char *name = cAML_ParseNamestring(state);
 
-		ADVANCE_STATE_BY(state, package_size);
+		delta -= state->max;
+		package_size -= delta;
+
+		cAML_ParseTermList(state, package_size, Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR));
+
+		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
+		ARC_DEBUG(INFO, "\tName: %s\n", name);
 
 		break;
 	}
@@ -279,6 +347,12 @@ int cAML_ParsePackage(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
 
 		ADVANCE_STATE_BY(state, package_size);
+
+		break;
+	}
+
+	case EXTOP_PREFIX: {
+		cAML_EXTOPs(state);
 
 		break;
 	}
