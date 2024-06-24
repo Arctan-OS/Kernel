@@ -311,9 +311,16 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 		return EINVAL;
 	}
 
+	size_t max = strlen(filepath);
+
+	if (max == 0) {
+		// Definitely created a new node and everything
+		// for this empty filepath
+		return 0;
+	}
+
 	ARC_DEBUG(INFO, "Traversing %s\n", filepath);
 
-	size_t max = strlen(filepath);
 	struct ARC_VFSNode *node = info->start;
 	node->ref_count++; // TODO: Atomize
 	info->node = node;

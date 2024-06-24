@@ -1,5 +1,5 @@
 /**
- * @file ext2.c
+ * @file fifo.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -23,10 +23,5 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
- * Superblock dirvers for the EXT2 filesystem.
+ * Driver for RAM files which are FIFO queues.
 */
-#include <lib/resource.h>
-
-ARC_REGISTER_DRIVER(0, ext2_super) = {
-	.index = 2,
-};
