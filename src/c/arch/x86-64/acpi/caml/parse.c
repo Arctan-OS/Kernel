@@ -336,7 +336,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tUret: %d\n", state->uret);
 		ARC_DEBUG(INFO, "\tPret: %p\n", state->pret);
 
-		Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL);
+		Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_BUFF, NULL);
 
 		break;
 	}

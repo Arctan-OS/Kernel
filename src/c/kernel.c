@@ -106,6 +106,18 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_RenameVFS("/fonts/font.fnt", "/fonts/font.fnt");
 	Arc_OpenVFS("/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
 
+	size_t size = 64;
+	struct ARC_File *buffer0 = NULL;
+	Arc_CreateVFS("/buffer0", 0, ARC_VFS_N_BUFF, &size);
+	Arc_OpenVFS("/buffer0", 0, 0, 0, (void *)&buffer0);
+	Arc_WriteVFS("Hello World", 1, 12, buffer0);
+	Arc_SeekVFS(buffer0, 11, ARC_VFS_SEEK_SET);
+	Arc_WriteVFS("Silly", 1, 6, buffer0);
+	char data[64];
+	Arc_SeekVFS(buffer0, 0, ARC_VFS_SEEK_SET);
+	Arc_ReadVFS(data, 1, 64, buffer0);
+	printf("%s\n", data);
+
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	Arc_ListVFS("/", 8);

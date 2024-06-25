@@ -69,7 +69,7 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 
 	resource->driver = def;
 
-	if (def != NULL) {
+	if (def != NULL && def->init != NULL) {
 		def->init(resource, args);
 	} else {
 		ARC_DEBUG(ERR, "Driver has no initialization function\n")
