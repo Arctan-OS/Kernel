@@ -36,6 +36,8 @@
 #define ARC_VFS_N_MOUNT 3
 #define ARC_VFS_N_ROOT  4
 #define ARC_VFS_N_LINK  5
+#define ARC_VFS_N_BUFF  6
+#define ARC_VFS_N_FIFO  7
 
 #define ARC_VFS_FS_EXT2      1
 #define ARC_VFS_FS_INITRAMFS 2
@@ -195,12 +197,12 @@ int Arc_CloseVFS(struct ARC_File *file);
  * */
 int Arc_StatVFS(char *filepath, struct stat *stat);
 
-int Arc_CreateVFS(char *path, uint32_t mode, int type);
+int Arc_CreateVFS(char *path, uint32_t mode, int type, void *arg);
 int Arc_RemoveVFS(char *filepath, bool physical, bool recurse);
 int Arc_LinkVFS(char *a, char *b, uint32_t mode);
 int Arc_RenameVFS(char *a, char *b);
 int Arc_ListVFS(char *path, int recurse);
 struct ARC_VFSNode *Arc_GetNodeVFS(char *path, int link_depth);
-struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type);
+struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type, void *arg);
 
 #endif

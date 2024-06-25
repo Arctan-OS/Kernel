@@ -107,7 +107,7 @@ int do_rsdt(void *address) {
 		}
 		}
 
-		Arc_CreateVFS(path, 0, ARC_VFS_N_DIR);
+		Arc_CreateVFS(path, 0, ARC_VFS_N_DIR, NULL);
 		struct ARC_Resource *res = Arc_InitializeResource(path, ARC_DRI_ACPI, index, (void *)entry);
 		Arc_MountVFS(path, res, ARC_VFS_FS_DEV);
 	}

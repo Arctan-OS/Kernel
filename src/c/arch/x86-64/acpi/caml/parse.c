@@ -316,10 +316,12 @@ int cAML_ParsePackage(struct caml_state *state) {
 		delta -= state->max;
 		package_size -= delta;
 
-		cAML_ParseTermList(state, package_size, Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR));
+		// cAML_ParseTermList(state, package_size, Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL));
 
 		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
+
+		ADVANCE_STATE_BY(state, package_size);
 
 		break;
 	}
@@ -334,7 +336,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tUret: %d\n", state->uret);
 		ARC_DEBUG(INFO, "\tPret: %p\n", state->pret);
 
-		Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR);
+		Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL);
 
 		break;
 	}

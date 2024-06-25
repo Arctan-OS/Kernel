@@ -92,8 +92,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
         // Initialize more complicated things
 	Arc_InitializeVFS();
-	Arc_CreateVFS("/initramfs/", 0, ARC_VFS_N_DIR);
-        Arc_CreateVFS("/dev/", 0, ARC_VFS_N_DIR);
+	Arc_CreateVFS("/initramfs/", 0, ARC_VFS_N_DIR, NULL);
+        Arc_CreateVFS("/dev/", 0, ARC_VFS_N_DIR, NULL);
 
         Arc_InitializeACPI(boot_meta->rsdp);
         // TODO: Implement properly

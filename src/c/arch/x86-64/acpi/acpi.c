@@ -40,13 +40,13 @@ int Arc_ChecksumACPI(void *data, size_t length) {
 }
 
 int Arc_InitializeACPI(uint64_t rsdp_ptr) {
-        if (Arc_CreateVFS("/dev/acpi/", 0, ARC_VFS_N_DIR) != 0) {
+        if (Arc_CreateVFS("/dev/acpi/", 0, ARC_VFS_N_DIR, NULL) != 0) {
                 ARC_DEBUG(ERR, "Failed to create ACPI directory\n");
                 return -1;
         }
 
         struct ARC_Resource *rsdt = Arc_InitializeResource("/dev/acpi/rsdt", ARC_DRI_ACPI, ARC_DRI_IRSDT, (void *)rsdp_ptr);
-        Arc_CreateVFS("/dev/acpi/rsdt", 0, ARC_VFS_N_DIR);
+        Arc_CreateVFS("/dev/acpi/rsdt", 0, ARC_VFS_N_DIR, NULL);
         Arc_MountVFS("/dev/acpi/rsdt", rsdt, ARC_VFS_FS_DEV);
 
         return 0;

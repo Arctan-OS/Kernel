@@ -25,3 +25,33 @@
  * @DESCRIPTION
  * Driver for RAM files or buffers which are accesible by the VFS.
 */
+#include <lib/resource.h>
+#include <global.h>
+
+int buffer_init(struct ARC_Resource *res, void *arg) {
+	ARC_DEBUG(INFO, "Creating a buffer\n");
+	return 0;
+}
+
+int buffer_empty() {
+	return 0;
+}
+
+int buffer_read() {
+	return 0;
+}
+
+int buffer_write() {
+	return 0;
+}
+
+int buffer_seek() {
+	return 0;
+}
+
+ARC_REGISTER_DRIVER(0, buffer) = {
+        .index = 5,
+	.read = buffer_read,
+	.write = buffer_write,
+	.seek = buffer_seek,
+};

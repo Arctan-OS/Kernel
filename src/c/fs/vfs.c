@@ -32,6 +32,7 @@
 #include <lib/resource.h>
 #include <mm/slab.h>
 #include <fs/vfs.h>
+#include <fs/dri_defs.h>
 #include <global.h>
 #include <util.h>
 
@@ -60,6 +61,10 @@ struct vfs_traverse_info {
 #define VFS_FS_CREAT 0x4 // Create node graph and physical file system from path.
 #define VFS_NOLCMP   0x8 // Create node graph except for last component in path.
 	int create_level;
+	/// Overwrite for final node's resource if it needs to be created (NULL = no overwrite).
+	// TODO: This is fairly hacky, try to come up with a better way
+	// to do this
+	void *overwrite_arg;
 };
 
 /**
@@ -294,6 +299,29 @@ int vfs_open_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int link_d
 	return 0;
 }
 
+uint64_t vfs_idx2idx(int type, uint64_t idx) {
+	switch (type) {
+	case ARC_VFS_N_BUFF: {
+		return ARC_DRI_BUFFER + 1;
+	}
+
+	case ARC_VFS_N_FIFO: {
+		return ARC_DRI_FIFO + 1;
+	}
+
+	case ARC_VFS_N_LINK: {
+		return 0xAB;
+	}
+
+	default: {
+		return idx + 1;
+	}
+	}
+
+	// Once more, how did you get here?
+	return -1;
+}
+
 /**
  * Traverse the node graph
  *
@@ -377,7 +405,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			// non-exsitent, skip
 			continue;
 		}
-
+	
 		if (node->type == ARC_VFS_N_MOUNT) {
 			info->mount = node;
 			info->mountpath = component;
@@ -438,6 +466,9 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			new->parent = node;
 			child = new;
 
+			// Do wacky stuff to determine a path which looks like
+			// this: mountpoint/a/b/c/d/file.extension, which is stored
+			// in stat_path
 			char *use_path = info->mountpath == NULL ? filepath : info->mountpath;
 			int length = i - ((uintptr_t)use_path - (uintptr_t)filepath) + 1;
 			char *stat_path = strndup(use_path, length);
@@ -469,6 +500,10 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 						ARC_DEBUG(ERR, "VFS_FS_CREAT failed\n");
 					}
 				} else {
+					// Didn't fail to stat, determine the file's type
+					// from the physical filesystem so long that it is
+					// not NULL, in which case the old type specified
+					// by the caller would be kept
 					if (vfs_stat2type(new->stat) != ARC_VFS_NULL) {
 						new->type = vfs_stat2type(new->stat);
 					}
@@ -478,18 +513,22 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
                         // Initialzie resource if needed
 			if (new->type != ARC_VFS_N_DIR && new->resource == NULL) {
 				ARC_DEBUG(INFO, "Node has no resource, creating one\n");
+				// Get the mountpoint's resource and lock it to make sure
+				// it does not change
 				struct ARC_Resource *res = info->mount->resource;
 				Arc_MutexLock(&res->dri_state_mutex);
 
-				int group = res->dri_group;
-				uint64_t index = res->dri_index + 1;
+				// Group will always be 0, as all filesystem drivers
+				// are in group 0, unless if the type of the node is a
+				// link
+				int group = new->type == ARC_VFS_N_LINK ? 0xAB : 0x00;
+				// Determine the index from the type of the file and the mountpoint's
+				// index
+				uint64_t index = vfs_idx2idx(new->type, res->dri_index);
 
-				if (new->type == ARC_VFS_N_LINK) {
-					group = 0xAB;
-					index = 0xAB;
-				}
-
-				struct ARC_Resource *nres = Arc_InitializeResource(stat_path, group, index, res->driver_state);
+				// Create a new resource and set the resource field, also
+				// unlock the mountpoint's resource
+				struct ARC_Resource *nres = Arc_InitializeResource(stat_path, group, index, info->overwrite_arg == NULL ? res->driver_state : info->overwrite_arg);
 				Arc_MutexUnlock(&res->dri_state_mutex);
 				new->resource = nres;
 
@@ -850,7 +889,7 @@ int Arc_CloseVFS(struct ARC_File *file) {
 	return 0;
 }
 
-int Arc_CreateVFS(char *path, uint32_t mode, int type) {
+int Arc_CreateVFS(char *path, uint32_t mode, int type, void *arg) {
 	if (path == NULL) {
 		ARC_DEBUG(ERR, "No path given\n");
 		return EINVAL;
@@ -858,7 +897,7 @@ int Arc_CreateVFS(char *path, uint32_t mode, int type) {
 
 	ARC_DEBUG(INFO, "Creating %s (%o, %d)\n", path, mode, type);
 
-	struct vfs_traverse_info info = { .mode = mode, .type = type, .create_level = VFS_FS_CREAT };
+	struct vfs_traverse_info info = { .mode = mode, .type = type, .create_level = VFS_FS_CREAT, .overwrite_arg = arg };
 	if (*path == '/') {
 		info.start = &vfs_root;
 	} else {
@@ -1187,7 +1226,7 @@ struct ARC_VFSNode *Arc_GetNodeVFS(char *path, int link_depth) {
 	return info.node;
 }
 
-struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type) {
+struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type, void *arg) {
 	if (relative_path == NULL || start == NULL) {
 		ARC_DEBUG(ERR, "No path given\n");
 		return NULL;
@@ -1195,7 +1234,7 @@ struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode
 
 	ARC_DEBUG(INFO, "Creating %p/%s (%o, %d)\n", start, relative_path, mode, type);
 
-	struct vfs_traverse_info info = { .start = start, .mode = mode, .type = type, .create_level = VFS_FS_CREAT };
+	struct vfs_traverse_info info = { .start = start, .mode = mode, .type = type, .create_level = VFS_FS_CREAT, .overwrite_arg = arg };
 
 	int ret = vfs_traverse(relative_path, &info, 0);
 	Arc_QUnlock(&info.node->branch_lock);
