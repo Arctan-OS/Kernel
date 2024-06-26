@@ -29,6 +29,7 @@
 #include <global.h>
 #include <util.h>
 #include <arch/x86-64/acpi/acpi.h>
+#include <fs/vfs.h>
 
 struct rsdp {
 	char signature[8];
@@ -81,10 +82,14 @@ int do_rsdt(void *address) {
 
 		switch (entry->signature) {
 		case ARC_ACPI_TBLSIG_APIC: {
-			index = ARC_DRI_IAPIC;
-			path = "/dev/acpi/rsdt/apic/";
+			 size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry);
+			 Arc_CreateVFS("/dev/acpi/rsdt/apic", 0, ARC_VFS_N_BUFF, &size);
+			 struct ARC_File *file = NULL;
+			 Arc_OpenVFS("/dev/acpi/rsdt/apic", 0, 0, 0, (void *)&file);
+			 Arc_WriteVFS((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
+			 Arc_CloseVFS(file);
 
-			break;
+			continue;
 		}
 
 		case ARC_ACPI_TBLSIG_FACP: {

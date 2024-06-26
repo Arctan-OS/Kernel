@@ -49,16 +49,16 @@
 #define ENTRY_TYPE_MP_WAKEUP           0x10
 
 int Arc_InitAPIC() {
-	struct ARC_VFSNode *apic = Arc_GetNodeVFS("/dev/acpi/rsdt/apic", 0);
+	struct ARC_File *apic = NULL;
+	Arc_OpenVFS("/dev/acpi/rsdt/apic", 0, 0, 0, (void *)&apic);
 
 	if (apic == NULL) {
 		return -1;
 	}
 
-	uint8_t data[256] = { 0 };
+	uint8_t data[2] = { 0 };
 
-	int i = 0;
-	while (Arc_HeadlessReadVFS(data, 256, i++, apic) > 0) {
+	while (Arc_ReadVFS(data, 1, 2, apic) > 0) {
 		switch (data[0]) {
 		case ENTRY_TYPE_LAPIC: {
 			ARC_DEBUG(INFO, "LAPIC found\n");
@@ -81,11 +81,15 @@ int Arc_InitAPIC() {
 		}
 
 		default: {
-			ARC_DEBUG(INFO, "Unhandled MADT entry of type %d at %d\n", data[0], i);
+			ARC_DEBUG(INFO, "Unhandled MADT entry of type %d\n", data[0]);
 			break;
 		}
 		}
+
+		Arc_SeekVFS(apic, data[1] - 2, ARC_VFS_SEEK_CUR);
 	}
+
+	Arc_CloseVFS(apic);
 
 	Arc_InitLAPIC();
 	return 0;

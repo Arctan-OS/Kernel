@@ -75,19 +75,26 @@ int buffer_read(void *buffer, size_t size, size_t count, struct ARC_File *file, 
 		return -1;
 	}
 
-	// Calculate the number of bytes the caller wants
-	// in terms of size
-	size_t wanted = file->offset + size * count;
-	// Calculate the difference between the wanted and the
-	// actual size of the file
-	size_t delta = wanted - (size_t)file->node->stat.st_size;
-	// If the delta is greater than 0, take off delta bytes
-	// from the wanted, and give it to the caller, otherwise
-	// just give the caller what it wanted
+	Arc_MutexLock(&res->dri_state_mutex);
+
+	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
+
+	size_t wanted = size * count;
+	size_t accessible = state->size - file->offset;
+
+	if (accessible == 0) {
+		return 0;
+		Arc_MutexUnlock(&res->dri_state_mutex);
+	}
+
+	int64_t delta = wanted - accessible;
 	size_t given = delta > 0 ? wanted - delta : wanted;
+	given = given > 0 ? given : 0;
 
 	// Do the actual giving
-	memcpy(buffer, res->driver_state + file->offset, given);
+	memcpy(buffer, state->buffer + file->offset, given);
+
+	Arc_MutexUnlock(&res->dri_state_mutex);
 
 	return given;
 }
@@ -97,20 +104,26 @@ int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File *file,
 		return -1;
 	}
 
+	Arc_MutexLock(&res->dri_state_mutex);
 
-	// Calculate the number of bytes the caller wants
-	// in terms of size
+	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
+
 	size_t wanted = size * count;
-	// Calculate the difference between the wanted and the
-	// actual size of the file
-	size_t delta = wanted - ((size_t)file->node->stat.st_size + file->offset);
-	// If the delta is greater than 0, take off delta bytes
-	// from the wanted, and give it to the caller, otherwise
-	// just give the caller what it wanted
+	size_t accessible = state->size - file->offset;
+
+	if (accessible == 0) {
+		return 0;
+		Arc_MutexUnlock(&res->dri_state_mutex);
+	}
+
+	int64_t delta = wanted - accessible;
 	size_t given = delta > 0 ? wanted - delta : wanted;
+	given = given > 0 ? given : 0;
 
 	// Do the actual receiving
-	memcpy(res->driver_state + file->offset, buffer, given);
+	memcpy(state->buffer + file->offset, buffer, given);
+
+	Arc_MutexUnlock(&res->dri_state_mutex);
 
 	return given;
 }

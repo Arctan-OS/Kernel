@@ -767,7 +767,11 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) 
 		return -1;
 	}
 
-	return res->driver->read(buffer, size, count, file, res);
+	int ret = res->driver->read(buffer, size, count, file, res);
+
+	file->offset += ret;
+
+	return ret;
 }
 
 int Arc_HeadlessReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node) {
@@ -803,7 +807,11 @@ int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file)
 		return -1;
 	}
 
-	return res->driver->write(buffer, size, count, file, res);
+	int ret = res->driver->write(buffer, size, count, file, res);
+
+	file->offset += ret;
+
+	return ret;
 }
 
 int Arc_HeadlessWriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node) {
