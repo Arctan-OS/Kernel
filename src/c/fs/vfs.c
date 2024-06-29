@@ -67,6 +67,13 @@ struct vfs_traverse_info {
 	void *overwrite_arg;
 };
 
+#define VFS_DETERMINE_START(info, path) \
+        if (*path == '/') { \
+		info.start = &vfs_root; \
+	} else { \
+		ARC_DEBUG(WARN, "Definitely getting current directory\n") \
+	}
+
 /**
  * Convert stat.st_type to node->type.
  * */
@@ -332,7 +339,10 @@ uint64_t vfs_idx2idx(int type, uint64_t idx) {
  * @param char *filepath - The path to to the file.
  * @param struct vfs_traverse_info *info - Input values and return values of the function.
  * @param int link_depth - How many links to resolve.
- * @return 0 upon success.
+ * @return 0 upon success, info->node has branch_lock held and ref_count is incremented by
+ * one. Caller needs to unlock the branch_lock and decrement ref_count once it is done using
+ * the node. A -2 means that no filepath was traversed, as the one given consists of zero characters,
+ * therefore the aforementioned state of the node is not true.
  * */
 int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth) {
 	if (filepath == NULL || info == NULL || info->start == NULL) {
@@ -344,7 +354,8 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 	if (max == 0) {
 		// Definitely created a new node and everything
 		// for this empty filepath
-		return 0;
+		info->node = info->start;
+		return -2;
 	}
 
 	ARC_DEBUG(INFO, "Traversing %s\n", filepath);
@@ -552,7 +563,6 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			ARC_DEBUG(ERR, "Lock error!\n");
 			goto cleanup;
 		}
-		Arc_QUnlock(&node->branch_lock);
 
 		child->ref_count++; // TODO: Atomize
 		node->ref_count--; // TODO: Atomize
@@ -564,7 +574,7 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 	//            node->ref_count remains incremented by 1
 	//            node->branch_lock is held
 	//       Lock and ref_count need to be decremented by
-	//       caller once node is no longer being used
+	//       caller once node is no longer being used (verify)
 	return 0;
 
 cleanup:;
@@ -593,13 +603,9 @@ int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 
 	ARC_DEBUG(INFO, "Mounting %p on %s (%d)\n", resource, mountpoint, fs_type);
 
-	struct vfs_traverse_info info = { 0 };
-	if (*mountpoint == '/') {
-		info.start = &vfs_root;
-	} else {
-		// info.start = current_working_directory();
-	}
-	info.create_level = VFS_GR_CREAT;
+	// If the directory does not already exist, create it in graph, as a disk write could be saved
+	struct vfs_traverse_info info = { .type = ARC_VFS_N_DIR, .create_level = VFS_GR_CREAT };
+	VFS_DETERMINE_START(info, mountpoint);
 
 	if (vfs_traverse(mountpoint, &info, 0) != 0) {
 		ARC_DEBUG(ERR, "Failed to traverse graph\n");
@@ -679,11 +685,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 
 	// Find file in node graph, create node graph if needed, do not create the file
 	struct vfs_traverse_info info = { .create_level = VFS_GR_CREAT };
-	if (*path == '/') {
-		info.start = &vfs_root;
-	} else {
-		// info.start = current_working_directory();
-	}
+	VFS_DETERMINE_START(info, path);
 
 	int info_ret = vfs_traverse(path, &info, link_depth);
 	if (info_ret != 0) {
@@ -713,9 +715,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 	ARC_DEBUG(INFO, "Created file descriptor %p\n", desc);
 
 	Arc_MutexLock(&node->property_lock);
-	if (node->is_open == 0) {
-		struct ARC_VFSNode *tmp = node;
-
+	if (node->is_open == 0 && node->type != ARC_VFS_N_DIR) {
 		if (node->type == ARC_VFS_N_LINK) {
 			node = node->link;
 		}
@@ -731,10 +731,11 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		}
 
 		node->is_open = 1;
-		tmp->is_open = 1;
+		desc->node->is_open = 1;
 		Arc_MutexUnlock(&node->property_lock);
 
-		node = tmp;
+		node = desc->node;
+
 	}
 	Arc_MutexUnlock(&node->property_lock);
 
@@ -774,19 +775,6 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) 
 	return ret;
 }
 
-int Arc_HeadlessReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node) {
-        if (node == NULL || node->resource == NULL || node->resource->driver->read == NULL) {
-		ARC_DEBUG(ERR, "One or more is NULL: %p %p %p\n", node, node->resource, node->resource->driver->read);
-                return -1;
-        }
-
-        node->resource->ref_count++; // TODO: Atomize
-        int ret = node->resource->driver->read(buffer, size, count, NULL, node->resource);
-        node->resource->ref_count--; // TODO: Atomize
-
-        return ret;
-}
-
 int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) {
 	if (buffer == NULL || file == NULL) {
 		return -1;
@@ -812,19 +800,6 @@ int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file)
 	file->offset += ret;
 
 	return ret;
-}
-
-int Arc_HeadlessWriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node) {
-        if (node == NULL || node->resource == NULL || node->resource->driver->write == NULL) {
-		ARC_DEBUG(ERR, "One or more is NULL: %p %p %p\n", node, node->resource, node->resource->driver->write);
-                return -1;
-        }
-
-        node->resource->ref_count++; // TODO: Atomize
-        int ret = node->resource->driver->write(buffer, size, count, NULL, node->resource);
-        node->resource->ref_count--; // TODO: Atomize
-
-        return ret;
 }
 
 int Arc_SeekVFS(struct ARC_File *file, long offset, int whence) {
@@ -864,7 +839,7 @@ int Arc_CloseVFS(struct ARC_File *file) {
 
 	// TODO: Account if node->type == ARC_VFS_N_LINK
 
-	if (node->ref_count > 1) {
+	if (node->ref_count > 1 || (node->type != ARC_VFS_N_FILE && node->type != ARC_VFS_N_LINK)) {
 		ARC_DEBUG(INFO, "ref_count (%d) > 1, closing file descriptor\n", node->ref_count);
 
 		Arc_UnreferenceResource(file->reference);
@@ -882,7 +857,7 @@ int Arc_CloseVFS(struct ARC_File *file) {
 		ARC_DEBUG(ERR, "Node has NULL resource\n")
 	}
 
-	if (res->driver->close(file, res) != 0) {
+	if (res != NULL && res->driver->close(file, res) != 0) {
 		ARC_DEBUG(ERR, "Failed to physically close file\n");
 	}
 
@@ -906,16 +881,16 @@ int Arc_CreateVFS(char *path, uint32_t mode, int type, void *arg) {
 	ARC_DEBUG(INFO, "Creating %s (%o, %d)\n", path, mode, type);
 
 	struct vfs_traverse_info info = { .mode = mode, .type = type, .create_level = VFS_FS_CREAT, .overwrite_arg = arg };
-	if (*path == '/') {
-		info.start = &vfs_root;
-	} else {
-		// info.start = get_current_directory();
-	}
+	VFS_DETERMINE_START(info, path);
 
 	ARC_DEBUG(INFO, "Creating node graph %s from node %p\n", path, info.start);
 
 	int ret = vfs_traverse(path, &info, 0);
-	Arc_QUnlock(&info.node->branch_lock);
+
+	if (ret == 0) {
+		Arc_QUnlock(&info.node->branch_lock);
+		info.node->ref_count--; // TODO: Atomize
+	}
 
 	return ret;
 }
@@ -929,11 +904,7 @@ int Arc_RemoveVFS(char *filepath, bool physical, bool recurse) {
 	ARC_DEBUG(INFO, "Removing %s (%d, %d)\n", filepath, physical, recurse);
 
 	struct vfs_traverse_info info = { .create_level = VFS_NO_CREAT };
-	if (*filepath == '/') {
-		info.start = &vfs_root;
-	} else {
-		// info.start = get_current_directory();
-	}
+	VFS_DETERMINE_START(info, filepath);
 
 	int ret = vfs_traverse(filepath, &info, 0);
 
@@ -994,11 +965,7 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	}
 
 	struct vfs_traverse_info info_a = { .create_level = VFS_GR_CREAT };
-	if (*a == '/') {
-		info_a.start = &vfs_root;
-	} else {
-		// info_a.start = get_current_directory();
-	}
+	VFS_DETERMINE_START(info_a, a);
 
 	ARC_DEBUG(INFO, "Linking %s -> %s (%o)\n", a, b, mode);
 
@@ -1010,11 +977,7 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	}
 
 	struct vfs_traverse_info info_b = { .create_level = VFS_FS_CREAT, .mode = mode, .type = ARC_VFS_N_LINK };
-	if (*a == '/') {
-		info_b.start = &vfs_root;
-	} else {
-		// info_b.start = get_current_directory();
-	}
+	VFS_DETERMINE_START(info_b, b);
 
 	ret = vfs_traverse(b, &info_b, 0);
 
@@ -1054,9 +1017,12 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	return 0;
 }
 
-// TODO: But what if it is a directory? What happens with all of
-//       the names then? This only works for single files, account
-//       for directories!
+// TODO: Currently, this function renames the resource of a single file.
+//       However, if the "file" that is being renamed is a directory,
+//       the resource names of the files in it are not changed. Probably
+//       do not need resource names, they take up extra space. Should replace
+//       them with just a counter (as a single system is probably not going to have
+//       UINT64_MAX resources).
 int Arc_RenameVFS(char *a, char *b) {
 	if (a == NULL || b == NULL) {
 		ARC_DEBUG(ERR, "Src (%p) or dest (%p) path NULL\n", a, b);
@@ -1066,12 +1032,7 @@ int Arc_RenameVFS(char *a, char *b) {
 	ARC_DEBUG(INFO, "Renaming %s -> %s\n", a, b);
 
 	struct vfs_traverse_info info_a = { .create_level = VFS_GR_CREAT };
-
-	if (*a == '/') {
-		info_a.start = &vfs_root;
-	} else {
-		// info_a.start = get_current_directory();
-	}
+	VFS_DETERMINE_START(info_a, a);
 
 	int ret = vfs_traverse(a, &info_a, 0);
 
@@ -1087,11 +1048,7 @@ int Arc_RenameVFS(char *a, char *b) {
 	Arc_QYield(&info_a.node->parent->branch_lock);
 
 	struct vfs_traverse_info info_b = { .create_level = VFS_FS_CREAT | VFS_NOLCMP, .mode = info_a.mode };
-	if (*b == '/') {
-		info_b.start = &vfs_root;
-	} else {
-		// info_b.start = get_current_directory();
-	}
+	VFS_DETERMINE_START(info_b, b);
 
 	ret = vfs_traverse(b, &info_b, 0);
 
@@ -1103,6 +1060,12 @@ int Arc_RenameVFS(char *a, char *b) {
 
 	struct ARC_VFSNode *node_a = info_a.node;
 	struct ARC_VFSNode *node_b = info_b.node;
+
+	if (node_b == node_a->parent) {
+		// Node A is already under B, just rename A.
+		Arc_QUnlock(&node_b->branch_lock);
+		goto rename;
+	}
 
 	// Remove node_a from parent node in preparation for patching
 	struct ARC_VFSNode *parent = node_a->parent;
@@ -1128,14 +1091,16 @@ int Arc_RenameVFS(char *a, char *b) {
 	node_a->prev = NULL;
 	node_b->children = node_a;
 
-	Arc_QUnlock(&node_a->branch_lock);
 	Arc_QUnlock(&node_b->branch_lock);
 
+	rename:;
 	// Rename the resource
 	Arc_MutexLock(&node_a->resource->prop_mutex);
 	Arc_SlabFree(node_a->resource->name);
 	node_a->resource->name = strdup(b);
 	Arc_MutexUnlock(&node_a->resource->prop_mutex);
+
+	Arc_QUnlock(&node_a->branch_lock);
 
 	node_a->ref_count--; // TODO: Atomize
 	node_b->ref_count--; // TODO: Atomize
@@ -1190,11 +1155,7 @@ int Arc_ListVFS(char *path, int recurse) {
 
 	struct vfs_traverse_info info = { .create_level = VFS_NO_CREAT };
 
-	if (*path == '/') {
-		info.start = &vfs_root;
-	} else {
-		// info.start = get_current_directory();
-	}
+	VFS_DETERMINE_START(info, path);
 
 	if (vfs_traverse(path, &info, 0) != 0) {
 		return -1;
@@ -1210,30 +1171,6 @@ int Arc_ListVFS(char *path, int recurse) {
 	return 0;
 }
 
-struct ARC_VFSNode *Arc_GetNodeVFS(char *path, int link_depth) {
-	if (path == NULL) {
-		return NULL;
-	}
-
-	struct vfs_traverse_info info = { .create_level = VFS_NO_CREAT };
-
-	if (*path == '/') {
-		info.start = &vfs_root;
-	} else {
-		//info.start = get_current_directory();
-	}
-
-	int code = 0;
-	if ((code = vfs_traverse(path, &info, link_depth)) != 0) {
-		ARC_DEBUG(ERR, "Couldn't get node (%d)", code);
-		return NULL;
-	}
-
-	Arc_QUnlock(&info.node->branch_lock);
-
-	return info.node;
-}
-
 struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type, void *arg) {
 	if (relative_path == NULL || start == NULL) {
 		ARC_DEBUG(ERR, "No path given\n");
@@ -1242,10 +1179,14 @@ struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode
 
 	ARC_DEBUG(INFO, "Creating %p/%s (%o, %d)\n", start, relative_path, mode, type);
 
-	struct vfs_traverse_info info = { .start = start, .mode = mode, .type = type, .create_level = VFS_FS_CREAT, .overwrite_arg = arg };
+	struct vfs_traverse_info info = { .start = start, .mode = mode, .type = type, .create_level = VFS_GR_CREAT, .overwrite_arg = arg };
 
 	int ret = vfs_traverse(relative_path, &info, 0);
-	Arc_QUnlock(&info.node->branch_lock);
+
+	if (ret == 0) {
+		Arc_QUnlock(&info.node->branch_lock);
+		info.node->ref_count--; // TODO: Atomize
+	}
 
 	if (ret != 0) {
 		return NULL;

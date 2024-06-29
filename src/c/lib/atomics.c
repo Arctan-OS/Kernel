@@ -144,6 +144,7 @@ int Arc_QFreeze(struct ARC_QLock *head) {
 	// it.
 
 	if (head->is_frozen == 1) {
+		ARC_DEBUG(ERR, "Lock is already frozen!\n");
 		return -1;
 	}
 

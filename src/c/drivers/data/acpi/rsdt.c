@@ -82,7 +82,7 @@ int do_rsdt(void *address) {
 
 		switch (entry->signature) {
 		case ARC_ACPI_TBLSIG_APIC: {
-			 size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry);
+			 size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry) - 8;
 			 Arc_CreateVFS("/dev/acpi/rsdt/apic", 0, ARC_VFS_N_BUFF, &size);
 			 struct ARC_File *file = NULL;
 			 Arc_OpenVFS("/dev/acpi/rsdt/apic", 0, 0, 0, (void *)&file);

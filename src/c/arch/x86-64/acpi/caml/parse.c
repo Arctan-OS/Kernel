@@ -37,7 +37,7 @@
 #define ADVANCE_STATE_BY(state, cnt) state->buffer += cnt; state->max -= cnt;
 #define REGRESS_STATE_BY(state, cnt) state->buffer -= cnt; state->maxt += cnt;
 #define CHECK_STATE(state) \
-        if (state->buffer == NULL || state->max <= 0 || state->current == NULL || state->root == NULL) { \
+		if (state->buffer == NULL || state->max <= 0 || state->current == NULL || state->root == NULL) { \
 		ARC_DEBUG(ERR, "Invalid state detected! (%p, %ld, %p, %p)\n", state->buffer, state->max, state->current, state->root); \
 		return -1; \
 	}
@@ -316,12 +316,11 @@ int cAML_ParsePackage(struct caml_state *state) {
 		delta -= state->max;
 		package_size -= delta;
 
-		// cAML_ParseTermList(state, package_size, Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL));
-
 		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 
-		ADVANCE_STATE_BY(state, package_size);
+		struct ARC_VFSNode *node = strlen(name) > 0 ? Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
+		cAML_ParseTermList(state, package_size, node);
 
 		break;
 	}
@@ -336,7 +335,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tUret: %d\n", state->uret);
 		ARC_DEBUG(INFO, "\tPret: %p\n", state->pret);
 
-		Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_BUFF, NULL);
+		struct ARC_VFSNode *node = strlen(name) > 0 ? Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
 
 		break;
 	}
@@ -373,7 +372,9 @@ int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
 	struct caml_state *state = (struct caml_state *)Arc_SlabAlloc(sizeof(struct caml_state));
 	memset(state, 0, sizeof(struct caml_state));
 
-	state->root = Arc_GetNodeVFS("/dev/acpi/", 0);
+	struct ARC_File *file = NULL;
+	Arc_OpenVFS("/dev/acpi", 0, 0, 0, (void *)&file);
+	state->root = file->node;
 	state->current = state->root;
 	state->buffer = buffer;
 	state->max = size;
@@ -385,6 +386,8 @@ int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
 	while (cAML_ParsePackage(state) > 0) {
 		CHECK_STATE(state);
 	}
+
+	Arc_CloseVFS(file);
 
 	Arc_SlabFree(state);
 

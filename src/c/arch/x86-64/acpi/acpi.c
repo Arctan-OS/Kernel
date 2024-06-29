@@ -45,8 +45,8 @@ int Arc_InitializeACPI(uint64_t rsdp_ptr) {
                 return -1;
         }
 
-        struct ARC_Resource *rsdt = Arc_InitializeResource("/dev/acpi/rsdt", ARC_DRI_ACPI, ARC_DRI_IRSDT, (void *)rsdp_ptr);
         Arc_CreateVFS("/dev/acpi/rsdt", 0, ARC_VFS_N_DIR, NULL);
+        struct ARC_Resource *rsdt = Arc_InitializeResource("/dev/acpi/rsdt", ARC_DRI_ACPI, ARC_DRI_IRSDT, (void *)rsdp_ptr);
         Arc_MountVFS("/dev/acpi/rsdt", rsdt, ARC_VFS_FS_DEV);
 
         return 0;
