@@ -36,10 +36,10 @@
 #define REGRESS_STATE(state) state->buffer--; state->max++;
 #define ADVANCE_STATE_BY(state, cnt) state->buffer += cnt; state->max -= cnt;
 #define REGRESS_STATE_BY(state, cnt) state->buffer -= cnt; state->maxt += cnt;
-#define CHECK_STATE(state) \
+#define CHECK_STATE(state, action) \
 		if (state->buffer == NULL || state->max <= 0 || state->current == NULL || state->root == NULL) { \
 		ARC_DEBUG(ERR, "Invalid state detected! (%p, %ld, %p, %p)\n", state->buffer, state->max, state->current, state->root); \
-		return -1; \
+		action; \
 	}
 
 #define CALL_CHECK(call) if (call == 0) { return 0; }
@@ -204,6 +204,7 @@ int cAML_ParseTermList(struct caml_state *state, size_t size, struct ARC_VFSNode
 	struct ARC_VFSNode *_current = state->current;
 	uint64_t _uret = state->uret;
 	void *_pret = state->pret;
+	size_t _max = state->max - size;
 
 	// Set state
 	state->max = size;
@@ -211,19 +212,19 @@ int cAML_ParseTermList(struct caml_state *state, size_t size, struct ARC_VFSNode
 
 	while (cAML_ParsePackage(state) > 0) {
 		// Basically the same thing
-		CHECK_STATE(state);
+		CHECK_STATE(state, break);
 	}
 
 	// Restore state
 	state->current = _current;
 	state->uret = _uret;
 	state->pret = _pret;
+	state->max = _max;
 
 	return 0;
 }
 
-// TODO: SimpleName, SuperName, refine NullName handling
-char *cAML_ParseNamestring(struct caml_state *state) {
+char *cAML_ParseNameString(struct caml_state *state) {
 	struct ARC_VFSNode *parent = state->current;
 	char *name = NULL;
 
@@ -261,8 +262,14 @@ char *cAML_ParseNamestring(struct caml_state *state) {
 
 	case 0x00: {
 		// NullName
+		// NOTE: This is a bit wasteful, but it allows the
+		//       caller to blindly free anything that has been
+		//       returned
 		ADVANCE_STATE(state);
-		return "";
+		name = Arc_SlabAlloc(1);
+		*name = 0;
+
+		break;
 	}
 
 	default: {
@@ -277,23 +284,109 @@ char *cAML_ParseNamestring(struct caml_state *state) {
 	return name;
 }
 
+int cAML_ParseSimpleName(struct caml_state *state) {
+	// NameString | ArgObj | LocalObj
+	ARC_DEBUG(WARN, "Definitely implemented\n");
+	return 0;
+}
+
+int cAML_ParseSuperName(struct caml_state *state) {
+	// SimpleName | DebugObj | ReferenceTypeOpcode
+	ARC_DEBUG(WARN, "Definitely implemented\n");
+	return 0;
+}
+
+int cAML_ParseTarget(struct caml_state *state) {
+	// SuperName | NullName
+	ARC_DEBUG(WARN, "Definitely implemented\n");
+	return 0;
+}
+
 int cAML_EXTOPs(struct caml_state *state) {
-	switch (*state->buffer) {
+	uint8_t lead = *state->buffer;
+
+	ADVANCE_STATE(state);
+
+	switch (lead) {
 	case EXTOP_REGION_OP: {
 		ARC_DEBUG_INFO("Region\n");
+
+		char *name = cAML_ParseNameString(state);
+
+		uint64_t space = -1;
+		cAML_ParseComputationalData(state);
+		space = state->uret;
+
+		uint64_t offset = -1;
+		cAML_ParseComputationalData(state);
+		offset = state->uret;
+
+		uint64_t length = -1;
+		cAML_ParseComputationalData(state);
+		length = state->uret;
+
+		ARC_DEBUG(INFO, "\tName: %s\n", name);
+		ARC_DEBUG(INFO, "\tSpace: 0x%X\n", space);
+		ARC_DEBUG(INFO, "\tOffset: 0x%X\n", offset);
+		ARC_DEBUG(INFO, "\tLength: 0x%X\n", length);
+
+		Arc_SlabFree(name);
+
+		break;
 	}
 
 	case EXTOP_DEVICE_OP: {
 		ARC_DEBUG(INFO, "Device\n");
+
+		size_t package_length = cAML_ParsePkgLength(state);
+		size_t delta = state->max;
+	
+		char *name = cAML_ParseNameString(state);
+
+		delta -= state->max;
+		package_length -= delta;
+
+		ARC_DEBUG(INFO, "\tName: %s\n", name);
+
+		Arc_SlabFree(name);
+
+		ADVANCE_STATE_BY(state, package_length);
+
+		break;
+	}
+
+	case EXTOP_FIELD_OP: {
+		ARC_DEBUG(INFO, "Field\n");
+
+		size_t package_length = cAML_ParsePkgLength(state);
+		size_t delta = state->max;
+
+		char *name = cAML_ParseNameString(state);
+		uint8_t flags = *(uint8_t *)state->buffer;
+		ADVANCE_STATE(state);
+
+		// TODO: Parse FieldList
+
+		delta -= state->max;
+		package_length -= delta;
+
+		ARC_DEBUG(INFO, "\tName: %s\n", name);
+		ARC_DEBUG(INFO, "\tFlags: 0x%X\n", flags);
+
+		Arc_SlabFree(name);
+
+		ADVANCE_STATE_BY(state, package_length);
+
+		break;
 	}
 
 	default: {
 		ARC_DEBUG_ERR("Unhandled EXTOP: 0x%X\n", *state->buffer);
+		ADVANCE_STATE(state);
+
 		break;
 	}
 	}
-
-	ADVANCE_STATE(state);
 
 	return 0;
 }
@@ -311,7 +404,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 		size_t package_size = cAML_ParsePkgLength(state);
 
 		size_t delta = state->max;
-		char *name = cAML_ParseNamestring(state);
+		char *name = cAML_ParseNameString(state);
 
 		delta -= state->max;
 		package_size -= delta;
@@ -320,7 +413,16 @@ int cAML_ParsePackage(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 
 		struct ARC_VFSNode *node = strlen(name) > 0 ? Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
+
+		if (node == NULL) {
+			ARC_DEBUG(ERR, "Failed to create new node\n");
+		}
+
 		cAML_ParseTermList(state, package_size, node);
+
+//		ADVANCE_STATE_BY(state, package_size);
+
+		Arc_SlabFree(name);
 
 		break;
 	}
@@ -328,7 +430,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 	case NAME_OP: {
 		ARC_DEBUG(INFO, "Reading name %p:\n", state->buffer);
 
-		char *name = cAML_ParseNamestring(state);
+		char *name = cAML_ParseNameString(state);
 		cAML_ParseDataRefObject(state);
 
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
@@ -337,6 +439,12 @@ int cAML_ParsePackage(struct caml_state *state) {
 
 		struct ARC_VFSNode *node = strlen(name) > 0 ? Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
 
+		if (node == NULL) {
+			ARC_DEBUG(ERR, "Failed to create new node\n");
+		}
+
+		Arc_SlabFree(name);
+
 		break;
 	}
 
@@ -344,10 +452,43 @@ int cAML_ParsePackage(struct caml_state *state) {
 		ARC_DEBUG(INFO, "Reading method %p:\n", state->buffer);
 
 		size_t package_size = cAML_ParsePkgLength(state);
+		size_t delta = state->max;
+
+		char *name = cAML_ParseNameString(state);
+		uint8_t flags = *state->buffer;
+		ADVANCE_STATE(state);
+
+		delta -= state->max;
+		package_size -= delta;
 
 		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
+		ARC_DEBUG(INFO, "\tName: %s\n", name);
+		ARC_DEBUG(INFO, "\tFlags: 0x%X\n", flags);
 
 		ADVANCE_STATE_BY(state, package_size);
+
+		if (strlen(name) > 0) {
+			Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_BUFF, &package_size);
+
+			// TODO: Work out the absolute path to the node that has just
+			//       been created and write data to it
+
+			ARC_DEBUG(WARN, "Definitely wrote data to buffer\n");
+		}
+
+		Arc_SlabFree(name);
+
+		break;
+	}
+
+	case ALIAS_OP: {
+		char *a = cAML_ParseNameString(state);
+		char *b = cAML_ParseNameString(state);
+
+		ARC_DEBUG(INFO, "Found alias \"%s\" -> \"%s\"", a, b);
+
+		Arc_SlabFree(a);
+		Arc_SlabFree(b);
 
 		break;
 	}
@@ -357,6 +498,8 @@ int cAML_ParsePackage(struct caml_state *state) {
 
 		break;
 	}
+
+	// Parse out NamedObjects too
 
 	default: {
 		ARC_DEBUG(ERR, "Unhandled lead 0x%X\n", lead);
@@ -373,18 +516,21 @@ int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
 	memset(state, 0, sizeof(struct caml_state));
 
 	struct ARC_File *file = NULL;
-	Arc_OpenVFS("/dev/acpi", 0, 0, 0, (void *)&file);
+	if (Arc_OpenVFS("/dev/acpi/", 0, 0, 0, (void *)&file) != 0) {
+		return -1;
+	}
+
 	state->root = file->node;
 	state->current = state->root;
 	state->buffer = buffer;
 	state->max = size;
 
-	CHECK_STATE(state);
+	CHECK_STATE(state, return -1);
 
 	ARC_DEBUG(INFO, "Parsing definition block %p (%d B)\n", buffer, size);
 
 	while (cAML_ParsePackage(state) > 0) {
-		CHECK_STATE(state);
+		CHECK_STATE(state, return -1);
 	}
 
 	Arc_CloseVFS(file);
