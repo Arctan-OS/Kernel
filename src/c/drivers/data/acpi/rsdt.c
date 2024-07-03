@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "arctan.h"
 #include <lib/resource.h>
 #include <stdint.h>
 #include <global.h>

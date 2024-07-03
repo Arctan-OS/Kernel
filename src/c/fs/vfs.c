@@ -478,17 +478,28 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 			child = new;
 
 			// Do wacky stuff to determine a path which looks like
-			// this: mountpoint/a/b/c/d/file.extension, which is stored
-			// in stat_path
+			// this: a/b/c/d/file.extension, which is relative from
+			// info->mount, and is stored in stat_path
+			// NOTE: This is cursed
 			char *use_path = info->mountpath == NULL ? filepath : info->mountpath;
 			int length = i - ((uintptr_t)use_path - (uintptr_t)filepath) + 1;
-			char *stat_path = strndup(use_path, length);
+			char *stat_path = strndup(use_path, use_path[length - 1] == '/' ? --length : length);
 
 			if (info->mount != NULL) {
 				ARC_DEBUG(INFO, "Mount is present, statting %s\n", stat_path);
 
 				struct ARC_Resource *res = info->mount->resource;
+				if (res == NULL) {
+					ARC_DEBUG(INFO, "Resource is NULL for node %p (mount %p)\n", info->mount, info->mount->mount);
+					goto skip_stat;
+				}
+
 				struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)res->driver->driver;
+
+				if (def == NULL) {
+					ARC_DEBUG(INFO, "Superblock definition is NULL for %p\n", res);
+					goto skip_stat;
+				}
 
 				if (def->stat(res, stat_path, &new->stat) != 0) {
 					ARC_DEBUG(ERR, "Failed to stat %s\n", stat_path);
@@ -520,6 +531,8 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 					}
 				}
 			}
+
+			skip_stat:;
 
                         // Initialzie resource if needed
 			if (new->type != ARC_VFS_N_DIR && new->resource == NULL) {
@@ -726,7 +739,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		//       when renaming, the path is absolute relative to the
 		//       mount
 		struct ARC_Resource *res = node->resource;
-		if (res->driver->open(desc, res, node->resource->name, 0, mode) != 0) {
+		if (res == NULL || res->driver->open == NULL || res->driver->open(desc, res, node->resource->name, 0, mode) != 0) {
 			ARC_DEBUG(ERR, "Failed to open file\n");
 		}
 
@@ -764,7 +777,7 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) 
 	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
 
 	if (res == NULL || res->driver->read == NULL) {
-		ARC_DEBUG(ERR, "One or more is NULL: %p %p\n", res, res->driver->read);
+//		ARC_DEBUG(ERR, "One or more is NULL: %p %p\n", res, res->driver->read);
 		return -1;
 	}
 
@@ -1136,7 +1149,7 @@ int vfs_list(struct ARC_VFSNode *node, int recurse, int org) {
 			printf("\t");
 		}
 
-		printf("%s\n", child->name);
+		printf("%s (0x%X, 0x%X B)\n", child->name, child->stat.st_mode, child->stat.st_size);
 
 		if (recurse > 0) {
 			vfs_list(child, recurse - 1, org);

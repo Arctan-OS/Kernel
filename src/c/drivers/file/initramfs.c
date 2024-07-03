@@ -71,7 +71,7 @@ static void *initramfs_find_file(void *fs, char *filename) {
 	while (header->magic == 0070707) {
 		char *name = ((char *)header) + ARC_NAME_OFFSET;
 
-		if (strcmp(name, filename) != 0) {
+		if (strncmp(name, filename, strlen(filename)) != 0) {
 			goto next;
 		}
 

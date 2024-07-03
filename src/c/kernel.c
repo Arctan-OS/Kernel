@@ -59,8 +59,6 @@ int empty() {
 }
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
-        *((uint8_t *)0xB8002) = 'A';
-
 	Arc_BootMeta = boot_meta;
 
 	Arc_MainTerm.rx_buf = NULL;
@@ -95,7 +93,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_CreateVFS("/initramfs/", 0, ARC_VFS_N_DIR, NULL);
         Arc_CreateVFS("/dev/", 0, ARC_VFS_N_DIR, NULL);
 
-        Arc_InitializeACPI(boot_meta->rsdp);
+        Arc_InitializeACPI(ARC_PHYS_TO_HHDM(boot_meta->rsdp));
         // TODO: Implement properly
         Arc_InitAPIC();
 	Arc_InitializeSyscall();
@@ -105,18 +103,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_LinkVFS("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
 	Arc_RenameVFS("/font.fnt", "/fonts/font.fnt");
 	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
-
-	size_t size = 64;
-	struct ARC_File *buffer0 = NULL;
-	Arc_CreateVFS("/buffer0", 0, ARC_VFS_N_BUFF, &size);
-	Arc_OpenVFS("/buffer0", 0, 0, 0, (void *)&buffer0);
-	Arc_WriteVFS("Hello World", 1, 12, buffer0);
-	Arc_SeekVFS(buffer0, 11, ARC_VFS_SEEK_SET);
-	Arc_WriteVFS("Silly", 1, 6, buffer0);
-	char data[64];
-	Arc_SeekVFS(buffer0, 0, ARC_VFS_SEEK_SET);
-	Arc_ReadVFS(data, 1, 64, buffer0);
-	printf("%s\n", data);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 

@@ -52,7 +52,7 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include -I $(BASE_DIR)/initramfs/include $(CPP_DEBUG_FLAG) $(CPP_E9HACK_FLAG)
+CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include -I $(ARC_ROOT)/initramfs/include $(CPP_DEBUG_FLAG) $(CPP_E9HACK_FLAG)
 CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
 		  -fno-lto -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
 		  -Wextra -ffreestanding -fPIE
@@ -64,6 +64,10 @@ NASMFLAGS := -f elf64
 .PHONY: all
 all: $(OFILES)
 	$(LD) $(LDFLAGS) $(OFILES)
+
+.PHONY: clean
+clean:
+	find . -name "*.o" -delete
 
 src/c/%.o: src/c/%.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@

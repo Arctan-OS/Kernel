@@ -25,7 +25,6 @@
  * @DESCRIPTION
  * CPIO superblock driver for the initramfs image.
 */
-#include <abi-bits/errno.h>
 #include <lib/atomics.h>
 #include <lib/perms.h>
 #include <fs/vfs.h>
@@ -71,7 +70,7 @@ static void *initramfs_find_file(void *fs, char *filename) {
 	while (header->magic == 0070707) {
 		char *name = ((char *)header) + ARC_NAME_OFFSET;
 
-		if (strcmp(name, filename) != 0) {
+		if (strncmp(name, filename, strlen(filename)) != 0) {
 			goto next;
 		}
 
@@ -127,14 +126,6 @@ static int initramfs_uninit(struct ARC_Resource *res) {
 static int initramfs_stat(struct ARC_Resource *res, char *filename, struct stat *stat) {
 	if (res == NULL || filename == NULL || stat == NULL) {
 		return 1;
-	}
-
-	if (filename[strlen(filename) - 1] == '/') {
-		// The given path is a directory, we do not have
-		// distinct directories, and are unable to provide stats
-		// for them
-		ARC_DEBUG(WARN, "Tried to stat directory %s\n", filename);
-		return 0;
 	}
 
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
