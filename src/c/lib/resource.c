@@ -64,7 +64,6 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 
 	// Set open, close, read, write, and seek pointers
 	// Call driver initialization function from driver table
-
 	struct ARC_DriverDef *def = Arc_GetDriverDef(dri_group, dri_index);
 
 	resource->driver = def;

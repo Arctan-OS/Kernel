@@ -306,7 +306,7 @@ int vfs_open_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int link_d
 	return 0;
 }
 
-uint64_t vfs_idx2idx(int type, uint64_t idx) {
+uint64_t vfs_idx2idx(int type, struct ARC_Resource *res) {
 	switch (type) {
 	case ARC_VFS_N_BUFF: {
 		return ARC_DRI_BUFFER + 1;
@@ -321,11 +321,14 @@ uint64_t vfs_idx2idx(int type, uint64_t idx) {
 	}
 
 	default: {
-		return idx + 1;
+		if (res == NULL) {
+			return -1;
+		}
+
+		return res->dri_index + 1;
 	}
 	}
 
-	// Once more, how did you get here?
 	return -1;
 }
 
@@ -539,8 +542,12 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 				ARC_DEBUG(INFO, "Node has no resource, creating one\n");
 				// Get the mountpoint's resource and lock it to make sure
 				// it does not change
-				struct ARC_Resource *res = info->mount->resource;
-				Arc_MutexLock(&res->dri_state_mutex);
+				struct ARC_Resource *res = NULL;
+			
+				if (info->mount != NULL) {
+					res = info->mount->resource;
+					Arc_MutexLock(&res->dri_state_mutex);
+				}
 
 				// Group will always be 0, as all filesystem drivers
 				// are in group 0, unless if the type of the node is a
@@ -548,12 +555,16 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 				int group = new->type == ARC_VFS_N_LINK ? 0xAB : 0x00;
 				// Determine the index from the type of the file and the mountpoint's
 				// index
-				uint64_t index = vfs_idx2idx(new->type, res->dri_index);
+				uint64_t index = vfs_idx2idx(new->type, res);
 
 				// Create a new resource and set the resource field, also
 				// unlock the mountpoint's resource
-				struct ARC_Resource *nres = Arc_InitializeResource(stat_path, group, index, info->overwrite_arg == NULL ? res->driver_state : info->overwrite_arg);
-				Arc_MutexUnlock(&res->dri_state_mutex);
+				struct ARC_Resource *nres = Arc_InitializeResource(stat_path, group, index, (info->overwrite_arg == NULL && res != NULL) ? res->driver_state : info->overwrite_arg);
+
+				if (info->mount != NULL) {
+					Arc_MutexUnlock(&res->dri_state_mutex);
+				}
+
 				new->resource = nres;
 
 				if (nres == NULL) {
@@ -739,8 +750,9 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		//       when renaming, the path is absolute relative to the
 		//       mount
 		struct ARC_Resource *res = node->resource;
-		if (res == NULL || res->driver->open == NULL || res->driver->open(desc, res, node->resource->name, 0, mode) != 0) {
+		if (res == NULL || res->driver == NULL || res->driver->open == NULL || res->driver->open(desc, res, node->resource->name, 0, mode) != 0) {
 			ARC_DEBUG(ERR, "Failed to open file\n");
+			return -2;
 		}
 
 		node->is_open = 1;
@@ -748,7 +760,6 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 		Arc_MutexUnlock(&node->property_lock);
 
 		node = desc->node;
-
 	}
 	Arc_MutexUnlock(&node->property_lock);
 

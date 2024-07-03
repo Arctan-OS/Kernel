@@ -67,6 +67,13 @@ void *Arc_ContiguousFreePMM(void *address, size_t objects) {
 }
 
 void Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
+	if (mmap == NULL || entries == 0) {
+		ARC_DEBUG(ERR, "Failed to initialize 64-bit PMM (one or more are NULL: %p %d)\n", mmap, entries);
+		ARC_HANG;
+	}
+
+	mmap = (struct ARC_MMap *)ARC_PHYS_TO_HHDM(mmap);
+
 	arc_physical_mem = (struct ARC_FreelistMeta *)(Arc_BootMeta->pmm_state + ARC_HHDM_VADDR);
 
 	ARC_DEBUG(INFO, "Bootstrap allocator: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);

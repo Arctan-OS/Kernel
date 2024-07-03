@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "arctan.h"
 #include <arch/x86-64/acpi/acpi.h>
 #include <fs/vfs.h>
 #include <global.h>
@@ -40,10 +41,17 @@ int Arc_ChecksumACPI(void *data, size_t length) {
 }
 
 int Arc_InitializeACPI(uint64_t rsdp_ptr) {
+	if (rsdp_ptr == 0) {
+		ARC_DEBUG(ERR, "NULL address provided\n");
+		return -1;
+	}
+
         if (Arc_CreateVFS("/dev/acpi/", 0, ARC_VFS_N_DIR, NULL) != 0) {
                 ARC_DEBUG(ERR, "Failed to create ACPI directory\n");
                 return -1;
         }
+
+	rsdp_ptr = ARC_PHYS_TO_HHDM(rsdp_ptr);
 
         Arc_CreateVFS("/dev/acpi/rsdt", 0, ARC_VFS_N_DIR, NULL);
         struct ARC_Resource *rsdt = Arc_InitializeResource("/dev/acpi/rsdt", ARC_DRI_ACPI, ARC_DRI_IRSDT, (void *)rsdp_ptr);
