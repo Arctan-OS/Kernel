@@ -76,38 +76,36 @@ void Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 
 	arc_physical_mem = (struct ARC_FreelistMeta *)(Arc_BootMeta->pmm_state + ARC_HHDM_VADDR);
 
-	ARC_DEBUG(INFO, "Bootstrap allocator: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
-
 	// Revise old PMM meta to use HHDM addresses
-	arc_physical_mem->base = (struct ARC_FreelistNode *)((uintptr_t)arc_physical_mem->base + ARC_HHDM_VADDR);
-	arc_physical_mem->ciel = (struct ARC_FreelistNode *)((uintptr_t)arc_physical_mem->ciel + ARC_HHDM_VADDR);
-	arc_physical_mem->head = (struct ARC_FreelistNode *)((uintptr_t)arc_physical_mem->head + ARC_HHDM_VADDR);
+	arc_physical_mem->base = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(arc_physical_mem->base);
+	arc_physical_mem->ciel = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(arc_physical_mem->ciel);
+	arc_physical_mem->head = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(arc_physical_mem->head);
+
+	ARC_DEBUG(INFO, "Bootstrap allocator: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
 
 	// Update old PMM freelist to point to HHDM
 	// addresses
 	struct ARC_FreelistNode *current = arc_physical_mem->head;
 
-	while (current->next != NULL) {
-		uintptr_t next = (uintptr_t)current->next;
+	// Since all addresses are in the HHDM, NULL = ARC_HHDM_VADDR
+	while ((uintptr_t)current != ARC_HHDM_VADDR) {
+		// Since this list was made in 32-bit mode, care only about
+		// the first 32-bits
+		uintptr_t next = ((uintptr_t)current->next) & UINT32_MAX;
 
-		// Bootstrap only sets lower 32-bits
-		next &= UINT32_MAX;
-		next = ARC_PHYS_TO_HHDM(next);
-
-		current->next = (void *)next;
+		// Update the next pointer to use an HHDM address
+		current->next = (void *)ARC_PHYS_TO_HHDM(next);
+		// Move on
 		current = current->next;
 	}
 
 	for (int i = 0; i < entries; i++) {
 		struct ARC_MMap entry = mmap[i];
 
-		uintptr_t entry_base = (uintptr_t)(entry.base + ARC_HHDM_VADDR);
-		uintptr_t entry_ciel = (uintptr_t)(entry.base + entry.len + ARC_HHDM_VADDR);
+		uintptr_t entry_base = ARC_PHYS_TO_HHDM(entry.base);
+		uintptr_t entry_ciel = ARC_PHYS_TO_HHDM(entry.base + entry.len);
 
-		if (i == 0) {
-			// We want to keep this entry intact, for now
-			continue;
-		}
+		ARC_DEBUG(INFO, "%8d: 0x%16"PRIx64" -> 0x%16"PRIx64", 0x%16"PRIx64" B (%d)\n", i, entry.base, entry_base, entry.len, entry.type);
 
 		if (entry.type != MULTIBOOT_MEMORY_AVAILABLE) {
 			// Memory is not available, we are not interested
