@@ -126,7 +126,6 @@ struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource) {
 
 	struct ARC_Reference *ref = (struct ARC_Reference *)Arc_SlabAlloc(sizeof(struct ARC_Reference));
 
-
 	if (ref == NULL) {
 		goto reference_fall;
 	}
@@ -135,11 +134,16 @@ struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource) {
 
 	ref->resource = resource;
 
+
 	resource->ref_count++; // TODO: Atomize
 	Arc_MutexLock(&resource->references->branch_mutex);
+
 	ref->next = resource->references;
-	resource->references->prev = ref;
+	if (resource->references != NULL) {
+		resource->references->prev = ref;
+	}
 	resource->references = ref;
+
 	Arc_MutexUnlock(&ref->next->branch_mutex);
 
 reference_fall:

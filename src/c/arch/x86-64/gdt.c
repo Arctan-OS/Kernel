@@ -63,7 +63,6 @@ void Arc_InstallGDT() {
 	set_gdt_gate(3, 0, 0xFFFFFFFF, 0xF2, 0xC); // User Data 32 / 64
 	set_gdt_gate(4, 0, 0xFFFFFFFF, 0xFA, 0xA); // User Code 64
 
-
 	gdtr.size = sizeof(gdt_entries) * 8 - 1;
 	gdtr.base = (uintptr_t)&gdt_entries;
 

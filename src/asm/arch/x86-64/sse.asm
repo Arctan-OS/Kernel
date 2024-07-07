@@ -1,5 +1,6 @@
+%if 0
 /**
- * @file parse.c
+ * @file sse.asm
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -7,7 +8,7 @@
  * Arctan - Operating System Kernel
  * Copyright (C) 2023-2024 awewsomegamer
  *
- * This file is part of Arctan.
+ * This file is part of Arctan
  *
  * Arctan is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,26 +25,26 @@
  *
  * @DESCRIPTION
 */
-#include <boot/parse.h>
-#include <boot/mb2.h>
-#include <global.h>
+%endif
+bits 64
+%define FXSAVE_SIZE 512
 
-int Arc_ParseBootInfo() {
-	ARC_DEBUG(INFO, "Parsing boot information\n");
+global _osxsave_support
+extern fxsave_space
+_osxsave_support:   push rcx
+                    push rdx
+                    push rax
+        
+                    lea rax, [rel fxsave_space]
+                    fxsave [rax]
 
-	switch (Arc_BootMeta->boot_proc) {
-	case ARC_BOOTPROC_MB2: {
-		Arc_ParseMB2I();
-		break;
-	}
+                    mov rcx, 0
+                    xgetbv
+                    or rax, 0b111
+                    xsetbv
 
-	case 0: {
-		ARC_DEBUG(INFO, "No boot information found\n");
-		return -1;
-	}
-	}
+                    pop rax
+                    pop rdx
+                    pop rcx
 
-	ARC_DEBUG(INFO, "Finished parsing boot information\n");
-
-	return 0;
-}
+                    ret

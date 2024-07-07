@@ -37,6 +37,13 @@
 #define ARC_BOOTPROC_MB2    2
 #define ARC_BOOTPROC_LBP    3
 
+#define ARC_MEMORY_ACPI_RECLAIMABLE 1
+#define ARC_MEMORY_AVAILABLE 2
+#define ARC_MEMORY_BADRAM 3
+#define ARC_MEMORY_NVS 4
+#define ARC_MEMORY_RESERVED 5
+#define ARC_MEMORY_BOOTSTRAP 6
+
 struct ARC_KernMeta {
 
 }__attribute__((packed));

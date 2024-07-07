@@ -76,6 +76,8 @@
 #define abs(a) \
 	(a < 0 ? -a : a)
 
+#define PAGE_SIZE 0x1000
+
 extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta Arc_MainTerm;
 extern struct ARC_Resource *Arc_InitramfsRes;

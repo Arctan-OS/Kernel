@@ -34,6 +34,7 @@ void *Arc_AllocPMM();
 void *Arc_ContiguousAllocPMM(size_t objects);
 void *Arc_FreePMM(void *address);
 void *Arc_ContiguousFreePMM(void *address, size_t objects);
-void Arc_InitPMM(struct ARC_MMap *mmap, int entries);
+
+int Arc_InitPMM(struct ARC_MMap *mmap, int entries);
 
 #endif

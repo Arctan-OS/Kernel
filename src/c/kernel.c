@@ -41,6 +41,7 @@
 
 #include <arch/x86-64/idt.h>
 #include <arch/x86-64/gdt.h>
+#include <arch/x86-64/sse.h>
 
 #include <interface/terminal.h>
 #include <mm/pmm.h>
@@ -74,6 +75,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         // Initialize really basic things
 	Arc_InstallGDT();
 	Arc_InstallIDT();
+	Arc_InitSSE();
 	Arc_ParseBootInfo();
 
 	if (Arc_MainTerm.framebuffer != NULL) {

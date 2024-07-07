@@ -462,8 +462,12 @@ int vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth)
 
 			memset(new, 0, sizeof(struct ARC_VFSNode));
 
+
 			new->name = strndup(component, component_length);
-			new->mount = info->mount->mount;
+
+			if (info->mount != NULL) {
+				new->mount = info->mount->mount;
+			}
 
 			new->type = ARC_VFS_N_DIR;
 			if (i == max - 1) {
@@ -730,6 +734,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 	if (desc == NULL) {
 		return ENOMEM;
 	}
+
 	memset(desc, 0, sizeof(struct ARC_File));
 	*ret = desc;
 
@@ -739,6 +744,8 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 	ARC_DEBUG(INFO, "Created file descriptor %p\n", desc);
 
 	Arc_MutexLock(&node->property_lock);
+
+
 	if (node->is_open == 0 && node->type != ARC_VFS_N_DIR) {
 		if (node->type == ARC_VFS_N_LINK) {
 			node = node->link;

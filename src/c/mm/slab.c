@@ -31,7 +31,7 @@
 
 struct ARC_AllocMeta {
 	struct ARC_FreelistMeta *physical_mem;
-	struct ARC_FreelistMeta lists[8];
+	struct ARC_FreelistMeta *lists[8];
 	size_t list_sizes[8];
 };
 
@@ -51,16 +51,14 @@ void *Arc_SlabAlloc(size_t size) {
 		}
 	}
 
-	void *a = Arc_ListAlloc(&heap.lists[i]);
-
-	return a;
+	return Arc_ListAlloc(heap.lists[i]);
 }
 
 void *Arc_SlabFree(void *address) {
 	int list = -1;
 	for (int i = 0; i < 8; i++) {
-		void *base = heap.lists[i].base;
-		void *ciel = heap.lists[i].ciel;
+		void *base = heap.lists[i]->base;
+		void *ciel = heap.lists[i]->ciel;
 
 		if (base <= address && address <= ciel) {
 			list = i;
@@ -76,7 +74,7 @@ void *Arc_SlabFree(void *address) {
 
 	memset(address, 0, heap.list_sizes[list]);
 
-	return Arc_ListFree(&heap.lists[list], address);
+	return Arc_ListFree(heap.lists[list], address);
 }
 
 // TODO: Realloc, Calloc
@@ -96,7 +94,7 @@ static int slab_init_lists(int i, size_t size, size_t object_size) {
 
 	void *base = Arc_ContiguousAllocPMM(size);
 
-	Arc_InitializeFreelist(base, base + (size << 12), object_size, &heap.lists[i]);
+	heap.lists[i] = Arc_InitializeFreelist(base, base + (size * PAGE_SIZE), object_size);
 
 	return 0;
 }

@@ -1,5 +1,5 @@
 /**
- * @file parse.c
+ * @file sse.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -7,7 +7,7 @@
  * Arctan - Operating System Kernel
  * Copyright (C) 2023-2024 awewsomegamer
  *
- * This file is part of Arctan.
+ * This file is part of Arctan
  *
  * Arctan is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,27 +23,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Called by CPUID to enable support for SSE.
 */
-#include <boot/parse.h>
-#include <boot/mb2.h>
-#include <global.h>
+#ifndef ARC_ARCH_X86_SSE_H
+#define ARC_ARCH_X86_SSE_H
 
-int Arc_ParseBootInfo() {
-	ARC_DEBUG(INFO, "Parsing boot information\n");
+/**
+ * Detect and enable SSE.
+ * */
+int Arc_InitSSE();
 
-	switch (Arc_BootMeta->boot_proc) {
-	case ARC_BOOTPROC_MB2: {
-		Arc_ParseMB2I();
-		break;
-	}
-
-	case 0: {
-		ARC_DEBUG(INFO, "No boot information found\n");
-		return -1;
-	}
-	}
-
-	ARC_DEBUG(INFO, "Finished parsing boot information\n");
-
-	return 0;
-}
+#endif

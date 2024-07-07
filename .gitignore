@@ -3,6 +3,7 @@
 
 docs/
 .cache/
+.ccls-cache/
 .editorconfig
 
 compile_commands.json

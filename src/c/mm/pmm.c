@@ -31,11 +31,10 @@
 #include <stdint.h>
 
 static struct ARC_FreelistMeta *arc_physical_mem = NULL;
-static struct ARC_FreelistMeta new_list = { 0 };
-static struct ARC_FreelistMeta combined = { 0 };
 
 void *Arc_AllocPMM() {
 	if (arc_physical_mem == NULL) {
+		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
 		return NULL;
 	}
 
@@ -44,6 +43,7 @@ void *Arc_AllocPMM() {
 
 void *Arc_ContiguousAllocPMM(size_t objects) {
 	if (arc_physical_mem == NULL) {
+		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
 		return NULL;
 	}
 
@@ -52,6 +52,7 @@ void *Arc_ContiguousAllocPMM(size_t objects) {
 
 void *Arc_FreePMM(void *address) {
 	if (arc_physical_mem == NULL) {
+		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
 		return NULL;
 	}
 
@@ -60,13 +61,14 @@ void *Arc_FreePMM(void *address) {
 
 void *Arc_ContiguousFreePMM(void *address, size_t objects) {
 	if (arc_physical_mem == NULL) {
+		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
 		return NULL;
 	}
 
 	return Arc_ListContiguousFree(arc_physical_mem, address, objects);
 }
 
-void Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
+int Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 	if (mmap == NULL || entries == 0) {
 		ARC_DEBUG(ERR, "Failed to initialize 64-bit PMM (one or more are NULL: %p %d)\n", mmap, entries);
 		ARC_HANG;
@@ -105,9 +107,9 @@ void Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 		uintptr_t entry_base = ARC_PHYS_TO_HHDM(entry.base);
 		uintptr_t entry_ciel = ARC_PHYS_TO_HHDM(entry.base + entry.len);
 
-		ARC_DEBUG(INFO, "%8d: 0x%16"PRIx64" -> 0x%16"PRIx64", 0x%16"PRIx64" B (%d)\n", i, entry.base, entry_base, entry.len, entry.type);
+		ARC_DEBUG(INFO, "\t%3d: 0x%016"PRIx64" -> 0x%016"PRIx64", 0x%016"PRIx64" B (%d)\n", i, entry.base, entry_base, entry.len, entry.type);
 
-		if (entry.type != MULTIBOOT_MEMORY_AVAILABLE) {
+		if (entry.type != ARC_MEMORY_AVAILABLE) {
 			// Memory is not available, we are not interested
 			continue;
 		}
@@ -122,19 +124,18 @@ void Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 			continue;
 		}
 
-		ARC_DEBUG(INFO, "MMAP entry %d is not apart of the freelist\n", i);
+		ARC_DEBUG(INFO, "\t\tMMAP entry %d is not apart of the freelist\n", i);
 
-		Arc_InitializeFreelist((void *)entry_base, (void *)entry_ciel, 0x1000, &new_list);
-		int code = Arc_ListLink(arc_physical_mem, &new_list, &combined);
+		void *list = Arc_InitializeFreelist((void *)entry_base, (void *)entry_ciel, PAGE_SIZE);
 
-		if (code != 0) {
-			ARC_DEBUG(INFO, "Failed to link lists (%d)\n", code);
-			continue;
+		int ret = Arc_ListLink(arc_physical_mem, list);
+
+		if (ret != 0) {
+			ARC_DEBUG(INFO, "\t\tFailed to link lists (%p, %p), code: %d\n", arc_physical_mem, list, ret);
 		}
 
-		arc_physical_mem = &combined;
 
-		ARC_DEBUG(INFO, "MMAP entry %d has been successfully linked into freelist\n", i);
+		ARC_DEBUG(INFO, "\t\tMMAP entry %d has been successfully linked into freelist\n", i);
 	}
 
 	ARC_DEBUG(INFO, "Finished setting up kernel PMM\n");
