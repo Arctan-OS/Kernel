@@ -76,67 +76,65 @@ int Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 
 	mmap = (struct ARC_MMap *)ARC_PHYS_TO_HHDM(mmap);
 
-	arc_physical_mem = (struct ARC_FreelistMeta *)(Arc_BootMeta->pmm_state + ARC_HHDM_VADDR);
+	arc_physical_mem = (struct ARC_FreelistMeta *)ARC_PHYS_TO_HHDM(Arc_BootMeta->pmm_state);
 
-	// Revise old PMM meta to use HHDM addresses
-	arc_physical_mem->base = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(arc_physical_mem->base);
-	arc_physical_mem->ciel = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(arc_physical_mem->ciel);
-	arc_physical_mem->head = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(arc_physical_mem->head);
+	ARC_DEBUG(INFO, "Converting bootstrap allocator to use HHDM addresses\n");
 
-	ARC_DEBUG(INFO, "Bootstrap allocator: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
+	// All addresses in the meta remain physical, need to
+	// convert to HHDM addresses (except for head)
+	struct ARC_FreelistMeta *current = arc_physical_mem;
+	struct ARC_FreelistMeta *highest_meta = arc_physical_mem;
+	while (current != NULL) {
+		current->base = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(current->base);
+		current->ciel = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(current->ciel);
+		// Head may an HHDM address if the list has been used
+		// therefore ignore the upper 32-bits and convert it to
+		// an HHDM address anyway
+		current->head = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(((uint64_t)current->head) & UINT32_MAX);
 
-	// Update old PMM freelist to point to HHDM
-	// addresses
-	struct ARC_FreelistNode *current = arc_physical_mem->head;
-
-	// Since all addresses are in the HHDM, NULL = ARC_HHDM_VADDR
-	while ((uintptr_t)current != ARC_HHDM_VADDR) {
-		// Since this list was made in 32-bit mode, care only about
-		// the first 32-bits
-		uintptr_t next = ((uintptr_t)current->next) & UINT32_MAX;
-
-		// Update the next pointer to use an HHDM address
-		current->next = (void *)ARC_PHYS_TO_HHDM(next);
-		// Move on
+		if (current->next != NULL) {
+			current->next = (struct ARC_FreelistMeta *)ARC_PHYS_TO_HHDM(current->next);
+		}
+	
+		highest_meta = current;
 		current = current->next;
 	}
+
+	ARC_DEBUG(INFO, "Converted: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
+
+	uint64_t highest_alloc = (uint64_t)highest_meta->ciel;
+
+	ARC_DEBUG(INFO, "Highest allocatable address: 0x%"PRIx64"\n", highest_alloc);
 
 	for (int i = 0; i < entries; i++) {
 		struct ARC_MMap entry = mmap[i];
 
-		uintptr_t entry_base = ARC_PHYS_TO_HHDM(entry.base);
-		uintptr_t entry_ciel = ARC_PHYS_TO_HHDM(entry.base + entry.len);
+		ARC_DEBUG(INFO, "\t%3d : 0x%016"PRIx64" -> 0x%016"PRIx64" (0x%016"PRIx64" bytes) | (%d)\n", i, entry.base, entry.base + entry.len, entry.len, entry.type);
 
-		ARC_DEBUG(INFO, "\t%3d: 0x%016"PRIx64" -> 0x%016"PRIx64", 0x%016"PRIx64" B (%d)\n", i, entry.base, entry_base, entry.len, entry.type);
-
-		if (entry.type != ARC_MEMORY_AVAILABLE) {
-			// Memory is not available, we are not interested
+		if (ARC_PHYS_TO_HHDM(entry.base) < highest_alloc || entry.type != ARC_MEMORY_AVAILABLE) {
+			// Entry is below the highest allocation or it is not available
+			// then skip
 			continue;
 		}
 
-		if (entry_base >= (uintptr_t)arc_physical_mem->base && entry_ciel <= (uintptr_t)arc_physical_mem->ciel) {
-			// Entry is already apart of freelist
-			continue;
-		}
+		ARC_DEBUG(INFO, "\t\tEntry is not in list, adding\n");
 
-		if (entry_base <= (uintptr_t)arc_physical_mem->base && (uintptr_t)arc_physical_mem->base < entry_ciel) {
-			// Entry contains the beginning of the freelist
-			continue;
-		}
+		// Found a memory entry that is not yet in the allocator
+		struct ARC_FreelistMeta *list = Arc_InitializeFreelist(ARC_PHYS_TO_HHDM(entry.base), ARC_PHYS_TO_HHDM(entry.base + entry.len), 0x1000);
 
-		ARC_DEBUG(INFO, "\t\tMMAP entry %d is not apart of the freelist\n", i);
 
-		void *list = Arc_InitializeFreelist((void *)entry_base, (void *)entry_ciel, PAGE_SIZE);
-
-		int ret = Arc_ListLink(arc_physical_mem, list);
-
+		int ret = Arc_ListLink(highest_meta, list);
 		if (ret != 0) {
-			ARC_DEBUG(INFO, "\t\tFailed to link lists (%p, %p), code: %d\n", arc_physical_mem, list, ret);
+			ARC_DEBUG(ERR, "\t\tFailed to link lists (%d)\n", ret);
+			continue;
 		}
 
+		ARC_DEBUG(INFO, "\t\tAdded\n");
 
-		ARC_DEBUG(INFO, "\t\tMMAP entry %d has been successfully linked into freelist\n", i);
+		highest_meta = list;
 	}
 
 	ARC_DEBUG(INFO, "Finished setting up kernel PMM\n");
+
+	return 0;
 }

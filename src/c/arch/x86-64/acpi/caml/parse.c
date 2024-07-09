@@ -309,7 +309,7 @@ int cAML_EXTOPs(struct caml_state *state) {
 
 	switch (lead) {
 	case EXTOP_REGION_OP: {
-		ARC_DEBUG_INFO("Region\n");
+		ARC_DEBUG(INFO, "Region\n");
 
 		char *name = cAML_ParseNameString(state);
 
@@ -381,7 +381,7 @@ int cAML_EXTOPs(struct caml_state *state) {
 	}
 
 	default: {
-		ARC_DEBUG_ERR("Unhandled EXTOP: 0x%X\n", *state->buffer);
+		ARC_DEBUG(ERR, "Unhandled EXTOP: 0x%X\n", *state->buffer);
 		ADVANCE_STATE(state);
 
 		break;

@@ -58,7 +58,6 @@ static char Arc_MainTerm_mem[180 * 120] = { 0 };
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
 	Arc_BootMeta = boot_meta;
-	Arc_BootMeta = (struct ARC_BootMeta *)ARC_PHYS_TO_HHDM(Arc_BootMeta);
 
 	Arc_MainTerm.rx_buf = NULL;
 	Arc_MainTerm.tx_buf = NULL;
@@ -85,34 +84,30 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         // Initialize memory
 	Arc_InitPMM((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len);
 	Arc_InitVMM();
+
         // Arc_InitBuddy(big_block_size, max_subdivisions);
 	Arc_InitSlabAllocator(100);
 
         // Initialize more complicated things
 	Arc_InitializeVFS();
+
 	Arc_CreateVFS("/initramfs/", 0, ARC_VFS_N_DIR, NULL);
         Arc_CreateVFS("/dev/", 0, ARC_VFS_N_DIR, NULL);
 
-        Arc_InitializeACPI(Arc_BootMeta->rsdp);
+//        Arc_InitializeACPI(Arc_BootMeta->rsdp);
         // TODO: Implement properly
-        Arc_InitAPIC();
+//        Arc_InitAPIC();
 	Arc_InitializeSyscall();
 
 	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	Arc_MountVFS("/initramfs/", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
 	Arc_LinkVFS("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
 	Arc_RenameVFS("/font.fnt", "/fonts/font.fnt");
-	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
+//	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	Arc_ListVFS("/", 8);
-
-        // Quickly map framebuffer in
-	uint64_t fb_size = Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8);
-	for (uint64_t i = 0; i < fb_size; i += 0x1000) {
-		Arc_MapPageVMM(ARC_HHDM_TO_PHYS(Arc_MainTerm.framebuffer + i), (uintptr_t)(Arc_MainTerm.framebuffer + i), ARC_VMM_OVERW_FLAG | 3 | ARC_VMM_PAT_WC(0));
-	}
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {

@@ -102,12 +102,12 @@ int Arc_ListLink(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B);
 /**
  * Initialize the given memory as a freelist.
  *
- * @param void *_base - The lowest address within the list.
- * @param void *_ciel - The highest address within the list + object_size.
+ * @param uint64_t _base - The lowest address within the list.
+ * @param uint64_t _ciel - The highest address within the list + object_size.
  * @param uint64_t _object_size - The size of each object in bytes.
  * @param struct ARC_FrelistMeta *meta - The variable in which list information should be stored.
  * @return returns the pointer to the freelist meta.
  * */
-struct ARC_FreelistMeta *Arc_InitializeFreelist(void *_base, void *_ciel, uint64_t _object_size);
+struct ARC_FreelistMeta *Arc_InitializeFreelist(uint64_t _base, uint64_t _ciel, uint64_t _object_size);
 
 #endif

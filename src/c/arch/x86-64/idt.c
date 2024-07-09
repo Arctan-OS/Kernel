@@ -175,12 +175,22 @@ void interrupt_junction(struct junction_args *args, int code) {
 	case 17:
 		goto fall_through;
 	case 14:
+		for (int i = 0; i < 100; i++) {
+			for (int j = 0; j < 100; j++) {
+				*((uint32_t *)Arc_MainTerm.framebuffer + (i * Arc_MainTerm.fb_width) + j) = 0xFF;
+			}
+		}
 		_x86_getCR2();
 		printf("CR2: 0x%"PRIX64"\n", _x86_CR2);
 		_x86_getCR3();
 		printf("CR3: 0x%"PRIX64"\n", _x86_CR3);
 		goto fall_through;
 	case 13:
+		for (int i = 0; i < 100; i++) {
+			for (int j = 0; j < 100; j++) {
+				*((uint32_t *)Arc_MainTerm.framebuffer + (i * Arc_MainTerm.fb_width) + j) = 0xFF00;
+			}
+		}
 		handle_gp(stack_elem);
 		goto fall_through;
 	case 12:
@@ -204,7 +214,8 @@ fall_through:;
 
 	printf("Return address: 0x%"PRIX64"\n", stack_elem);
 
-		for (;;);
+	Arc_TermDraw(&Arc_MainTerm);
+	ARC_HANG;
 EOI:
 	// Send EOI
 	if (code >= 8) {

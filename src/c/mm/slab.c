@@ -92,7 +92,7 @@ static int slab_init_lists(int i, size_t size, size_t object_size) {
 
 	heap.list_sizes[i] = object_size;
 
-	void *base = Arc_ContiguousAllocPMM(size);
+	uint64_t base = (uint64_t)Arc_ContiguousAllocPMM(size);
 
 	heap.lists[i] = Arc_InitializeFreelist(base, base + (size * PAGE_SIZE), object_size);
 

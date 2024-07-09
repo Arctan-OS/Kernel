@@ -93,6 +93,7 @@ void Arc_SetPML4(uint64_t *new_pml4) {
 
 void Arc_InitVMM() {
 	ARC_DEBUG(INFO, "Initializing VMM\n");
+
 	_x86_getCR3();
 	pml4 = (uint64_t *)ARC_PHYS_TO_HHDM(_x86_CR3);
 
