@@ -380,7 +380,7 @@ int Arc_vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_de
 			continue;
 		}
 
-		if (node->type == ARC_VFS_N_MOUNT) {
+		if (node->type == ARC_VFS_N_MOUNT && node->mount->fs_type != ARC_VFS_FS_DEV) {
 			// Last node was a mountpoint, this is the start
 			// of the path on disk, also keep track of the mount node
 			info->mount = node;
@@ -546,7 +546,7 @@ int Arc_vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_de
 			}
 
 			skip_res:;
-		
+
 			Arc_SlabFree(stat_path);
 
 			ARC_DEBUG(INFO, "Created new node \"%s\" (%p)\n", new->name, new);

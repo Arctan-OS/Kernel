@@ -85,10 +85,23 @@ int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 		return -1;
 	}
 
+	struct ARC_Mount *mount_struct = (struct ARC_Mount *)Arc_SlabAlloc(sizeof(struct ARC_Mount));
+
+	if (mount_struct == NULL) {
+		ARC_DEBUG(ERR, "Failed to allocate mount structure\n");
+		Arc_QUnlock(&mount->branch_lock);
+		mount->ref_count--; // TODO: Atomize
+		return -1;
+	}
+
+	mount_struct->node = mount;
+	mount_struct->fs_type = fs_type;
+
 	Arc_MutexLock(&mount->property_lock);
 
 	mount->type = ARC_VFS_N_MOUNT;
 	mount->resource = resource;
+	mount->mount = mount_struct;
 
 	Arc_MutexUnlock(&mount->property_lock);
 
@@ -186,6 +199,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 
 		Arc_MutexLock(&node->property_lock);
 		struct ARC_Resource *res = node->resource;
+
 		if (res == NULL || res->driver->open(desc, res, info.mountpath, 0, mode) != 0) {
 			ARC_DEBUG(ERR, "Failed to open file\n");
 			return -2;
