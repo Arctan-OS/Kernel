@@ -248,4 +248,5 @@ ARC_REGISTER_DRIVER(0, initramfs_file) = {
 	.read = initramfs_read,
 	.write = initramfs_write,
 	.seek = initramfs_seek,
+	.rename = initramfs_empty,
 };

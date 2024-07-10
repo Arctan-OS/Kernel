@@ -35,6 +35,10 @@ struct buffer_dri_state {
 	void *buffer;
 };
 
+int buffer_empty() {
+	return 0;
+}
+
 int buffer_init(struct ARC_Resource *res, void *arg) {
 	size_t size = *(size_t *)arg;
 	struct buffer_dri_state *state = (struct buffer_dri_state *)Arc_SlabAlloc(sizeof(struct buffer_dri_state));
@@ -177,4 +181,5 @@ ARC_REGISTER_DRIVER(0, buffer) = {
 	.read = buffer_read,
 	.write = buffer_write,
 	.seek = buffer_seek,
+	.rename = buffer_empty,
 };

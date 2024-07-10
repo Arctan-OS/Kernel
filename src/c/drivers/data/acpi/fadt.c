@@ -87,6 +87,10 @@ struct fadt {
         uint64_t hyper_visor_iden;
 }__attribute__((packed));
 
+int empty_fadt() {
+	return 0;
+}
+
 int init_fadt(struct ARC_Resource *res, void *arg) {
 	struct fadt *fadt = (struct fadt *)arg;
 
@@ -117,5 +121,9 @@ ARC_REGISTER_DRIVER(3, fadt) = {
         .init = init_fadt,
 	.uninit = uninit_fadt,
 	.read = read_fadt,
-	.write = write_fadt
+	.write = write_fadt,
+	.open = empty_fadt,
+	.close = empty_fadt,
+	.rename = empty_fadt,
+	.seek = empty_fadt,
 };

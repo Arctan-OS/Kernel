@@ -127,6 +127,10 @@ int do_xsdt(void *address) {
 	return 0;
 }
 
+int empty_rsdt() {
+	return 0;
+}
+
 int init_rsdt(struct ARC_Resource *res, void *arg) {
 	(void)res;
 
@@ -155,5 +159,11 @@ int uninit_rsdt() {
 ARC_REGISTER_DRIVER(3, rsdt_driver) = {
         .index = ARC_DRI_IRSDT,
         .init = init_rsdt,
-	.uninit = uninit_rsdt
+	.uninit = uninit_rsdt,
+	.read = empty_rsdt,
+	.write = empty_rsdt,
+	.seek = empty_rsdt,
+	.rename = empty_rsdt,
+	.open = empty_rsdt,
+	.close = empty_rsdt,
 };

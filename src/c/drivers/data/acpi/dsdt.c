@@ -29,6 +29,10 @@
 #include <arch/x86-64/acpi/caml/parse.h>
 #include <global.h>
 
+int empty_dsdt() {
+	return 0;
+}
+
 // This is the structure for tables of signature
 // DSDT, SSDT, PSDT (obsolete post ACPI 1.0, treat as
 // SSDT if one does appear)
@@ -78,4 +82,10 @@ ARC_REGISTER_DRIVER(3, dsdt) = {
         .index = ARC_DRI_IDSDT,
 	.init = init_dsdt,
 	.uninit = uninit_dsdt,
+	.read = empty_dsdt,
+	.write = empty_dsdt,
+	.open = empty_dsdt,
+	.close = empty_dsdt,
+	.rename = empty_dsdt,
+	.seek = empty_dsdt,
 };

@@ -43,6 +43,10 @@ struct hpet {
 	uint8_t prot_oem_attr;
 };
 
+int empty_hpet() {
+	return 0;
+}
+
 int init_hpet(struct ARC_Resource *res, void *arg) {
 	struct hpet *hpet = (struct hpet *)arg;
 
@@ -68,5 +72,9 @@ ARC_REGISTER_DRIVER(3, hpet) = {
 	.init = init_hpet,
 	.uninit = uninit_hpet,
 	.read = read_hpet,
-	.write = write_hpet
+	.write = write_hpet,
+	.open = empty_hpet,
+	.close = empty_hpet,
+	.seek = empty_hpet,
+	.rename = empty_hpet,
 };

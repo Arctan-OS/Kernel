@@ -156,6 +156,7 @@ ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.read = initramfs_empty,
 	.write = initramfs_empty,
 	.seek = initramfs_empty,
+	.rename = initramfs_empty,
 	.identifer = ARC_DRIVER_IDEN_SUPER,
 	.driver = (void *)&initramfs_super_spec,
 };
