@@ -28,7 +28,7 @@
 #include <lib/resource.h>
 #include <stdint.h>
 #include <global.h>
-#include <util.h>
+#include <lib/util.h>
 #include <arch/x86-64/acpi/acpi.h>
 #include <fs/vfs.h>
 

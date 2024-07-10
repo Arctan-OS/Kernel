@@ -24,8 +24,8 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_UTIL_H
-#define ARC_UTIL_H
+#ifndef ARC_LIB_UTIL_H
+#define ARC_LIB_UTIL_H
 
 #include <stdint.h>
 #include <stddef.h>

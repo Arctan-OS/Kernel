@@ -26,7 +26,7 @@
  * Abstract freelist implementation.
 */
 #include <lib/atomics.h>
-#include <util.h>
+#include <lib/util.h>
 #include <global.h>
 #include <mm/freelist.h>
 #include <stdint.h>

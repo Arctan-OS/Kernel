@@ -27,7 +27,7 @@
 #include <mm/pmm.h>
 #include <mm/slab.h>
 #include <global.h>
-#include <util.h>
+#include <lib/util.h>
 
 struct ARC_AllocMeta {
 	struct ARC_FreelistMeta *physical_mem;

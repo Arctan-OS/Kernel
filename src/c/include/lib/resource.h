@@ -33,14 +33,17 @@
 #include <lib/atomics.h>
 
 #define ARC_DRIVER_IDEN_SUPER 0x5245505553 // "SUPER" little endian
+#define ARC_SIGREF_CLOSE 0xA
+
+#define ARC_REGISTER_DRIVER(group, name) \
+	static struct ARC_DriverDef __driver__##name __attribute__((used, section(".drivers."#group), aligned(1)))
 
 struct ARC_Resource {
 	ARC_GenericMutex prop_mutex;
 
 	struct ARC_Reference *references;
 
-	ARC_GenericMutex ref_count_mutex;
-	uint64_t ref_count;
+	uint64_t ref_count; // TODO: Atomize
 
 	/// State managed by driver, owned by resource.
 	ARC_GenericMutex dri_state_mutex;
@@ -59,6 +62,7 @@ struct ARC_Resource {
 struct ARC_Reference {
 	// Functions for managing this reference.
 	struct ARC_Resource *resource;
+	// The signal funciton must not be NULL
 	int (*signal)(int code, void *data);
 	int64_t pid;
 	ARC_GenericMutex branch_mutex;
@@ -88,7 +92,12 @@ struct ARC_Mount {
 	uint64_t open_files;
 };
 
+// Driver definitions
+// NOTE: No function pointer in a driver definition
+//       should be NULL.
+
 struct ARC_DriverDef {
+	// The index of this driver
 	uint64_t index;
 	// Specific
 	uint64_t identifer;
@@ -113,9 +122,7 @@ struct ARC_SuperDriverDef {
 	int (*rename)(char *a, char *b);
 	int (*stat)(struct ARC_Resource *res, char *filename, struct stat *stat);
 }__attribute__((packed));
-
-#define ARC_REGISTER_DRIVER(group, name) \
-	static struct ARC_DriverDef __driver__##name __attribute__((used, section(".drivers."#group), aligned(1)))
+// /Driver definitions
 
 struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t dri_index, void *args);
 int Arc_UninitializeResource(struct ARC_Resource *resource);

@@ -28,7 +28,7 @@
 #include <lib/resource.h>
 #include <global.h>
 #include <mm/slab.h>
-#include <util.h>
+#include <lib/util.h>
 
 struct buffer_dri_state {
 	size_t size;

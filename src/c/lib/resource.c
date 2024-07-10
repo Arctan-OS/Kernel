@@ -28,7 +28,7 @@
 #include <mm/slab.h>
 #include <lib/resource.h>
 #include <global.h>
-#include <util.h>
+#include <lib/util.h>
 #include <lib/atomics.h>
 
 extern struct ARC_DriverDef __DRIVERS0_START[];
@@ -52,26 +52,27 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 
 	ARC_DEBUG(INFO, "Initializing resource \"%s\" (%d, %lu)\n", name, dri_group, dri_index);
 
+	// Initialize resource properties
 	resource->name = strdup(name);
 	resource->dri_group = dri_group;
 	resource->dri_index = dri_index;
 	Arc_MutexStaticInit(&resource->dri_state_mutex);
 
-	if (dri_group == 0xAB && dri_index == 0xAB) {
-		ARC_DEBUG(INFO, "Initialized place-holder resource\n");
-		return resource;
-	}
-
-	// Set open, close, read, write, and seek pointers
-	// Call driver initialization function from driver table
+	// Fetch and set the appropriate definition
 	struct ARC_DriverDef *def = Arc_GetDriverDef(dri_group, dri_index);
-
 	resource->driver = def;
 
-	if (def != NULL && def->init != NULL) {
-		def->init(resource, args);
-	} else {
-		ARC_DEBUG(ERR, "Driver has no initialization function\n")
+	if (def == NULL) {
+		Arc_SlabFree(resource->name);
+		Arc_SlabFree(resource);
+		ARC_DEBUG(ERR, "No driver definition found\n");
+		return NULL;
+	}
+
+	int ret = def->init(resource, args);
+	if (ret != 0) {
+		ARC_DEBUG(ERR, "Driver init function returned %d\n", ret);
+		// TODO: Figure out what to do here
 	}
 
 	return resource;
@@ -90,24 +91,18 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 
 	ARC_DEBUG(INFO, "Uninitializing resource: %s\n", resource->name);
 
-	// Call driver uninitialization function from driver table
-
+	// Close all references
 	struct ARC_Reference *current_ref = resource->references;
 	while (current_ref != NULL) {
-		void *tmp = current_ref->next;
+		void *next = current_ref->next;
 
 		// TODO: What if we fail to close?
-		if (current_ref->signal != NULL && current_ref->signal(0, NULL) == 0) {
-			resource->ref_count -= 1;
+		if (current_ref->signal(ARC_SIGREF_CLOSE, NULL) == 0) {
+			resource->ref_count -= 1; // TODO: Atomize
 			Arc_SlabFree(current_ref);
 		}
 
-		current_ref = tmp;
-	}
-
-	if (resource->dri_group == 0xAB && resource->dri_index == 0xAB) {
-		ARC_DEBUG(INFO, "Uninitialized, place-holder resource\n");
-		return 0;
+		current_ref = next;
 	}
 
 	resource->driver->uninit(resource);
@@ -127,26 +122,25 @@ struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource) {
 	struct ARC_Reference *ref = (struct ARC_Reference *)Arc_SlabAlloc(sizeof(struct ARC_Reference));
 
 	if (ref == NULL) {
-		goto reference_fall;
+		ARC_DEBUG(ERR, "Failed to allocate reference\n");
+		return NULL;
 	}
 
 	memset(ref, 0, sizeof(struct ARC_Reference));
 
+	// Set properties of resource
 	ref->resource = resource;
-
-
 	resource->ref_count++; // TODO: Atomize
-	Arc_MutexLock(&resource->references->branch_mutex);
 
+	// Insert reference
+	Arc_MutexLock(&resource->references->branch_mutex);
 	ref->next = resource->references;
 	if (resource->references != NULL) {
 		resource->references->prev = ref;
 	}
 	resource->references = ref;
-
 	Arc_MutexUnlock(&ref->next->branch_mutex);
 
-reference_fall:
 	return ref;
 }
 
@@ -157,16 +151,21 @@ int Arc_UnreferenceResource(struct ARC_Reference *reference) {
 	}
 
 	struct ARC_Resource *res = reference->resource;
-
-        Arc_MutexLock(&reference->prev->branch_mutex);
-        Arc_MutexLock(&reference->branch_mutex);
-        Arc_MutexLock(&reference->next->branch_mutex);
-
-	res->ref_count--; // TODO: Atomize
-
 	struct ARC_Reference *next = reference->next;
 	struct ARC_Reference *prev = reference->prev;
 
+	// Lock effected nodes
+        Arc_MutexLock(&reference->branch_mutex);
+	if (prev != NULL) {
+		Arc_MutexLock(&prev->branch_mutex);
+	}
+	if (next != NULL) {
+		Arc_MutexLock(&next->branch_mutex);
+	}
+
+	res->ref_count--; // TODO: Atomize
+
+	// Update links
 	if (prev == NULL) {
 		res->references = next;
 	} else {
@@ -177,9 +176,14 @@ int Arc_UnreferenceResource(struct ARC_Reference *reference) {
 		next->prev = prev;
 	}
 
-        Arc_MutexUnlock(&reference->prev->branch_mutex);
-        Arc_MutexUnlock(&reference->branch_mutex);
-        Arc_MutexUnlock(&reference->next->branch_mutex);
+	// Unlock
+	Arc_MutexUnlock(&reference->branch_mutex);
+	if (reference->prev != NULL) {
+		Arc_MutexUnlock(&reference->prev->branch_mutex);
+	}
+	if (reference->next != NULL) {
+		Arc_MutexUnlock(&reference->next->branch_mutex);
+	}
 
         Arc_SlabFree(reference);
 

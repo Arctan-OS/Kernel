@@ -31,7 +31,7 @@
 #include <mm/slab.h>
 #include <global.h>
 #include <time.h>
-#include <util.h>
+#include <lib/util.h>
 #include <sys/stat.h>
 
 #define ARC_NAME_OFFSET (sizeof(struct ARC_HeaderCPIO))

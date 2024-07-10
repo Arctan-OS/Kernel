@@ -30,7 +30,7 @@
 #include <boot/multiboot2.h>
 #include <interface/printf.h>
 #include <mm/pmm.h>
-#include <util.h>
+#include <lib/util.h>
 
 struct ARC_MB2BootInfo {
 	uint64_t mbi_phys;

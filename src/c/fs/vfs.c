@@ -34,7 +34,7 @@
 #include <fs/vfs.h>
 #include <fs/dri_defs.h>
 #include <global.h>
-#include <util.h>
+#include <lib/util.h>
 #include <interface/printf.h>
 
 // TODO: Implement error cases for all functions.

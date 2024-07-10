@@ -26,7 +26,7 @@
 */
 #include <mm/slab.h>
 #include <lib/atomics.h>
-#include <util.h>
+#include <lib/util.h>
 #include <mp/sched/abstract.h>
 #include <global.h>
 struct internal_qlock_node {

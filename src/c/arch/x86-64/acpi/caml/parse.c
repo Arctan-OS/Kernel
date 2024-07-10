@@ -30,7 +30,7 @@
 #include <global.h>
 #include <mm/slab.h>
 #include <stdint.h>
-#include <util.h>
+#include <lib/util.h>
 
 #define ADVANCE_STATE(state) state->buffer++; state->max--;
 #define REGRESS_STATE(state) state->buffer--; state->max++;
