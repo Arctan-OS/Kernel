@@ -59,10 +59,6 @@ int buffer_uninit(struct ARC_Resource *res) {
 	return 0;
 }
 
-int buffer_empty() {
-	return 0;
-}
-
 int buffer_open(struct ARC_File *file, struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
 	(void)mode;
 	(void)flags;

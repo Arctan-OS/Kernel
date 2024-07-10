@@ -40,7 +40,9 @@ extern struct ARC_DriverDef __DRIVERS1_END[];
 extern struct ARC_DriverDef __DRIVERS2_END[];
 extern struct ARC_DriverDef __DRIVERS3_END[];
 
-struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t dri_index, void *args) {
+uint64_t current_id = 0;
+
+struct ARC_Resource *Arc_InitializeResource(int dri_group, uint64_t dri_index, void *args) {
 	struct ARC_Resource *resource = (struct ARC_Resource *)Arc_SlabAlloc(sizeof(struct ARC_Resource));
 
 	if (resource == NULL) {
@@ -50,10 +52,10 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 
 	memset(resource, 0, sizeof(struct ARC_Resource));
 
-	ARC_DEBUG(INFO, "Initializing resource \"%s\" (%d, %lu)\n", name, dri_group, dri_index);
+	ARC_DEBUG(INFO, "Initializing resource %llu (%d, %lu)\n", current_id, dri_group, dri_index);
 
 	// Initialize resource properties
-	resource->name = strdup(name);
+	resource->id = current_id++; // TODO: Atomize
 	resource->dri_group = dri_group;
 	resource->dri_index = dri_index;
 	Arc_MutexStaticInit(&resource->dri_state_mutex);
@@ -63,7 +65,6 @@ struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t 
 	resource->driver = def;
 
 	if (def == NULL) {
-		Arc_SlabFree(resource->name);
 		Arc_SlabFree(resource);
 		ARC_DEBUG(ERR, "No driver definition found\n");
 		return NULL;
@@ -85,11 +86,11 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 	}
 
 	if (resource->ref_count > 0) {
-		ARC_DEBUG(ERR, "Resource %s is in use!\n", resource->name);
+		ARC_DEBUG(ERR, "Resource %llu is in use!\n", resource->id);
 		return 2;
 	}
 
-	ARC_DEBUG(INFO, "Uninitializing resource: %s\n", resource->name);
+	ARC_DEBUG(INFO, "Uninitializing resource: %llu\n", resource->id);
 
 	// Close all references
 	struct ARC_Reference *current_ref = resource->references;
@@ -107,7 +108,6 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 
 	resource->driver->uninit(resource);
 
-	Arc_SlabFree(resource->name);
 	Arc_SlabFree(resource);
 
 	return 0;

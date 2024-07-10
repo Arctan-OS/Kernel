@@ -49,8 +49,8 @@ struct ARC_Resource {
 	ARC_GenericMutex dri_state_mutex;
 	void *driver_state;
 
-	/// Dynamically allocated name.
-	char *name;
+	/// Resource id.
+	uint64_t id;
 	/// Driver function group (supplied on init by caller).
 	int dri_group;
 	/// Specific driver function set (supplied on init by caller).
@@ -124,7 +124,7 @@ struct ARC_SuperDriverDef {
 }__attribute__((packed));
 // /Driver definitions
 
-struct ARC_Resource *Arc_InitializeResource(char *name, int dri_group, uint64_t dri_index, void *args);
+struct ARC_Resource *Arc_InitializeResource(int dri_group, uint64_t dri_index, void *args);
 int Arc_UninitializeResource(struct ARC_Resource *resource);
 struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource);
 int Arc_UnreferenceResource(struct ARC_Reference *reference);

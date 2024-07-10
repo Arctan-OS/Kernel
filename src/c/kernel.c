@@ -94,16 +94,16 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_CreateVFS("/initramfs/", 0, ARC_VFS_N_DIR, NULL);
         Arc_CreateVFS("/dev/", 0, ARC_VFS_N_DIR, NULL);
 
-//        Arc_InitializeACPI(Arc_BootMeta->rsdp);
+        Arc_InitializeACPI(Arc_BootMeta->rsdp);
         // TODO: Implement properly
-//        Arc_InitAPIC();
+        Arc_InitAPIC();
 	Arc_InitializeSyscall();
 
-	Arc_InitramfsRes = Arc_InitializeResource("initramfs", 0, 0, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
+	Arc_InitramfsRes = Arc_InitializeResource(0, 0, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	Arc_MountVFS("/initramfs/", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
 	Arc_LinkVFS("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
 	Arc_RenameVFS("/font.fnt", "/fonts/font.fnt");
-//	Arc_OpenVFS("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
+	Arc_OpenVFS("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
