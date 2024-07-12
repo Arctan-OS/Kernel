@@ -56,6 +56,11 @@ int Arc_QLockStaticInit(struct ARC_QLock *head) {
 }
 
 int Arc_QLock(struct ARC_QLock *head) {
+	if (head == NULL) {
+		ARC_DEBUG(ERR, "Head is NULL\n");
+		return -4;
+	}
+
 	if (head->is_frozen) {
 		ARC_DEBUG(ERR, "Head %p is frozen!\n", head);
 		return -3;
@@ -94,6 +99,10 @@ int Arc_QLock(struct ARC_QLock *head) {
 }
 
 void Arc_QYield(struct ARC_QLock *head) {
+	if (head == NULL) {
+		ARC_DEBUG(ERR, "Head is NULL\n");
+		// TODO: What to do?
+	}
 	int64_t current_tid = ((struct internal_qlock_node *)head->next)->tid;
 
 	if (current_tid == Arc_GetCurrentTID()) {
@@ -106,10 +115,22 @@ void Arc_QYield(struct ARC_QLock *head) {
 }
 
 int Arc_QUnlock(struct ARC_QLock *head) {
-	struct internal_qlock_node *next = ((struct internal_qlock_node *)head->next)->next;
+	if (head == NULL) {
+		ARC_DEBUG(ERR, "Head is NULL\n");
+		return -4;
+	}
 
-	if (head->next == NULL || ((struct internal_qlock_node *)head->next)->tid != Arc_GetCurrentTID()) {
-		ARC_DEBUG(ERR, "Lock is not owned by %d or is owned by no-one\n", Arc_GetCurrentTID());
+	struct internal_qlock_node *current = (struct internal_qlock_node *)head->next;
+
+	if (current == NULL) {
+		ARC_DEBUG(ERR, "No-one owns the lock\n");
+		return -2;
+	}
+
+	struct internal_qlock_node *next = current->next;
+
+	if (current->tid != Arc_GetCurrentTID()) {
+		ARC_DEBUG(ERR, "Lock is not owned by 0x%"PRIx64" (!= 0x%"PRIx64")\n", Arc_GetCurrentTID(), current->tid);
 		return -1;
 	}
 

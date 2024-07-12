@@ -39,7 +39,11 @@ int buffer_empty() {
 	return 0;
 }
 
-int buffer_init(struct ARC_Resource *res, void *arg) {
+static int buffer_init(struct ARC_Resource *res, void *arg) {
+	if (arg == NULL) {
+		return 0;
+	}
+
 	size_t size = *(size_t *)arg;
 	struct buffer_dri_state *state = (struct buffer_dri_state *)Arc_SlabAlloc(sizeof(struct buffer_dri_state));
 	state->buffer = (void *)Arc_SlabAlloc(size);
@@ -50,7 +54,7 @@ int buffer_init(struct ARC_Resource *res, void *arg) {
 	return 0;
 }
 
-int buffer_uninit(struct ARC_Resource *res) {
+static int buffer_uninit(struct ARC_Resource *res) {
 	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
 
 	Arc_SlabFree(state->buffer);
@@ -59,7 +63,7 @@ int buffer_uninit(struct ARC_Resource *res) {
 	return 0;
 }
 
-int buffer_open(struct ARC_File *file, struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
+static int buffer_open(struct ARC_File *file, struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
 	(void)mode;
 	(void)flags;
 
@@ -70,7 +74,7 @@ int buffer_open(struct ARC_File *file, struct ARC_Resource *res, char *path, int
 	return 0;
 }
 
-int buffer_read(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
+static int buffer_read(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
 	if (buffer == NULL || size == 0 || count == 0 || file == NULL || res == NULL) {
 		return -1;
 	}
@@ -99,7 +103,7 @@ int buffer_read(void *buffer, size_t size, size_t count, struct ARC_File *file, 
 	return given;
 }
 
-int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
+static int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
 	if (buffer == NULL || size == 0 || count == 0 || file == NULL || res == NULL) {
 		return -1;
 	}
@@ -128,7 +132,7 @@ int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File *file,
 	return given;
 }
 
-int buffer_seek(struct ARC_File *file, struct ARC_Resource *res, long offset, int whence) {
+static int buffer_seek(struct ARC_File *file, struct ARC_Resource *res, long offset, int whence) {
 	(void)res;
 
 	if (file == NULL) {

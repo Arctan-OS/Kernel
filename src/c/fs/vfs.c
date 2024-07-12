@@ -65,10 +65,10 @@ int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 	ARC_DEBUG(INFO, "Mounting %p on %s (%d)\n", resource, mountpoint, fs_type);
 
 	// If the directory does not already exist, create it in graph, as a disk write could be saved
-	struct vfs_traverse_info info = { .type = ARC_VFS_N_DIR, .create_level = VFS_GR_CREAT };
-	VFS_DETERMINE_START(info, mountpoint);
+	struct arc_vfs_traverse_info info = { .type = ARC_VFS_N_DIR, .create_level = ARC_VFS_GR_CREAT };
+	ARC_VFS_DETERMINE_START(info, mountpoint);
 
-	if (Arc_vfs_traverse(mountpoint, &info, 0) != 0) {
+	if (arc_vfs_traverse(mountpoint, &info, 0) != 0) {
 		ARC_DEBUG(ERR, "Failed to traverse graph\n");
 		return -1;
 	}
@@ -158,10 +158,10 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 	ARC_DEBUG(INFO, "Opening file %s (%d %d) to a depth of %d, returning to %p\n", path, flags, mode, link_depth, ret);
 
 	// Find file in node graph, create node graph if needed, do not create the file
-	struct vfs_traverse_info info = { .create_level = VFS_GR_CREAT };
-	VFS_DETERMINE_START(info, path);
+	struct arc_vfs_traverse_info info = { .create_level = ARC_VFS_GR_CREAT };
+	ARC_VFS_DETERMINE_START(info, path);
 
-	int info_ret = Arc_vfs_traverse(path, &info, link_depth);
+	int info_ret = arc_vfs_traverse(path, &info, link_depth);
 	if (info_ret != 0) {
 		ARC_DEBUG(ERR, "Failed to traverse node graph (%d)\n", info_ret);
 		return -1;
@@ -238,7 +238,7 @@ int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file) 
 	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
 
 	if (res == NULL || res->driver->read == NULL) {
-//		ARC_DEBUG(ERR, "One or more is NULL: %p %p\n", res, res->driver->read);
+		ARC_DEBUG(ERR, "One or more is NULL: %p %p\n", res, res->driver->read);
 		return -1;
 	}
 
@@ -337,8 +337,8 @@ int Arc_CloseVFS(struct ARC_File *file) {
 
 	struct ARC_VFSNode *parent = node->parent;
 	struct ARC_VFSNode *top = node->mount->node;
-	Arc_vfs_delete_node(node, 0);
-	Arc_vfs_bottom_up_prune(parent, top);
+	arc_vfs_delete_node(node, 0);
+	arc_vfs_bottom_up_prune(parent, top);
 	Arc_SlabFree(file);
 
 	ARC_DEBUG(INFO, "Closed file successfully\n");
@@ -354,12 +354,12 @@ int Arc_CreateVFS(char *path, uint32_t mode, int type, void *arg) {
 
 	ARC_DEBUG(INFO, "Creating %s (%o, %d)\n", path, mode, type);
 
-	struct vfs_traverse_info info = { .mode = mode, .type = type, .create_level = VFS_FS_CREAT, .overwrite_arg = arg };
-	VFS_DETERMINE_START(info, path);
+	struct arc_vfs_traverse_info info = { .mode = mode, .type = type, .create_level = ARC_VFS_FS_CREAT, .overwrite_arg = arg };
+	ARC_VFS_DETERMINE_START(info, path);
 
 	ARC_DEBUG(INFO, "Creating node graph %s from node %p\n", path, info.start);
 
-	int ret = Arc_vfs_traverse(path, &info, 0);
+	int ret = arc_vfs_traverse(path, &info, 0);
 
 	if (ret == 0) {
 		Arc_QUnlock(&info.node->branch_lock);
@@ -377,10 +377,10 @@ int Arc_RemoveVFS(char *filepath, bool physical, bool recurse) {
 
 	ARC_DEBUG(INFO, "Removing %s (%d, %d)\n", filepath, physical, recurse);
 
-	struct vfs_traverse_info info = { .create_level = VFS_NO_CREAT };
-	VFS_DETERMINE_START(info, filepath);
+	struct arc_vfs_traverse_info info = { .create_level = ARC_VFS_NO_CREAT };
+	ARC_VFS_DETERMINE_START(info, filepath);
 
-	int ret = Arc_vfs_traverse(filepath, &info, 0);
+	int ret = arc_vfs_traverse(filepath, &info, 0);
 
 	if (ret != 0 || info.node == NULL) {
 		ARC_DEBUG(ERR, "%s does not exist in node graph\n", filepath);
@@ -426,8 +426,8 @@ int Arc_RemoveVFS(char *filepath, bool physical, bool recurse) {
 	}
 
 	struct ARC_VFSNode *parent = info.node->parent;
-	Arc_vfs_delete_node(info.node, recurse);
-	Arc_vfs_bottom_up_prune(parent, info.mount);
+	arc_vfs_delete_node(info.node, recurse);
+	arc_vfs_bottom_up_prune(parent, info.mount);
 
 	return 0;
 };
@@ -438,22 +438,22 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 		return EINVAL;
 	}
 
-	struct vfs_traverse_info info_a = { .create_level = VFS_GR_CREAT };
-	VFS_DETERMINE_START(info_a, a);
+	struct arc_vfs_traverse_info info_a = { .create_level = ARC_VFS_GR_CREAT };
+	ARC_VFS_DETERMINE_START(info_a, a);
 
 	ARC_DEBUG(INFO, "Linking %s -> %s (%o)\n", a, b, mode);
 
-	int ret = Arc_vfs_traverse(a, &info_a, 0);
+	int ret = arc_vfs_traverse(a, &info_a, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find %s\n", a);
 		return 1;
 	}
 
-	struct vfs_traverse_info info_b = { .create_level = VFS_FS_CREAT, .mode = mode, .type = ARC_VFS_N_LINK };
-	VFS_DETERMINE_START(info_b, b);
+	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT, .mode = mode, .type = ARC_VFS_N_LINK };
+	ARC_VFS_DETERMINE_START(info_b, b);
 
-	ret = Arc_vfs_traverse(b, &info_b, 0);
+	ret = arc_vfs_traverse(b, &info_b, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find or create %s\n", b);
@@ -491,12 +491,6 @@ int Arc_LinkVFS(char *a, char *b, uint32_t mode) {
 	return 0;
 }
 
-// TODO: Currently, this function renames the resource of a single file.
-//       However, if the "file" that is being renamed is a directory,
-//       the resource names of the files in it are not changed. Probably
-//       do not need resource names, they take up extra space. Should replace
-//       them with just a counter (as a single system is probably not going to have
-//       UINT64_MAX resources).
 int Arc_RenameVFS(char *a, char *b) {
 	if (a == NULL || b == NULL) {
 		ARC_DEBUG(ERR, "Src (%p) or dest (%p) path NULL\n", a, b);
@@ -505,10 +499,10 @@ int Arc_RenameVFS(char *a, char *b) {
 
 	ARC_DEBUG(INFO, "Renaming %s -> %s\n", a, b);
 
-	struct vfs_traverse_info info_a = { .create_level = VFS_GR_CREAT };
-	VFS_DETERMINE_START(info_a, a);
+	struct arc_vfs_traverse_info info_a = { .create_level = ARC_VFS_GR_CREAT };
+	ARC_VFS_DETERMINE_START(info_a, a);
 
-	int ret = Arc_vfs_traverse(a, &info_a, 0);
+	int ret = arc_vfs_traverse(a, &info_a, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find %s in node graph\n", a);
@@ -521,10 +515,10 @@ int Arc_RenameVFS(char *a, char *b) {
 	}
 	Arc_QYield(&info_a.node->parent->branch_lock);
 
-	struct vfs_traverse_info info_b = { .create_level = VFS_FS_CREAT | VFS_NOLCMP, .mode = info_a.mode };
-	VFS_DETERMINE_START(info_b, b);
+	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT | ARC_VFS_NOLCMP, .mode = info_a.mode };
+	ARC_VFS_DETERMINE_START(info_b, b);
 
-	ret = Arc_vfs_traverse(b, &info_b, 0);
+	ret = arc_vfs_traverse(b, &info_b, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find or create %s in node graph / on disk\n", b);
@@ -648,11 +642,11 @@ int Arc_ListVFS(char *path, int recurse) {
 		return -1;
 	}
 
-	struct vfs_traverse_info info = { .create_level = VFS_NO_CREAT };
+	struct arc_vfs_traverse_info info = { .create_level = ARC_VFS_NO_CREAT };
 
-	VFS_DETERMINE_START(info, path);
+	ARC_VFS_DETERMINE_START(info, path);
 
-	if (Arc_vfs_traverse(path, &info, 0) != 0) {
+	if (arc_vfs_traverse(path, &info, 0) != 0) {
 		return -1;
 	}
 
@@ -674,9 +668,9 @@ struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode
 
 	ARC_DEBUG(INFO, "Creating %p/%s (%o, %d)\n", start, relative_path, mode, type);
 
-	struct vfs_traverse_info info = { .start = start, .mode = mode, .type = type, .create_level = VFS_GR_CREAT, .overwrite_arg = arg };
+	struct arc_vfs_traverse_info info = { .start = start, .mode = mode, .type = type, .create_level = ARC_VFS_GR_CREAT, .overwrite_arg = arg };
 
-	int ret = Arc_vfs_traverse(relative_path, &info, 0);
+	int ret = arc_vfs_traverse(relative_path, &info, 0);
 
 	if (ret == 0) {
 		Arc_QUnlock(&info.node->branch_lock);

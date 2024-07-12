@@ -58,7 +58,7 @@ int vfs_stat2type(struct stat stat) {
 	}
 }
 
-uint64_t vfs_idx2idx(int type, struct ARC_Resource *res) {
+uint64_t vfs_type2idx(int type, struct ARC_VFSNode *mount) {
 	switch (type) {
 	case ARC_VFS_N_BUFF: {
 		return ARC_DRI_BUFFER + 1;
@@ -69,26 +69,21 @@ uint64_t vfs_idx2idx(int type, struct ARC_Resource *res) {
 	}
 
 	default: {
-		if (res == NULL) {
-			return (uint64_t)-1;
+		if (mount == NULL) {
+			// If the mount is NULL, then create a buffer
+			// that can hold some temporary data
+			return ARC_DRI_BUFFER + 1;
 		}
-
-		return res->dri_index + 1;
+	
+		return mount->resource->dri_index + 1;
 	}
 	}
 
 	return (uint64_t)-1;
 }
 
-/**
- * Internal recursive delete function.
- *
- * Recursively destroy the node.
- *
- * @param struct ARC_VFSNode *node - The node to start recursive destruction from.
- * @return the number of nodes that were not destroyed.
- * */
-int Arc_vfs_delete_node_recurse(struct ARC_VFSNode *node) {
+
+int arc_vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
 		return 1;
 	}
@@ -97,7 +92,7 @@ int Arc_vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 
 	struct ARC_VFSNode *child = node->children;
 	while (child != NULL) {
-		err += Arc_vfs_delete_node_recurse(child);
+		err += arc_vfs_delete_node_recurse(child);
 		child = child->next;
 	}
 
@@ -108,18 +103,8 @@ int Arc_vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 	return err;
 }
 
-/**
- * Delete a node from the node graph.
- *
- * General function for deleting nodes. Parent
- * node's children are updated to remove the link
- * to this node.
- *
- * @param struct ARC_VFSNode *node - The node which to destroy.
- * @param bool recurse - Whether to recurse or not.
- * @return number of nodes which were not destroyed.
- * */
-int Arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
+
+int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
 		return 1;
 	}
@@ -129,7 +114,7 @@ int Arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 	int err = 0;
 
 	while (child != NULL && recurse == 1) {
-		err = Arc_vfs_delete_node_recurse(child);
+		err = arc_vfs_delete_node_recurse(child);
 		child = child->next;
 	}
 
@@ -159,18 +144,7 @@ int Arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 //       First, it needs testing like the remove and close functions.
 //       Second, this may become costly in terms of speed, as quite a
 //       big lock is grabbed (locking the topmost node).
-/**
- * Prune unused nodes from bottom to top.
- *
- * A node, starting at a lower level of the graph
- * starts a chain of destruction upward of unused nodes.
- * This frees up memory, at the cost of some caching.
- *
- * @param struct ARC_VFSNode *bottom - Bottom-most node to start from.
- * @param struct ARC_VFSNode *top - Topmost node to end on.
- * @return positive integer indicating the number of nodes freed.
- * */
-int Arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
+int arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
 	struct ARC_VFSNode *current = bottom;
 	int freed = 0;
 
@@ -185,7 +159,7 @@ int Arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top)
 		void *tmp = current->parent;
 
 		if (current->children == NULL && current->ref_count == 0) {
-			Arc_vfs_delete_node(current, 0);
+			arc_vfs_delete_node(current, 0);
 			freed++;
 		}
 
@@ -197,7 +171,7 @@ int Arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top)
 	return freed;
 }
 
-int _vfs_top_down_prune_recurs(struct ARC_VFSNode *node, int depth) {
+int vfs_top_down_prune_recurs(struct ARC_VFSNode *node, int depth) {
 	if (node->ref_count > 0 || depth <= 0 || node->type == ARC_VFS_N_MOUNT) {
 		// Set the sign bit to indicate that this
 		// path cannot be freed as there is still
@@ -211,7 +185,7 @@ int _vfs_top_down_prune_recurs(struct ARC_VFSNode *node, int depth) {
 	int count = 0;
 
 	while (child != NULL) {
-		int diff = _vfs_top_down_prune_recurs(child, depth - 1);
+		int diff = vfs_top_down_prune_recurs(child, depth - 1);
 
 		if (diff < 0 && count > 0) {
 			count *= -1;
@@ -229,18 +203,8 @@ int _vfs_top_down_prune_recurs(struct ARC_VFSNode *node, int depth) {
 	return count;
 }
 
-/**
- * Prune unused nodes from top to a depth.
- *
- * Given a starting node, top, work downwards to free
- * any unused nodes to save on some memory. It takes
- * quite a big lock (the top node is locked).
- *
- * @param struct ARC_VFSNode *top - The starting node.
- * @param int depth - How far down the function can traverse.
- * @return poisitive integer indicating the number of nodes freed.
- * */
-int Arc_vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
+
+int arc_vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
 	if (top == NULL) {
 		ARC_DEBUG(ERR, "Start node is NULL\n");
 		return -1;
@@ -259,7 +223,7 @@ int Arc_vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
 	int count = 0;
 
 	while (node != NULL) {
-		count += _vfs_top_down_prune_recurs(node, depth - 1);
+		count += vfs_top_down_prune_recurs(node, depth - 1);
 		node = node->next;
 	}
 
@@ -289,33 +253,14 @@ int vfs_open_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int link_d
 	return 0;
 }
 
-/**
- * Traverse the node graph
- *
- * The ultimate function to traverse the node graph.
- * Links are resolved and opened, resources are created,
- * new nodes are created upon specification.
- *
- * @param char *filepath - The path to to the file.
- * @param struct vfs_traverse_info *info - Input values and return values of the function.
- * @param int link_depth - How many links to resolve.
- * @return 0 upon success, info->node has branch_lock held and ref_count is incremented by
- * one. Caller needs to unlock the branch_lock and decrement ref_count once it is done using
- * the node. A -2 means that no filepath was traversed, as the one given consists of zero characters,
- * therefore the aforementioned state of the node is not true.
- * */
-int Arc_vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_depth) {
-	(void)link_depth;
-
-	if (filepath == NULL || info == NULL || info->start == NULL) {
-		return EINVAL;
+int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_depth) {
+	if (filepath == NULL || info == NULL) {
+		return -1;
 	}
 
 	size_t max = strlen(filepath);
 
 	if (max == 0) {
-		// Definitely created a new node and everything
-		// for this empty filepath
 		info->node = info->start;
 		return -2;
 	}
@@ -324,257 +269,202 @@ int Arc_vfs_traverse(char *filepath, struct vfs_traverse_info *info, int link_de
 
 	struct ARC_VFSNode *node = info->start;
 	node->ref_count++; // TODO: Atomize
-	info->node = node;
-	info->mountpath = filepath;
 
 	if (Arc_QLock(&node->branch_lock) != 0) {
-		 ARC_DEBUG(ERR, "Lock error!\n");
-		 return -1;
+		ARC_DEBUG(ERR, "Lock error\n");
+		return -1;
 	}
 
-	size_t x = 0;
-	size_t y = 0;
-
+	size_t last_sep = 0;
 	for (size_t i = 0; i < max; i++) {
-		if (i == max - 1 && (info->create_level & VFS_NOLCMP) != 0) {
-			// End of the string reached, VFS_NOLCMP set, break
-			break;
-		}
+		bool is_last = (i == max - 1);
 
-		if (filepath[i] == '/' || i == max - 1) {
-			// Separator encountered, or at the end of the string
-			y = i;
-		}
-
-		if (y <= x) {
-			// If number of characters between last separator
-			// and this one is none, skip
+		if (!is_last && filepath[i] != '/') {
+			// Not at end or not on separator character
+			// so skip
 			continue;
 		}
 
-		char *component = (char *)(filepath + x);
+		if (is_last && (info->create_level & ARC_VFS_NOLCMP) != 0) {
+			// This is the last compoenent, and the
+			// ARC_VFS_NOLCMP is set, therefore skip
+			continue;
+		}
+		// The following code will only run if:
+		//     This is the last character (and therefore the last component)
+		//     unless ARC_VFS_NOLCMP is set
+		//     If a separator ('/') character is found
+
+		// Determine the component which may or may not be
+		// enclosed in separator characters
+		//     COMPONENT
+		//     ^-size--^
+		//     /COMPONENT
+		//      ^-size--^
+		//     /COMPONENT/
+		//      ^-size--^
+		int component_size = i - last_sep;
+		char *component = filepath + last_sep;
+
+		last_sep = i;
 
 		if (*component == '/') {
-			// Component begins with separator, cull it off
 			component++;
+			component_size--;
 		}
 
-		size_t component_length = y - x;
-
-		if (filepath[y] == '/') {
-			// Component ends with separator, cull it off
-			component_length--;
-		} else {
-			// Component does not end with separaotr,
-			// component_length is the difference of two
-			// indices, add one to make it a true length
-			component_length++;
+		if (is_last) {
+			component_size++;
 		}
 
-		// Make note of last separator
-		x = y;
-
-		if (component_length <= 0) {
-			// The actual component, after all the culling, is
-			// non-exsitent, skip
+		if (component_size <= 0) {
+			// There is no component
 			continue;
 		}
 
-		if (node->type == ARC_VFS_N_MOUNT && node->mount->fs_type != ARC_VFS_FS_DEV) {
-			// Last node was a mountpoint, this is the start
-			// of the path on disk, also keep track of the mount node
+		// Wait to acquire lock on current node
+		Arc_QYield(&node->branch_lock);
+
+		struct ARC_VFSNode *next = NULL;
+
+		if (node->type == ARC_VFS_N_MOUNT) {
 			info->mount = node;
 			info->mountpath = component;
 		}
 
-		Arc_QYield(&node->branch_lock);
-
-		// Interpret . dirs
-		if (*component == '.' && component_length == 2 && *(component + 1) == '.') {
-			// .. dir, go up one
-			node = node->parent == NULL ? node : node->parent;
-			continue;
-		} else if (*component == '.' && component_length == 1) {
-			// . dir, skip
+		if (component_size == 2 && component[0] == '.' && component[1] == '.') {
+			next = node->parent;
+			goto resolve;
+		} else if (component_size == 1 && component[0] == '.') {
 			continue;
 		}
 
-		// Attempt to find current component among
-		// previous node's children (the existing context)
-		struct ARC_VFSNode *child = node->children;
-		while (child != NULL) {
-			if (strncmp(component, child->name, component_length) == 0) {
+		next = node->children;
+
+		while (next != NULL) {
+			if (strncmp(component, next->name, component_size) == 0) {
 				break;
 			}
 
-			child = child->next;
+			next = next->next;
 		}
 
-		if (child == NULL) {
-			if ((info->create_level & VFS_NO_CREAT) == 1) {
-				// No creation desired by caller
-				ARC_DEBUG(ERR, "VFS_NO_CREAT specified\n");
+		if (next == NULL) {
+			// Node is still NULL, cannot find it in
+			// current context
+			if ((info->create_level & ARC_VFS_NO_CREAT) != 0) {
+				// The node does not exist, but the ARC_VFS_NO_CREAT
+				// is set, therefore just return
 				return i;
 			}
 
-			// Node does not exist in node graph
-			// Create it
-			struct ARC_VFSNode *new = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode));
+			// NOTE: ARC_VFS_GR_CREAT is not really used
 
-			if (new == NULL) {
-				ARC_DEBUG(ERR, "Cannot allocate next node\n");
-				// goto epic_fail;
+			next = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode));
+
+			if (next == NULL) {
+				ARC_DEBUG(ERR, "Failed to allocate new node\n");
+				return i;
 			}
 
-			memset(new, 0, sizeof(struct ARC_VFSNode));
+			memset(next, 0, sizeof(struct ARC_VFSNode));
 
-			new->name = strndup(component, component_length);
-
-			if (info->mount != NULL) {
-				new->mount = info->mount->mount;
-			}
-
-			new->type = ARC_VFS_N_DIR;
-			if (i == max - 1) {
-				// This is the last component, we need to create
-				// it with the specified type
-				new->type = info->type;
-			}
-
-			new->next = node->children;
+			// Insert it into graph
+			next->parent = node;
 			if (node->children != NULL) {
-				node->children->prev = new;
+				next->next = node->children;
+				node->children->prev = next;
 			}
-			node->children = new;
-			new->parent = node;
-			child = new;
+			node->children = next;
 
-			// Do wacky stuff to determine a path which looks like
-			// this: a/b/c/d/file.extension, which is relative from
-			// info->mount, and is stored in stat_path
-			// NOTE: This is cursed
-			char *use_path = info->mountpath == NULL ? filepath : info->mountpath;
-			int length = i - ((uintptr_t)use_path - (uintptr_t)filepath) + 1;
-			char *stat_path = strndup(use_path, use_path[length - 1] == '/' ? --length : length);
+			// Set properties
+			next->name = strndup(component, component_size);
+			next->type = is_last ? info->type : ARC_VFS_N_DIR;
+			Arc_QLockStaticInit(&next->branch_lock);
+			Arc_MutexStaticInit(&next->property_lock);
 
-			if (info->mount != NULL) {
-				ARC_DEBUG(INFO, "Mount is present, statting %s\n", stat_path);
+			ARC_DEBUG(INFO, "Created new node %s (%p)\n", next->name, next);
 
-				struct ARC_Resource *res = info->mount->resource;
-				if (res == NULL) {
-					ARC_DEBUG(INFO, "Resource is NULL for node %p (mount %p)\n", info->mount, info->mount->mount);
-					goto skip_stat;
-				}
+			// TODO: Set stat according to current information
 
-				struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)res->driver->driver;
+			// Check for node on physical filesystem
+			if (info->mount == NULL) {
+				goto skip_stat;
+			}
 
-				if (def == NULL) {
-					ARC_DEBUG(INFO, "Superblock definition is NULL for %p\n", res);
-					goto skip_stat;
-				}
+			next->mount = info->mount->mount;
 
-				if (def->stat(res, stat_path, &new->stat) != 0) {
-					ARC_DEBUG(ERR, "Failed to stat %s\n", stat_path);
-					if ((info->create_level & VFS_FS_CREAT) != 1) {
-						ARC_DEBUG(ERR, "VFS_FS_CREAT not allowed\n");
+			// This is the path to the file from the mountpoint
+			// Now calculate the size, mounthpath starts at a component
+			// therefore there is no need to advance info->mountpath, the length
+			// between the current and mountpath pointers are calculated and one is
+			// added if the current component is the last component
+			size_t phys_path_size = (size_t)((uintptr_t)(filepath + i) - (uintptr_t)info->mountpath) + is_last;
+			char *phys_path = strndup(info->mountpath, phys_path_size);
 
-						Arc_SlabFree(stat_path);
-						Arc_QUnlock(&node->branch_lock);
+			ARC_DEBUG(INFO, "Node is under a mountpoint, statting %s on node %p\n", phys_path, info->mount);
 
-						return i;
-					}
+			struct ARC_Resource *res = info->mount->resource;
+			struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)res->driver->driver;
 
-					// Since all mountpaths exist in VFS, we do not need to be
-					// concerened with the situation where a path such as:
-					// /path/to/thing/that/exists.txt where path and
-					// thing are mountpoints causes this case to break. As
-					// we can be sure that we will not try to create
-					// /to/thing/that/exists.txt (as /path/to/thing is present)
-					if (def->create(info->mountpath, info->mode, info->type) != 0) {
-						ARC_DEBUG(ERR, "VFS_FS_CREAT failed\n");
-					}
-				} else {
-					// Didn't fail to stat, determine the file's type
-					// from the physical filesystem so long that it is
-					// not NULL, in which case the old type specified
-					// by the caller would be kept
-					if (vfs_stat2type(new->stat) != ARC_VFS_NULL) {
-						new->type = vfs_stat2type(new->stat);
-					}
-				}
+			if (def->stat(res, phys_path, &next->stat) != 0 && (info->create_level & ARC_VFS_FS_CREAT) != 0) {
+				// ARC_VFS_FS_CREAT is specified and the stat failed,
+				// create the node in the physical filesystem
+				def->create(phys_path, 0, next->type);
 			}
 
 			skip_stat:;
 
-                        // Initialzie resource if needed
-			if (new->type != ARC_VFS_N_DIR && new->resource == NULL) {
-				ARC_DEBUG(INFO, "Node has no resource, creating one\n");
-				// Get the mountpoint's resource and lock it to make sure
-				// it does not change
-				struct ARC_Resource *res = NULL;
-
-				if (info->mount != NULL) {
-					res = info->mount->resource;
-					Arc_MutexLock(&res->dri_state_mutex);
-				}
-
-				// Determine the index from the type of the file and the mountpoint's
-				// index
-				uint64_t index = vfs_idx2idx(new->type, res);
-
-				if (index == (uint64_t)-1) {
-					// Don't create a resource
-					new->resource = NULL;
-					goto skip_res;
-				}
-
-				// Create a new resource and set the resource field, also
-				// unlock the mountpoint's resource
-				struct ARC_Resource *nres = Arc_InitializeResource(0, index, (info->overwrite_arg == NULL && res != NULL) ? res->driver_state : info->overwrite_arg);
-
-				if (info->mount != NULL) {
-					Arc_MutexUnlock(&res->dri_state_mutex);
-				}
-
-				new->resource = nres;
-
-				if (nres == NULL) {
-					ARC_DEBUG(ERR, "Failed to create resource\n");
-					Arc_SlabFree(stat_path);
-					return -1;
-				}
+			// Create resource for node if it needs one
+			if (next->type == ARC_VFS_N_DIR) {
+				goto skip_resource;
 			}
 
-			skip_res:;
-
-			Arc_SlabFree(stat_path);
-
-			ARC_DEBUG(INFO, "Created new node \"%s\" (%p)\n", new->name, new);
-
-			if (new->type == ARC_VFS_N_LINK) {
-				// TODO: Resolve link
+			if (info->mount != NULL) {
+				Arc_MutexLock(&info->mount->resource->dri_state_mutex);
 			}
+
+			// Figure out the index from the given type
+			uint64_t index = vfs_type2idx(next->type, info->mount);
+			// If the resource is NULL, the driver will definitely be
+			// in the super/file group, otherwise use the mount's group
+			int group = (info->mount == NULL ? 0 : info->mount->resource->dri_group);
+			// Determine the arguments
+			void *args = (info->overwrite_arg == NULL && info->mount != NULL ? info->mount->resource->driver_state : info->overwrite_arg);
+
+			next->resource = Arc_InitializeResource(group, index, args);
+
+			if (info->mount != NULL) {
+				Arc_MutexUnlock(&info->mount->resource->dri_state_mutex);
+
+			}
+			skip_resource:;
 		}
 
-		if (Arc_QLock(&child->branch_lock) != 0) {
+		resolve:;
+
+		// Next node should not be NULL
+		if (Arc_QLock(&next->branch_lock) != 0) {
 			ARC_DEBUG(ERR, "Lock error!\n");
-			goto cleanup;
+			// TODO: Do something
 		}
+		Arc_QUnlock(&node->branch_lock);
 
-		child->ref_count++; // TODO: Atomize
 		node->ref_count--; // TODO: Atomize
-		node = child;
-		info->node = node;
+		node = next;
+		node->ref_count++; // TODO: Atomize
 	}
-	// TODO: Fix functions using this function, as they do
-	//       not account for the following:
-	//            node->ref_count remains incremented by 1
-	//            node->branch_lock is held
-	//       Lock and ref_count need to be decremented by
-	//       caller once node is no longer being used (verify)
-	return 0;
 
-cleanup:;
-	ARC_DEBUG(WARN, "Definitely cleaning up\n");
-	return -1;
+	ARC_DEBUG(INFO, "Successfully traversed %s\n", filepath);
+
+	// Returned state of node:
+	//    - branch_lock is held
+	//    - ref_count is incremented by 1
+	// Caller must release branch_lock and
+	// decrement ref_count when it is done
+	// wth the node
+
+	info->node = node;
+
+	return 0;
 }

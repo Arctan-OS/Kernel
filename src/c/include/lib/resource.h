@@ -54,7 +54,7 @@ struct ARC_Resource {
 	/// Driver function group (supplied on init by caller).
 	int dri_group;
 	/// Specific driver function set (supplied on init by caller).
-	int dri_index;
+	uint64_t dri_index;
 	/// Driver functions.
 	struct ARC_DriverDef *driver;
 };
