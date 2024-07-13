@@ -31,11 +31,11 @@
 #include <lib/resource.h>
 #include <mm/slab.h>
 #include <fs/vfs.h>
-#include <fs/dri_defs.h>
 #include <global.h>
 #include <lib/util.h>
 #include <interface/printf.h>
 #include <fs/graph.h>
+#include <drivers/dri_defs.h>
 
 // TODO: Implement error cases for all functions.
 
@@ -56,13 +56,13 @@ int Arc_InitializeVFS() {
 	return 0;
 }
 
-int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
-	if (mountpoint == NULL || resource == NULL || fs_type == ARC_VFS_NULL) {
-		ARC_DEBUG(ERR, "Invalid arguments (%p, %p, %d)\n", mountpoint, resource, fs_type);
+int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource) {
+	if (mountpoint == NULL || resource == NULL) {
+		ARC_DEBUG(ERR, "Invalid arguments (%p, %p\n", mountpoint, resource);
 		return EINVAL;
 	}
 
-	ARC_DEBUG(INFO, "Mounting %p on %s (%d)\n", resource, mountpoint, fs_type);
+	ARC_DEBUG(INFO, "Mounting %p on %s\n", resource, mountpoint);
 
 	// If the directory does not already exist, create it in graph, as a disk write could be saved
 	struct arc_vfs_traverse_info info = { .type = ARC_VFS_N_DIR, .create_level = ARC_VFS_GR_CREAT };
@@ -85,29 +85,16 @@ int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type) {
 		return -1;
 	}
 
-	struct ARC_Mount *mount_struct = (struct ARC_Mount *)Arc_SlabAlloc(sizeof(struct ARC_Mount));
-
-	if (mount_struct == NULL) {
-		ARC_DEBUG(ERR, "Failed to allocate mount structure\n");
-		Arc_QUnlock(&mount->branch_lock);
-		mount->ref_count--; // TODO: Atomize
-		return -1;
-	}
-
-	mount_struct->node = mount;
-	mount_struct->fs_type = fs_type;
-
 	Arc_MutexLock(&mount->property_lock);
 
-	mount->type = ARC_VFS_N_MOUNT;
+	mount->type = (resource->dri_group == ARC_DRI_DEV ? ARC_VFS_N_DEV : ARC_VFS_N_MOUNT);
 	mount->resource = resource;
-	mount->mount = mount_struct;
 
 	Arc_MutexUnlock(&mount->property_lock);
 
 	Arc_QUnlock(&mount->branch_lock);
 
-	ARC_DEBUG(INFO, "Successfully mounted resource %p at %s (%d, %p)\n", resource, mountpoint, fs_type, mount);
+	ARC_DEBUG(INFO, "Successfully mounted resource %p at %s (%d, %p)\n", resource, mountpoint, mount);
 
 	return 0;
 }
@@ -336,7 +323,7 @@ int Arc_CloseVFS(struct ARC_File *file) {
 	}
 
 	struct ARC_VFSNode *parent = node->parent;
-	struct ARC_VFSNode *top = node->mount->node;
+	struct ARC_VFSNode *top = node->mount;
 	arc_vfs_delete_node(node, 0);
 	arc_vfs_bottom_up_prune(parent, top);
 	Arc_SlabFree(file);
@@ -619,13 +606,24 @@ int vfs_list(struct ARC_VFSNode *node, int recurse, int org) {
 		return -1;
 	}
 
+	const char *names[] = {
+	        [ARC_VFS_N_DEV] = "Device",
+	        [ARC_VFS_N_FILE] = "File",
+	        [ARC_VFS_N_DIR] = "Directory",
+	        [ARC_VFS_N_BUFF] = "Buffer",
+	        [ARC_VFS_N_FIFO] = "FIFO",
+	        [ARC_VFS_N_MOUNT] = "Mount",
+	        [ARC_VFS_N_ROOT] = "Root",
+	        [ARC_VFS_N_LINK] = "Link",
+        };
+
 	struct ARC_VFSNode *child = node->children;
 	while (child != NULL) {
 		for (int i = 0; i < org - recurse; i++) {
 			printf("\t");
 		}
 
-		printf("%s (0x%X, 0x%X B)\n", child->name, child->stat.st_mode, child->stat.st_size);
+		printf("%s (%s, 0x%X, 0x%X B)\n", child->name, names[child->type], child->stat.st_mode, child->stat.st_size);
 
 		if (recurse > 0) {
 			vfs_list(child, recurse - 1, org);

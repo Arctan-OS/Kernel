@@ -28,6 +28,7 @@
 #include <arch/x86-64/acpi/acpi.h>
 #include <arch/x86-64/acpi/caml/parse.h>
 #include <global.h>
+#include <drivers/dri_defs.h>
 
 int empty_dsdt() {
 	return 0;
@@ -79,7 +80,7 @@ int uninit_dsdt() {
 }
 
 ARC_REGISTER_DRIVER(3, dsdt) = {
-        .index = ARC_DRI_IDSDT,
+        .index = ARC_DRI_DSDT,
 	.init = init_dsdt,
 	.uninit = uninit_dsdt,
 	.read = empty_dsdt,

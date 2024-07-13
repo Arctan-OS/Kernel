@@ -83,15 +83,6 @@ struct ARC_File {
 	int flags;
 };
 
-struct ARC_Mount {
-	/// Type of file system.
-	int fs_type;
-	/// Pointer to the parent VFS node.
-	struct ARC_VFSNode *node;
-	/// Number of open files under this mount.
-	uint64_t open_files;
-};
-
 // Driver definitions
 // NOTE: No function pointer in a driver definition
 //       should be NULL.

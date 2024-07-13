@@ -26,6 +26,7 @@
 */
 #include <arch/x86-64/acpi/acpi.h>
 #include <lib/resource.h>
+#include <drivers/dri_defs.h>
 
 struct hpet {
 	struct ARC_RSDTBaseEntry base;
@@ -59,16 +60,24 @@ int uninit_hpet() {
 
 int read_hpet(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
 	(void)file;
+	(void)buffer;
+	(void)size;
+	(void)count;
+	(void)res;
 	return 0;
 }
 
 int write_hpet(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
 	(void)file;
+	(void)buffer;
+	(void)size;
+	(void)count;
+	(void)res;
 	return 0;
 }
 
 ARC_REGISTER_DRIVER(3, hpet) = {
-        .index = ARC_DRI_IHPET,
+        .index = ARC_DRI_HPET,
 	.init = init_hpet,
 	.uninit = uninit_hpet,
 	.read = read_hpet,

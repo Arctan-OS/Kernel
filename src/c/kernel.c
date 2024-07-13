@@ -49,6 +49,8 @@
 
 #include <arch/x86-64/syscall.h>
 
+#include <drivers/dri_defs.h>
+
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
 struct ARC_Resource *Arc_InitramfsRes = NULL;
@@ -99,8 +101,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         Arc_InitAPIC();
 	Arc_InitializeSyscall();
 
-	Arc_InitramfsRes = Arc_InitializeResource(0, 0, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
-	Arc_MountVFS("/initramfs/", Arc_InitramfsRes, ARC_VFS_FS_INITRAMFS);
+	Arc_InitramfsRes = Arc_InitializeResource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
+	Arc_MountVFS("/initramfs/", Arc_InitramfsRes);
 	Arc_LinkVFS("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
 	Arc_RenameVFS("/font.fnt", "/fonts/font.fnt");
 	Arc_OpenVFS("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);

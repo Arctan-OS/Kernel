@@ -50,7 +50,7 @@
 
 int Arc_InitAPIC() {
 	struct ARC_File *apic = NULL;
-	Arc_OpenVFS("/dev/acpi/rsdt/apic", 0, 0, 0, (void *)&apic);
+	Arc_OpenVFS("/dev/acpi/apic", 0, 0, 0, (void *)&apic);
 
 	if (apic == NULL) {
 		return -1;

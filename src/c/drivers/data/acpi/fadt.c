@@ -27,6 +27,7 @@
 #include <global.h>
 #include <fs/vfs.h>
 #include <arch/x86-64/acpi/acpi.h>
+#include <drivers/dri_defs.h>
 
 struct fadt {
         struct ARC_RSDTBaseEntry base;
@@ -95,9 +96,9 @@ int init_fadt(struct ARC_Resource *res, void *arg) {
 	struct fadt *fadt = (struct fadt *)arg;
 
 	void *dsdt = (void *)ARC_PHYS_TO_HHDM(fadt->x_dsdt == 0 ? fadt->dsdt : fadt->x_dsdt);
-	Arc_CreateVFS("/dev/acpi/rsdt/fadt/dsdt/", 0, ARC_VFS_N_DIR, NULL);
-	struct ARC_Resource *dsdt_res = Arc_InitializeResource(ARC_DRI_ACPI, ARC_DRI_IDSDT, dsdt);
-	Arc_MountVFS("/dev/acpi/rsdt/fadt/dsdt/", dsdt_res, ARC_VFS_FS_DEV);
+	Arc_CreateVFS("/dev/acpi/fadt/dsdt/", 0, ARC_VFS_N_DIR, NULL);
+	struct ARC_Resource *dsdt_res = Arc_InitializeResource(ARC_DRI_DEV, ARC_DRI_DSDT, dsdt);
+	Arc_MountVFS("/dev/acpi/fadt/dsdt/", dsdt_res);
 
 	return 0;
 }
@@ -108,16 +109,24 @@ int uninit_fadt() {
 
 int read_fadt(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
 	(void)file;
+	(void)buffer;
+	(void)size;
+	(void)count;
+	(void)res;
 	return 0;
 }
 
 int write_fadt(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
 	(void)file;
+	(void)buffer;
+	(void)size;
+	(void)count;
+	(void)res;
 	return 0;
 }
 
 ARC_REGISTER_DRIVER(3, fadt) = {
-        .index = ARC_DRI_IFADT,
+        .index = ARC_DRI_FADT,
         .init = init_fadt,
 	.uninit = uninit_fadt,
 	.read = read_fadt,

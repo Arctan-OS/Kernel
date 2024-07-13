@@ -66,8 +66,13 @@ static int buffer_uninit(struct ARC_Resource *res) {
 static int buffer_open(struct ARC_File *file, struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
 	(void)mode;
 	(void)flags;
+	(void)path;
 
 	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
+
+	if (state == NULL) {
+		return -1;
+	}
 
 	file->node->stat.st_size = state->size;
 
@@ -75,7 +80,7 @@ static int buffer_open(struct ARC_File *file, struct ARC_Resource *res, char *pa
 }
 
 static int buffer_read(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
-	if (buffer == NULL || size == 0 || count == 0 || file == NULL || res == NULL) {
+	if (buffer == NULL || size == 0 || count == 0 || file == NULL || res == NULL || res->driver_state == NULL) {
 		return -1;
 	}
 
@@ -104,7 +109,7 @@ static int buffer_read(void *buffer, size_t size, size_t count, struct ARC_File 
 }
 
 static int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
-	if (buffer == NULL || size == 0 || count == 0 || file == NULL || res == NULL) {
+	if (buffer == NULL || size == 0 || count == 0 || file == NULL || res == NULL || res->driver_state == NULL) {
 		return -1;
 	}
 

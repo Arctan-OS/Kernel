@@ -32,7 +32,7 @@
 #include <abi-bits/errno.h>
 #include <abi-bits/stat.h>
 #include <lib/util.h>
-#include <fs/dri_defs.h>
+#include <drivers/dri_defs.h>
 #include <lib/resource.h>
 
 /**
@@ -61,25 +61,23 @@ int vfs_stat2type(struct stat stat) {
 uint64_t vfs_type2idx(int type, struct ARC_VFSNode *mount) {
 	switch (type) {
 	case ARC_VFS_N_BUFF: {
-		return ARC_DRI_BUFFER + 1;
+		return ARC_FDRI_BUFFER;
 	}
 
 	case ARC_VFS_N_FIFO: {
-		return ARC_DRI_FIFO + 1;
+		return ARC_FDRI_FIFO;
 	}
 
 	default: {
 		if (mount == NULL) {
 			// If the mount is NULL, then create a buffer
 			// that can hold some temporary data
-			return ARC_DRI_BUFFER + 1;
+			return ARC_FDRI_BUFFER;
 		}
 	
 		return mount->resource->dri_index + 1;
 	}
 	}
-
-	return (uint64_t)-1;
 }
 
 
@@ -313,7 +311,7 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 			component_size--;
 		}
 
-		if (is_last) {
+		if (is_last && filepath[i] != '/') {
 			component_size++;
 		}
 
@@ -392,7 +390,7 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 				goto skip_stat;
 			}
 
-			next->mount = info->mount->mount;
+			next->mount = info->mount;
 
 			// This is the path to the file from the mountpoint
 			// Now calculate the size, mounthpath starts at a component
@@ -407,7 +405,11 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 			struct ARC_Resource *res = info->mount->resource;
 			struct ARC_SuperDriverDef *def = (struct ARC_SuperDriverDef *)res->driver->driver;
 
-			if (def->stat(res, phys_path, &next->stat) != 0 && (info->create_level & ARC_VFS_FS_CREAT) != 0) {
+			if (def->stat(res, phys_path, &next->stat) == 0) {
+				// Stat succeeded, file exists on filesystem,
+				// set type
+				next->type = vfs_stat2type(next->stat);
+			} else if ((info->create_level & ARC_VFS_FS_CREAT) != 0){
 				// ARC_VFS_FS_CREAT is specified and the stat failed,
 				// create the node in the physical filesystem
 				def->create(phys_path, 0, next->type);

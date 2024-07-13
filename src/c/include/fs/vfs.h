@@ -38,10 +38,7 @@
 #define ARC_VFS_N_LINK  5
 #define ARC_VFS_N_BUFF  6
 #define ARC_VFS_N_FIFO  7
-
-#define ARC_VFS_FS_EXT2      1
-#define ARC_VFS_FS_INITRAMFS 2
-#define ARC_VFS_FS_DEV   3
+#define ARC_VFS_N_DEV   8
 
 #define ARC_VFS_SEEK_SET 1
 #define ARC_VFS_SEEK_CUR 2
@@ -58,7 +55,7 @@
  * A single node in a VFS tree.
  * */
 struct ARC_VFSNode {
-	/// Lock on branching of this node (link, parent, children, next, prev, name, and the node itself)
+	/// Lock on branching of this node (link, parent, children, next, prev, name)
 	struct ARC_QLock branch_lock;
 	/// Lock on the properties of this node (type, mount, stat, is_open)
 	ARC_GenericMutex property_lock;
@@ -76,7 +73,7 @@ struct ARC_VFSNode {
 	/// Pointer to the link.
 	struct ARC_VFSNode *link;
 	/// Pointer to the mount structure this node is or is under.
-	struct ARC_Mount *mount;
+	struct ARC_VFSNode *mount;
 	/// Pointer to the parent of the current node.
 	struct ARC_VFSNode *parent;
 	/// Pointer to the head of the children linked list.
@@ -102,10 +99,9 @@ int Arc_InitializeVFS();
  * @param struct ARC_VFSNode *mountpoint - The VFS node under which to mount (/mounts).
  * @param char *name - The name of the mountpoint (A).
  * @param struct ARC_Resource *resource - The resource by which to address the mountpoint.
- * @param int type - The type of the file system.
- * @return A non-NULL pointer to the VFS node that describes the mounted device.
+ * @return zero on success.
  * */
-int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource, int fs_type);
+int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource);
 
 /**
  * Unmounts the given mountpoint

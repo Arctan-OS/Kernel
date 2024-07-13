@@ -30,12 +30,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define ARC_DRI_ACPI  0x03
-#define ARC_DRI_IRSDT 0x00
-#define ARC_DRI_IAPIC 0x01
-#define ARC_DRI_IFADT 0x02
-#define ARC_DRI_IDSDT 0x03
-#define ARC_DRI_IHPET 0x04
+
 
 #define ARC_ACPI_TBLSIG_APIC 0x43495041 // "APIC"
 #define ARC_ACPI_TBLSIG_RSDT 0x54445352 // "RSDT"

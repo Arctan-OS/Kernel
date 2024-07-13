@@ -24,13 +24,14 @@
  *
  * @DESCRIPTION
 */
-#include "arctan.h"
+#include <arctan.h>
 #include <lib/resource.h>
 #include <stdint.h>
 #include <global.h>
 #include <lib/util.h>
 #include <arch/x86-64/acpi/acpi.h>
 #include <fs/vfs.h>
+#include <drivers/dri_defs.h>
 
 struct rsdp {
 	char signature[8];
@@ -84,9 +85,9 @@ int do_rsdt(void *address) {
 		switch (entry->signature) {
 		case ARC_ACPI_TBLSIG_APIC: {
 			 size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry) - 8;
-			 Arc_CreateVFS("/dev/acpi/rsdt/apic", 0, ARC_VFS_N_BUFF, &size);
+			 Arc_CreateVFS("/dev/acpi/apic", 0, ARC_VFS_N_BUFF, &size);
 			 struct ARC_File *file = NULL;
-			 Arc_OpenVFS("/dev/acpi/rsdt/apic", 0, 0, 0, (void *)&file);
+			 Arc_OpenVFS("/dev/acpi/apic", 0, 0, 0, (void *)&file);
 			 Arc_WriteVFS((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
 			 Arc_CloseVFS(file);
 
@@ -94,15 +95,15 @@ int do_rsdt(void *address) {
 		}
 
 		case ARC_ACPI_TBLSIG_FACP: {
-			index = ARC_DRI_IFADT;
-			path = "/dev/acpi/rsdt/fadt/";
+			index = ARC_DRI_FADT;
+			path = "/dev/acpi/fadt/";
 
 			break;
 		}
 
 		case ARC_ACPI_TBLSIG_HPET: {
-			index = ARC_DRI_IHPET;
-			path = "/dev/acpi/rsdt/hpet/";
+			index = ARC_DRI_HPET;
+			path = "/dev/acpi/hpet/";
 
 			break;
 		}
@@ -114,8 +115,8 @@ int do_rsdt(void *address) {
 		}
 
 		Arc_CreateVFS(path, 0, ARC_VFS_N_DIR, NULL);
-		struct ARC_Resource *res = Arc_InitializeResource(ARC_DRI_ACPI, index, (void *)entry);
-		Arc_MountVFS(path, res, ARC_VFS_FS_DEV);
+		struct ARC_Resource *res = Arc_InitializeResource(ARC_DRI_DEV, index, (void *)entry);
+		Arc_MountVFS(path, res);
 	}
 
 	return 0;
@@ -123,7 +124,7 @@ int do_rsdt(void *address) {
 
 int do_xsdt(void *address) {
 	struct xsdt *table = (struct xsdt *)address;
-	ARC_DEBUG(INFO, "XSDT table\n");
+	ARC_DEBUG(ERR, "XSDT table\n");
 	return 0;
 }
 
@@ -157,7 +158,7 @@ int uninit_rsdt() {
 };
 
 ARC_REGISTER_DRIVER(3, rsdt_driver) = {
-        .index = ARC_DRI_IRSDT,
+        .index = ARC_DRI_RSDT,
         .init = init_rsdt,
 	.uninit = uninit_rsdt,
 	.read = empty_rsdt,

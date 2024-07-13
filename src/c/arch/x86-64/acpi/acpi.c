@@ -28,6 +28,7 @@
 #include <arch/x86-64/acpi/acpi.h>
 #include <fs/vfs.h>
 #include <global.h>
+#include <drivers/dri_defs.h>
 
 int Arc_ChecksumACPI(void *data, size_t length) {
 	int8_t *bytes = (int8_t *)data;
@@ -53,9 +54,9 @@ int Arc_InitializeACPI(uint64_t rsdp_ptr) {
 
 	rsdp_ptr = ARC_PHYS_TO_HHDM(rsdp_ptr);
 
-        Arc_CreateVFS("/dev/acpi/rsdt", 0, ARC_VFS_N_DIR, NULL);
-        struct ARC_Resource *rsdt = Arc_InitializeResource(ARC_DRI_ACPI, ARC_DRI_IRSDT, (void *)rsdp_ptr);
-        Arc_MountVFS("/dev/acpi/rsdt", rsdt, ARC_VFS_FS_DEV);
+        Arc_CreateVFS("/dev/acpi", 0, ARC_VFS_N_DIR, NULL);
+        struct ARC_Resource *rsdt = Arc_InitializeResource(ARC_DRI_DEV, ARC_DRI_RSDT, (void *)rsdp_ptr);
+        Arc_MountVFS("/dev/acpi", rsdt);
 
         return 0;
 }
