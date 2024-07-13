@@ -33,7 +33,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#define ADDRESS_IN_META(address, meta) ((void *)meta->base <= (void *)address && (void *)address <= (void *)meta->ceil)
+#define ADDRESS_IN_META(address, meta) ((void *)meta->base <= (void *)address && (void *)address < (void *)meta->ceil)
 
 // Allocate one object in given list
 // Return: non-NULL = success
