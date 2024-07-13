@@ -33,17 +33,26 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#define ADDRESS_IN_META(address, meta) ((void *)meta->base <= (void *)address && (void *)address <= (void *)meta->ceil)
+
 // Allocate one object in given list
 // Return: non-NULL = success
 void *Arc_ListAlloc(struct ARC_FreelistMeta *meta) {
 	Arc_MutexLock(&meta->mutex);
 
-	while (meta->free_objects < 1 && meta->next != NULL) {
-		Arc_MutexLock(&meta->next->mutex);
+	while (meta->free_objects < 1 && meta != NULL) {
+		if (meta->next != NULL) {
+			Arc_MutexLock(&meta->next->mutex);
+		}
+
 		Arc_MutexUnlock(&meta->mutex);
 		meta = meta->next;
 	}
 
+	if (meta == NULL) {
+		ARC_DEBUG(INFO, "Found meta is NULL\n");
+		return NULL;
+	}
 
 	// Get address, mark as used
 	void *address = (void *)meta->head;
@@ -57,8 +66,13 @@ void *Arc_ListAlloc(struct ARC_FreelistMeta *meta) {
 }
 
 void *Arc_ListContiguousAlloc(struct ARC_FreelistMeta *meta, uint64_t objects) {
-	while (meta->free_objects < objects && meta->next != NULL) {
-		Arc_MutexLock(&meta->next->mutex);
+	Arc_MutexLock(&meta->mutex);
+
+	while (meta->free_objects < objects && meta != NULL) {
+		if (meta->next != NULL) {
+			Arc_MutexLock(&meta->next->mutex);
+		}
+
 		Arc_MutexUnlock(&meta->mutex);
 		meta = meta->next;
 	}
@@ -71,7 +85,7 @@ void *Arc_ListContiguousAlloc(struct ARC_FreelistMeta *meta, uint64_t objects) {
 	struct ARC_FreelistMeta to_free = { 0 };
 	to_free.object_size = meta->object_size;
 	to_free.base = meta->base;
-	to_free.ciel = meta->ciel;
+	to_free.ceil = meta->ceil;
 
 	// Number of objects currently allocated
 	uint64_t object_count = 0;
@@ -152,16 +166,17 @@ void *Arc_ListFree(struct ARC_FreelistMeta *meta, void *address) {
 
 	Arc_MutexLock(&meta->mutex);
 
-	while ((void *)meta->base > address && meta->next != NULL) {
-		Arc_MutexLock(&meta->next->mutex);
+	while (meta != NULL && !ADDRESS_IN_META(address, meta)) {
+		if (meta->next != NULL) {
+			Arc_MutexLock(&meta->next->mutex);
+		}
+
 		Arc_MutexUnlock(&meta->mutex);
 		meta = meta->next;
 	}
 
-	if ((void *)meta->ciel < address && meta->next == NULL) {
+	if (meta == NULL) {
 		ARC_DEBUG(ERR, "Could not find %p in given list\n", address);
-		Arc_MutexUnlock(&meta->mutex);
-
 		return NULL;
 	}
 
@@ -186,16 +201,17 @@ void *Arc_ListContiguousFree(struct ARC_FreelistMeta *meta, void *address, uint6
 
 	Arc_MutexLock(&meta->mutex);
 
-	while ((void *)meta->base > address && meta->next != NULL) {
-		Arc_MutexLock(&meta->next->mutex);
+	while (meta != NULL && !ADDRESS_IN_META(address, meta)) {
+		if (meta->next != NULL) {
+			Arc_MutexLock(&meta->next->mutex);
+		}
+
 		Arc_MutexUnlock(&meta->mutex);
 		meta = meta->next;
 	}
 
-	if ((void *)meta->ciel < address && meta->next == NULL) {
+	if (meta == NULL) {
 		ARC_DEBUG(ERR, "Could not find %p in given list\n", address);
-		Arc_MutexUnlock(&meta->mutex);
-
 		return NULL;
 	}
 
@@ -224,7 +240,7 @@ int Arc_ListLink(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B) {
 	}
 
 	if (A->object_size != B->object_size) {
-		// Object size mismatch, cannot link lists
+		// Object size mismatch, should not link lists
 		return -1;
 	}
 
@@ -246,8 +262,14 @@ int Arc_ListLink(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B) {
 	return 0;
 }
 
-struct ARC_FreelistMeta *Arc_InitializeFreelist(uint64_t _base, uint64_t _ciel, uint64_t _object_size) {
-	if (_base > _ciel || _object_size == 0) {
+struct ARC_FreelistMeta *Arc_InitializeFreelist(uint64_t _base, uint64_t _ceil, uint64_t _object_size) {
+	if (_base > _ceil || _object_size == 0) {
+		// Invalid parameters
+		return NULL;
+	}
+
+	if (_ceil - _base < _object_size + sizeof(struct ARC_FreelistMeta)) {
+		// There is not enough space for one object
 		return NULL;
 	}
 
@@ -262,20 +284,20 @@ struct ARC_FreelistMeta *Arc_InitializeFreelist(uint64_t _base, uint64_t _ciel, 
 	_base += objects * _object_size;
 
 	struct ARC_FreelistNode *base = (struct ARC_FreelistNode *)_base;
-	struct ARC_FreelistNode *ciel = (struct ARC_FreelistNode *)_ciel;
+	struct ARC_FreelistNode *ceil = (struct ARC_FreelistNode *)_ceil;
 
 	// Store meta information
 	meta->base = base;
 	meta->head = base;
-	meta->ciel = ciel;
+	meta->ceil = ceil;
 	meta->object_size = _object_size;
-	meta->free_objects = (_ciel - _base) / _object_size;
+	meta->free_objects = (_ceil - _base) / _object_size - objects;
 
-	ARC_DEBUG(INFO, "Creating freelist from 0x%"PRIx64" (%p) to 0x%"PRIx64" (%p)\n", (uint64_t)_base, base, (uint64_t)_ciel, ciel);
+	ARC_DEBUG(INFO, "Creating freelist from 0x%"PRIx64" (%p) to 0x%"PRIx64" (%p)\n", (uint64_t)_base, base, (uint64_t)_ceil, ceil);
 
 	// Initialize the linked list
 	struct ARC_FreelistNode *current = NULL;
-	for (; _base < _ciel; _base += _object_size) {
+	for (; _base < _ceil - _object_size; _base += _object_size) {
 		current = (struct ARC_FreelistNode *)_base;
 		*(uint64_t *)current = _base + _object_size;
 	}

@@ -86,7 +86,7 @@ int Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 	struct ARC_FreelistMeta *highest_meta = arc_physical_mem;
 	while (current != NULL) {
 		current->base = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(current->base);
-		current->ciel = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(current->ciel);
+		current->ceil = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(current->ceil);
 		// Head may an HHDM address if the list has been used
 		// therefore ignore the upper 32-bits and convert it to
 		// an HHDM address anyway
@@ -100,9 +100,9 @@ int Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 		current = current->next;
 	}
 
-	ARC_DEBUG(INFO, "Converted: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ciel, arc_physical_mem->head, arc_physical_mem->object_size);
+	ARC_DEBUG(INFO, "Converted: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ceil, arc_physical_mem->head, arc_physical_mem->object_size);
 
-	uint64_t highest_alloc = (uint64_t)highest_meta->ciel;
+	uint64_t highest_alloc = (uint64_t)highest_meta->ceil;
 
 	ARC_DEBUG(INFO, "Highest allocatable address: 0x%"PRIx64"\n", highest_alloc);
 

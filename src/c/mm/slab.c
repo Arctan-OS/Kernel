@@ -58,9 +58,9 @@ void *Arc_SlabFree(void *address) {
 	int list = -1;
 	for (int i = 0; i < 8; i++) {
 		void *base = heap.lists[i]->base;
-		void *ciel = heap.lists[i]->ciel;
+		void *ceil = heap.lists[i]->ceil;
 
-		if (base <= address && address <= ciel) {
+		if (base <= address && address <= ceil) {
 			list = i;
 			break;
 		}
