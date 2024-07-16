@@ -43,10 +43,17 @@ int Arc_InitVMM(void *addr, size_t size) {
 	// specify where to put the virtual memory space
 	Arc_InitBuddy(&vmm_meta, addr, size, 3);
 
+	void *a = NULL;
+	printf("%p\n", (a = Arc_BuddyAlloc(&vmm_meta, 100)));
 	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 100));
 	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 100));
 	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 100));
-	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 100));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 24));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 24));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 24));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 128));
+	Arc_BuddyFree(&vmm_meta, a);
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 24));
 
 	return 0;
 }

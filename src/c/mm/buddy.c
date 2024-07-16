@@ -71,7 +71,7 @@ int quick_log2(size_t number, size_t *estimate, bool round_up) {
 	return exp;
 }
 
-int split(struct ARC_BuddyMeta *meta, struct buddy_node *node, int depth) {
+int split(struct ARC_BuddyMeta *meta, struct buddy_node *node, int depth, void **levels) {
 	// Expected: node is locked
 
 	if (node == NULL || node->exponent < 0) {
@@ -106,26 +106,22 @@ int split(struct ARC_BuddyMeta *meta, struct buddy_node *node, int depth) {
 
 	node->left->buddy = node->right;
 
-	Arc_MutexLock(&meta->mutex);
-
 	// Update levels
-	struct buddy_node *last = meta->levels[level];
+	struct buddy_node *last = levels[level];
 
 	if (last != NULL) {
 		last->buddy = node->left;
 	}
-	meta->levels[level] = node->right;
+	levels[level] = node->right;
 
-	Arc_MutexUnlock(&meta->mutex);
-
-	split(meta, node->left, depth);
-	split(meta, node->right, depth);
+	split(meta, node->left, depth, levels);
+	split(meta, node->right, depth, levels);
 
 	return 0;
 }
 
 void *Arc_BuddyAlloc(struct ARC_BuddyMeta *meta, size_t size) {
-	if (meta == NULL || size == 0) {
+	if (meta == NULL || size == 0 || meta->tree == NULL) {
 		return NULL;
 	}
 
@@ -187,7 +183,7 @@ void *Arc_BuddyAlloc(struct ARC_BuddyMeta *meta, size_t size) {
 }
 
 void *Arc_BuddyFree(struct ARC_BuddyMeta *meta, void *address) {
-	if (meta == NULL) {
+	if (meta == NULL || meta->tree == NULL) {
 		return NULL;
 	}
 
@@ -195,26 +191,26 @@ void *Arc_BuddyFree(struct ARC_BuddyMeta *meta, void *address) {
 
 	Arc_MutexLock(&current->mutex);
 
-	while (current != NULL && current->base != address) {
+	while (current != NULL && (current->base != address || current->exponent > 0)) {
 		if (address > current->base) {
-			// Addresses to the left are higher in memory
+			// Addresses to the right are higher in memory
 			if (current->left != NULL) {
-				Arc_MutexLock(&current->left->mutex);
+				Arc_MutexLock(&current->right->mutex);
 			}
 			Arc_MutexUnlock(&current->mutex);
 		
-			current = current->left;
+			current = current->right;
 		
 			continue;
 		}
 
-		// Addresses to the right are lower in memory
+		// Addresses to the left are lower in memory
 		if (current->right != NULL) {
-			Arc_MutexLock(&current->right->mutex);
+			Arc_MutexLock(&current->left->mutex);
 		}
 		Arc_MutexUnlock(&current->mutex);
 
-		current = current->right;
+		current = current->left;
 	}
 
 	if (current == NULL) {
@@ -251,7 +247,8 @@ int Arc_InitBuddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowes
 	meta->tree = (void *)head;
 	Arc_MutexStaticInit(&head->mutex);
 
-	if (split(meta, head, lowest_exponent) != 0) {
+	void *levels[64] = { 0 };
+	if (split(meta, head, lowest_exponent, levels) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize tree\n");
 		return -1;
 	}
