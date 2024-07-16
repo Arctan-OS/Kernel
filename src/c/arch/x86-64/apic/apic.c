@@ -26,7 +26,7 @@
 */
 #include <arch/x86-64/apic/apic.h>
 #include <arch/x86-64/apic/lapic.h>
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <fs/vfs.h>
 #include <global.h>
 

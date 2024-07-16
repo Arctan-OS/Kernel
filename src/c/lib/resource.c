@@ -25,7 +25,7 @@
  * @DESCRIPTION
 */
 #include <abi-bits/errno.h>
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <lib/resource.h>
 #include <global.h>
 #include <lib/util.h>
@@ -43,7 +43,7 @@ extern struct ARC_DriverDef __DRIVERS3_END[];
 uint64_t current_id = 0;
 
 struct ARC_Resource *Arc_InitializeResource(int dri_group, uint64_t dri_index, void *args) {
-	struct ARC_Resource *resource = (struct ARC_Resource *)Arc_SlabAlloc(sizeof(struct ARC_Resource));
+	struct ARC_Resource *resource = (struct ARC_Resource *)Arc_Alloc(sizeof(struct ARC_Resource));
 
 	if (resource == NULL) {
 		ARC_DEBUG(ERR, "Failed to allocate memory for resource\n");
@@ -65,7 +65,7 @@ struct ARC_Resource *Arc_InitializeResource(int dri_group, uint64_t dri_index, v
 	resource->driver = def;
 
 	if (def == NULL) {
-		Arc_SlabFree(resource);
+		Arc_Free(resource);
 		ARC_DEBUG(ERR, "No driver definition found\n");
 		return NULL;
 	}
@@ -100,7 +100,7 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 		// TODO: What if we fail to close?
 		if (current_ref->signal(ARC_SIGREF_CLOSE, NULL) == 0) {
 			resource->ref_count -= 1; // TODO: Atomize
-			Arc_SlabFree(current_ref);
+			Arc_Free(current_ref);
 		}
 
 		current_ref = next;
@@ -108,7 +108,7 @@ int Arc_UninitializeResource(struct ARC_Resource *resource) {
 
 	resource->driver->uninit(resource);
 
-	Arc_SlabFree(resource);
+	Arc_Free(resource);
 
 	return 0;
 }
@@ -119,7 +119,7 @@ struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource) {
 		return NULL;
 	}
 
-	struct ARC_Reference *ref = (struct ARC_Reference *)Arc_SlabAlloc(sizeof(struct ARC_Reference));
+	struct ARC_Reference *ref = (struct ARC_Reference *)Arc_Alloc(sizeof(struct ARC_Reference));
 
 	if (ref == NULL) {
 		ARC_DEBUG(ERR, "Failed to allocate reference\n");
@@ -185,7 +185,7 @@ int Arc_UnreferenceResource(struct ARC_Reference *reference) {
 		Arc_MutexUnlock(&reference->next->branch_mutex);
 	}
 
-        Arc_SlabFree(reference);
+        Arc_Free(reference);
 
 	return 0;
 }

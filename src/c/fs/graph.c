@@ -28,7 +28,7 @@
 #include <fs/graph.h>
 #include <global.h>
 #include <stdint.h>
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <abi-bits/errno.h>
 #include <abi-bits/stat.h>
 #include <lib/util.h>
@@ -94,9 +94,9 @@ int arc_vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 		child = child->next;
 	}
 
-	Arc_SlabFree(node->name);
+	Arc_Free(node->name);
 	Arc_UninitializeResource(node->resource);
-	Arc_SlabFree(node);
+	Arc_Free(node);
 
 	return err;
 }
@@ -120,7 +120,7 @@ int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 		return err + 1;
 	}
 
-	Arc_SlabFree(node->name);
+	Arc_Free(node->name);
 	Arc_UninitializeResource(node->resource);
 
 	if (node->prev == NULL) {
@@ -133,7 +133,7 @@ int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 		node->next->prev = node->prev;
 	}
 
-	Arc_SlabFree(node);
+	Arc_Free(node);
 
 	return err;
 }
@@ -259,8 +259,7 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 	size_t max = strlen(filepath);
 
 	if (max == 0) {
-		info->node = info->start;
-		return -2;
+		return -1;
 	}
 
 	ARC_DEBUG(INFO, "Traversing %s\n", filepath);
@@ -353,12 +352,13 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 			if ((info->create_level & ARC_VFS_NO_CREAT) != 0) {
 				// The node does not exist, but the ARC_VFS_NO_CREAT
 				// is set, therefore just return
+				ARC_DEBUG(ERR, "ARC_VFS_NO_CREAT specified\n");
 				return i;
 			}
 
 			// NOTE: ARC_VFS_GR_CREAT is not really used
 
-			next = (struct ARC_VFSNode *)Arc_SlabAlloc(sizeof(struct ARC_VFSNode));
+			next = (struct ARC_VFSNode *)Arc_Alloc(sizeof(struct ARC_VFSNode));
 
 			if (next == NULL) {
 				ARC_DEBUG(ERR, "Failed to allocate new node\n");

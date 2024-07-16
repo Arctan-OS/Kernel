@@ -29,15 +29,7 @@
 #include <global.h>
 #include <lib/util.h>
 
-struct ARC_AllocMeta {
-	struct ARC_FreelistMeta *physical_mem;
-	struct ARC_FreelistMeta *lists[8];
-	size_t list_sizes[8];
-};
-
-static struct ARC_AllocMeta heap = { 0 };
-
-void *Arc_SlabAlloc(size_t size) {
+void *Arc_SlabAlloc(struct ARC_SlabMeta *meta, size_t size) {
 	if (size > 0x1000) {
 		// Just allocate a contiguous set of pages
 		ARC_DEBUG(ERR, "Failed to allocate size %d\n", size);
@@ -46,19 +38,19 @@ void *Arc_SlabAlloc(size_t size) {
 
 	int i = 0;
 	for (; i < 8; i++) {
-		if (size <= heap.list_sizes[i]) {
+		if (size <= meta->list_sizes[i]) {
 			break;
 		}
 	}
 
-	return Arc_ListAlloc(heap.lists[i]);
+	return Arc_ListAlloc(meta->lists[i]);
 }
 
-void *Arc_SlabFree(void *address) {
+void *Arc_SlabFree(struct ARC_SlabMeta *meta, void *address) {
 	int list = -1;
 	for (int i = 0; i < 8; i++) {
-		void *base = heap.lists[i]->base;
-		void *ceil = heap.lists[i]->ceil;
+		void *base = meta->lists[i]->base;
+		void *ceil = meta->lists[i]->ceil;
 
 		if (base <= address && address <= ceil) {
 			list = i;
@@ -72,44 +64,26 @@ void *Arc_SlabFree(void *address) {
 		return NULL;
 	}
 
-	memset(address, 0, heap.list_sizes[list]);
+	memset(address, 0, meta->list_sizes[list]);
 
-	return Arc_ListFree(heap.lists[list], address);
+	return Arc_ListFree(meta->lists[list], address);
 }
 
 // TODO: Realloc, Calloc
 
-/**
- * Initialize the given list in \a heap.
- *
- * @param int i - List to initialize.
- * @size_t size_t size - The page count for the entry.
- * @size_t size_t object_size - The size of each object.
- * @return Error code (0: success)
- *  */
-static int slab_init_lists(int i, size_t size, size_t object_size) {
-	ARC_DEBUG(INFO, "Initializing SLAB (%p) list %d { .size = %lu pages, .obj_size = %lu bytes }\n", &heap, i, size, object_size);
-
-	heap.list_sizes[i] = object_size;
-
-	uint64_t base = (uint64_t)Arc_ContiguousAllocPMM(size);
-
-	heap.lists[i] = Arc_InitializeFreelist(base, base + (size * PAGE_SIZE), object_size);
-
-	return 0;
-}
-
-int Arc_InitSlabAllocator(size_t init_page_count) {
+int Arc_InitSlabAllocator(struct ARC_SlabMeta *meta, size_t init_page_count) {
 	ARC_DEBUG(INFO, "Initializing SLAB allocator (%d)\n", init_page_count);
 
-	slab_init_lists(0, init_page_count, 16);
-	slab_init_lists(1, init_page_count, 32);
-	slab_init_lists(2, init_page_count, 64);
-	slab_init_lists(3, init_page_count, 128);
-	slab_init_lists(4, init_page_count, 256);
-	slab_init_lists(5, init_page_count, 512);
-	slab_init_lists(6, init_page_count, 1024);
-	slab_init_lists(7, init_page_count, 2048);
+	size_t object_size = 16;
+	for (int i = 0; i < 8; i++) {
+		ARC_DEBUG(INFO, "Initializing SLAB (%p) list %d { .size = %lu pages, .obj_size = %lu bytes }\n", meta, i, init_page_count, object_size);
+
+		uint64_t base = (uint64_t)Arc_ContiguousAllocPMM(init_page_count);
+		meta->lists[i] = Arc_InitializeFreelist(base, base + (init_page_count * PAGE_SIZE), object_size);
+		meta->list_sizes[i] = object_size;
+
+		object_size *= 2;
+	}
 
 	ARC_DEBUG(INFO, "Initialized SLAB allocator\n");
 

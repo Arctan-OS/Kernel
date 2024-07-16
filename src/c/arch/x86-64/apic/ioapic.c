@@ -26,7 +26,7 @@
 */
 #include <arch/x86-64/apic/ioapic.h>
 #include <global.h>
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <mm/vmm.h>
 #include <stdint.h>
 

@@ -1,5 +1,5 @@
 /**
- * @file vmm.h
+ * @file allocator.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,15 +24,20 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_MM_VMM_H
-#define ARC_MM_VMM_H
+#include <mm/allocator.h>
 
-#include <global.h>
-#include <stddef.h>
+void *Arc_Alloc(size_t size) {
+	return 0;
+}
 
-void *Arc_AllocVMM(size_t size);
-void *Arc_FreeVMM(void *address);
+void *Arc_Free(void *address) {
+	return 0;
+}
 
-int Arc_InitVMM(void *addr, size_t size);
+int Arc_ExpandAllocator(int pages) {
+	return 0;
+}
 
-#endif
+int Arc_InitializeAllocator(int pages) {
+	return 0;
+}

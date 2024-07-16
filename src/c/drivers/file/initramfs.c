@@ -29,7 +29,7 @@
 #include <lib/atomics.h>
 #include <lib/perms.h>
 #include <fs/vfs.h>
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <global.h>
 #include <time.h>
 #include <lib/util.h>
@@ -110,7 +110,7 @@ static int initramfs_empty() {
 
 static int initramfs_init(struct ARC_Resource *res, void *args) {
 	struct internal_driver_state *org_state = (struct internal_driver_state *)args;
-	struct internal_driver_state *state = (struct internal_driver_state *)Arc_SlabAlloc(sizeof(struct internal_driver_state));
+	struct internal_driver_state *state = (struct internal_driver_state *)Arc_Alloc(sizeof(struct internal_driver_state));
 
 	state->initramfs_base = org_state->initramfs_base;
 	state->resource = res;
@@ -120,7 +120,7 @@ static int initramfs_init(struct ARC_Resource *res, void *args) {
 }
 
 static int initramfs_uninit(struct ARC_Resource *res) {
-	Arc_SlabFree(res->driver_state);
+	Arc_Free(res->driver_state);
 
 	return 0;
 }

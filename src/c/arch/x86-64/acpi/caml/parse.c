@@ -28,7 +28,7 @@
 #include <arch/x86-64/acpi/caml/ops.h>
 #include <fs/vfs.h>
 #include <global.h>
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <stdint.h>
 #include <lib/util.h>
 
@@ -143,7 +143,7 @@ int cAML_ParseComputationalData(struct caml_state *state) {
 		size_t length = 1;
 		for (; state->buffer[length - 1] != 0; length++);
 
-		char *str = (char *)Arc_SlabAlloc(length);
+		char *str = (char *)Arc_Alloc(length);
 		memcpy(str, state->buffer, length);
 		state->pret = str;
 
@@ -243,7 +243,7 @@ char *cAML_ParseNameString(struct caml_state *state) {
 	switch (*state->buffer) {
 	case DUAL_NAME_PREFIX: {
 		ADVANCE_STATE(state);
-		name = Arc_SlabAlloc(8);
+		name = Arc_Alloc(8);
 		memcpy(name, state->buffer, 8);
 		ADVANCE_STATE_BY(state, 8);
 
@@ -253,7 +253,7 @@ char *cAML_ParseNameString(struct caml_state *state) {
 	case MULTI_NAME_PREFIX: {
 		ADVANCE_STATE(state);
 		uint8_t length = *(state->buffer);
-		name = Arc_SlabAlloc(length * 4);
+		name = Arc_Alloc(length * 4);
 		memcpy(name, state->buffer, length * 4);
 		ADVANCE_STATE_BY(state, length * 4);
 
@@ -266,14 +266,14 @@ char *cAML_ParseNameString(struct caml_state *state) {
 		//       caller to blindly free anything that has been
 		//       returned
 		ADVANCE_STATE(state);
-		name = Arc_SlabAlloc(1);
+		name = Arc_Alloc(1);
 		*name = 0;
 
 		break;
 	}
 
 	default: {
-		name = Arc_SlabAlloc(4);
+		name = Arc_Alloc(4);
 		memcpy(name, state->buffer, 4);
 		ADVANCE_STATE_BY(state, 4);
 
@@ -330,7 +330,7 @@ int cAML_EXTOPs(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tOffset: 0x%X\n", offset);
 		ARC_DEBUG(INFO, "\tLength: 0x%X\n", length);
 
-		Arc_SlabFree(name);
+		Arc_Free(name);
 
 		break;
 	}
@@ -348,7 +348,7 @@ int cAML_EXTOPs(struct caml_state *state) {
 
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 
-		Arc_SlabFree(name);
+		Arc_Free(name);
 
 		ADVANCE_STATE_BY(state, package_length);
 
@@ -373,7 +373,7 @@ int cAML_EXTOPs(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 		ARC_DEBUG(INFO, "\tFlags: 0x%X\n", flags);
 
-		Arc_SlabFree(name);
+		Arc_Free(name);
 
 		ADVANCE_STATE_BY(state, package_length);
 
@@ -422,7 +422,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 
 //		ADVANCE_STATE_BY(state, package_size);
 
-		Arc_SlabFree(name);
+		Arc_Free(name);
 
 		break;
 	}
@@ -443,7 +443,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 			ARC_DEBUG(ERR, "Failed to create new node\n");
 		}
 
-		Arc_SlabFree(name);
+		Arc_Free(name);
 
 		break;
 	}
@@ -476,7 +476,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 			ARC_DEBUG(WARN, "Definitely wrote data to buffer\n");
 		}
 
-		Arc_SlabFree(name);
+		Arc_Free(name);
 
 		break;
 	}
@@ -487,8 +487,8 @@ int cAML_ParsePackage(struct caml_state *state) {
 
 		ARC_DEBUG(INFO, "Found alias \"%s\" -> \"%s\"", a, b);
 
-		Arc_SlabFree(a);
-		Arc_SlabFree(b);
+		Arc_Free(a);
+		Arc_Free(b);
 
 		break;
 	}
@@ -512,7 +512,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 }
 
 int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
-	struct caml_state *state = (struct caml_state *)Arc_SlabAlloc(sizeof(struct caml_state));
+	struct caml_state *state = (struct caml_state *)Arc_Alloc(sizeof(struct caml_state));
 	memset(state, 0, sizeof(struct caml_state));
 
 	struct ARC_File *file = NULL;
@@ -535,7 +535,7 @@ int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
 
 	Arc_CloseVFS(file);
 
-	Arc_SlabFree(state);
+	Arc_Free(state);
 
 	return 0;
 }

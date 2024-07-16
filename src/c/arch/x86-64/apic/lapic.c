@@ -28,8 +28,8 @@
 #include <arch/x86-64/ctrl_regs.h>
 #include <global.h>
 #include <cpuid.h>
-#include <mm/vmm.h>
-#include <mm/slab.h>
+#include <arch/x86-64/pager.h>
+#include <mm/allocator.h>
 
 struct lapic_reg {
         uint32_t resv0 __attribute__((aligned(16)));
@@ -94,9 +94,9 @@ int Arc_InitLAPIC() {
         lapic_msr |= (1 << 11);
         _x86_WRMSR(0x1B, lapic_msr);
 
-        Arc_MapPageVMM((uintptr_t)reg, (uintptr_t)reg, ARC_VMM_CREAT_FLAG | 3 | ARC_VMM_PAT_UC(0));
+	Arc_MapPager((uint64_t)reg, (uint64_t)reg, PAGE_SIZE, 0);
 
-        ARC_DEBUG(INFO, "LAPIC register at %p\n", ARC_PHYS_TO_HHDM(reg));
+        ARC_DEBUG(INFO, "LAPIC register at %p\n", reg);
         // NOTE: Ignore bits 31:27 of reg->lapic_id on P6 and Pentium processors
         uint8_t ver = reg->lapic_ver & 0xFF;
         ARC_DEBUG(INFO, "LAPIC ID: 0x%X (%s)\n", reg->lapic_id >> 28, ((reg->spurious_int_vector >> 8) & 1) ? "disabled, enabling" : "enabled");

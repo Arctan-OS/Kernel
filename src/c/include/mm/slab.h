@@ -30,13 +30,19 @@
 #include <stddef.h>
 #include <mm/freelist.h>
 
+struct ARC_SlabMeta {
+	struct ARC_FreelistMeta *physical_mem;
+	struct ARC_FreelistMeta *lists[8];
+	size_t list_sizes[8];
+};
+
 /**
  * Allocate \a size bytes in the kernel heap.
  *
  * @param size_t size - The number of bytes to allocate.
  * @return The base address of the allocation.
  * */
-void *Arc_SlabAlloc(size_t size);
+void *Arc_SlabAlloc(struct ARC_SlabMeta *meta, size_t size);
 
 /**
  * Free the allocation at \a address.
@@ -44,7 +50,7 @@ void *Arc_SlabAlloc(size_t size);
  * @param void *address - The allocation to free from the kernel heap.
  * @return The given address if successful.
  * */
-void *Arc_SlabFree(void *address);
+void *Arc_SlabFree(struct ARC_SlabMeta *meta, void *address);
 
 /**
  * Initialize the kernel SLAB allocator.
@@ -53,6 +59,6 @@ void *Arc_SlabFree(void *address);
  * @param int init_page_count - The number of 0x1000 byte pages each list is given.
  * @return Error code (0: success).
  * */
-int Arc_InitSlabAllocator(size_t init_page_count);
+int Arc_InitSlabAllocator(struct ARC_SlabMeta *meta, size_t init_page_count);
 
 #endif

@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <lib/atomics.h>
 #include <lib/util.h>
 #include <mp/sched/abstract.h>
@@ -35,7 +35,7 @@ struct internal_qlock_node {
 };
 
 int Arc_QLockInit(struct ARC_QLock **lock) {
-	*lock = Arc_SlabAlloc(sizeof(struct ARC_QLock));
+	*lock = Arc_Alloc(sizeof(struct ARC_QLock));
 
 	if (*lock == NULL) {
 		return 1;
@@ -72,7 +72,7 @@ int Arc_QLock(struct ARC_QLock *head) {
 		return 0;
 	}
 
-	register struct internal_qlock_node *next = (struct internal_qlock_node *)Arc_SlabAlloc(sizeof(struct internal_qlock_node));
+	register struct internal_qlock_node *next = (struct internal_qlock_node *)Arc_Alloc(sizeof(struct internal_qlock_node));
 
 	if (next == NULL) {
 		ARC_DEBUG(ERR, "Failed to allocate next link\n");
@@ -136,7 +136,7 @@ int Arc_QUnlock(struct ARC_QLock *head) {
 
 	Arc_MutexLock(&head->lock);
 
-	Arc_SlabFree(head->next);
+	Arc_Free(head->next);
 
 	head->next = next;
 
@@ -195,7 +195,7 @@ int Arc_MutexInit(ARC_GenericMutex **mutex) {
 		return 1;
 	}
 
-	*mutex = (ARC_GenericMutex *)Arc_SlabAlloc(sizeof(ARC_GenericMutex));
+	*mutex = (ARC_GenericMutex *)Arc_Alloc(sizeof(ARC_GenericMutex));
 
 	if (*mutex == NULL) {
 		return 1;
@@ -207,7 +207,7 @@ int Arc_MutexInit(ARC_GenericMutex **mutex) {
 }
 
 int Arc_MutexUninit(ARC_GenericMutex *mutex) {
-	Arc_SlabFree(mutex);
+	Arc_Free(mutex);
 
 	return 0;
 }

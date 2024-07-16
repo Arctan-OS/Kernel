@@ -29,7 +29,7 @@
 #include <lib/atomics.h>
 #include <abi-bits/errno.h>
 #include <lib/resource.h>
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <fs/vfs.h>
 #include <global.h>
 #include <lib/util.h>
@@ -163,7 +163,7 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
 	ARC_DEBUG(INFO, "Found node %p\n", node);
 
 	// Create file descriptor
-	struct ARC_File *desc = (struct ARC_File *)Arc_SlabAlloc(sizeof(struct ARC_File));
+	struct ARC_File *desc = (struct ARC_File *)Arc_Alloc(sizeof(struct ARC_File));
 	if (desc == NULL) {
 		return ENOMEM;
 	}
@@ -304,7 +304,7 @@ int Arc_CloseVFS(struct ARC_File *file) {
 		ARC_DEBUG(INFO, "ref_count (%d) > 1, closing file descriptor\n", node->ref_count);
 
 		Arc_UnreferenceResource(file->reference);
-		Arc_SlabFree(file);
+		Arc_Free(file);
 		node->ref_count--; // TODO: Atomize
 
 		Arc_MutexUnlock(&node->property_lock);
@@ -326,7 +326,7 @@ int Arc_CloseVFS(struct ARC_File *file) {
 	struct ARC_VFSNode *top = node->mount;
 	arc_vfs_delete_node(node, 0);
 	arc_vfs_bottom_up_prune(parent, top);
-	Arc_SlabFree(file);
+	Arc_Free(file);
 
 	ARC_DEBUG(INFO, "Closed file successfully\n");
 
@@ -550,7 +550,7 @@ int Arc_RenameVFS(char *a, char *b) {
 
 	rename:;
 	// Rename the node
-	Arc_SlabFree(node_a->name);
+	Arc_Free(node_a->name);
 	char *end = (char *)(a + strlen(a) - 1);
 	// Advance back to before ending '/', if there is one
 	// if a = /imaginary_path/, this ought to place end at the arrow
@@ -673,9 +673,7 @@ struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode
 	if (ret == 0) {
 		Arc_QUnlock(&info.node->branch_lock);
 		info.node->ref_count--; // TODO: Atomize
-	}
-
-	if (ret != 0) {
+	} else {
 		return NULL;
 	}
 

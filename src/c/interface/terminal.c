@@ -25,7 +25,7 @@
  * @DESCRIPTION
 */
 #include <fs/vfs.h>
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <global.h>
 #include <interface/terminal.h>
 #include <arctan.h>
@@ -81,7 +81,7 @@ void Arc_TermDraw(struct ARC_TermMeta *term) {
 		cwidth = term->font_width;
 		cheight = term->font_height;
 	
-		base = Arc_SlabAlloc(cwidth * cheight / 8);
+		base = Arc_Alloc(cwidth * cheight / 8);
 	}
         
 	for (int cy = 0; cy < term->term_height; cy++) {
@@ -119,7 +119,7 @@ void Arc_TermDraw(struct ARC_TermMeta *term) {
 	}
 
 	if (Arc_FontFile != NULL) {
-		Arc_SlabFree(base);
+		Arc_Free(base);
 	}
 }
 

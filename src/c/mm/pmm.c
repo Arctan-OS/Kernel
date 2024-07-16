@@ -134,7 +134,7 @@ int Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 		highest_meta = list;
 	}
 
-	ARC_DEBUG(INFO, "Finished setting up kernel PMM\n");
+	ARC_DEBUG(INFO, "Finished setting up PMM\n");
 
 	return 0;
 }

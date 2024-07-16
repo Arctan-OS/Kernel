@@ -33,7 +33,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#define ADDRESS_IN_META(address, meta) ((void *)meta->base <= (void *)address && (void *)address < (void *)meta->ceil)
+#define ADDRESS_IN_META(address, meta) ((void *)meta->base <= (void *)address && (void *)address <= (void *)meta->ceil)
 
 // Allocate one object in given list
 // Return: non-NULL = success
@@ -282,6 +282,7 @@ struct ARC_FreelistMeta *Arc_InitializeFreelist(uint64_t _base, uint64_t _ceil, 
 	// Number of objects to accomodate meta
 	int objects = sizeof(struct ARC_FreelistMeta) / _object_size;
 	_base += objects * _object_size;
+	_ceil -= _object_size;
 
 	struct ARC_FreelistNode *base = (struct ARC_FreelistNode *)_base;
 	struct ARC_FreelistNode *ceil = (struct ARC_FreelistNode *)_ceil;
@@ -291,13 +292,13 @@ struct ARC_FreelistMeta *Arc_InitializeFreelist(uint64_t _base, uint64_t _ceil, 
 	meta->head = base;
 	meta->ceil = ceil;
 	meta->object_size = _object_size;
-	meta->free_objects = (_ceil - _base) / _object_size - objects;
+	meta->free_objects = (_ceil - _base) / _object_size - objects + 1;
 
 	ARC_DEBUG(INFO, "Creating freelist from 0x%"PRIx64" (%p) to 0x%"PRIx64" (%p)\n", (uint64_t)_base, base, (uint64_t)_ceil, ceil);
 
 	// Initialize the linked list
 	struct ARC_FreelistNode *current = NULL;
-	for (; _base < _ceil - _object_size; _base += _object_size) {
+	for (; _base < _ceil; _base += _object_size) {
 		current = (struct ARC_FreelistNode *)_base;
 		*(uint64_t *)current = _base + _object_size;
 	}

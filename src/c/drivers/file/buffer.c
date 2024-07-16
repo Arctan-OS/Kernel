@@ -27,7 +27,7 @@
 */
 #include <lib/resource.h>
 #include <global.h>
-#include <mm/slab.h>
+#include <mm/allocator.h>
 #include <lib/util.h>
 
 struct buffer_dri_state {
@@ -45,8 +45,8 @@ static int buffer_init(struct ARC_Resource *res, void *arg) {
 	}
 
 	size_t size = *(size_t *)arg;
-	struct buffer_dri_state *state = (struct buffer_dri_state *)Arc_SlabAlloc(sizeof(struct buffer_dri_state));
-	state->buffer = (void *)Arc_SlabAlloc(size);
+	struct buffer_dri_state *state = (struct buffer_dri_state *)Arc_Alloc(sizeof(struct buffer_dri_state));
+	state->buffer = (void *)Arc_Alloc(size);
 	state->size = size;
 
 	res->driver_state = state;
@@ -57,8 +57,8 @@ static int buffer_init(struct ARC_Resource *res, void *arg) {
 static int buffer_uninit(struct ARC_Resource *res) {
 	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
 
-	Arc_SlabFree(state->buffer);
-	Arc_SlabFree(state);
+	Arc_Free(state->buffer);
+	Arc_Free(state);
 
 	return 0;
 }
