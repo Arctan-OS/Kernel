@@ -40,26 +40,38 @@ struct buddy_node {
 	ARC_GenericMutex mutex;
 };
 
-int quick_log2(size_t number, bool round) {
+int quick_log2(size_t number, size_t *estimate, bool round_up) {
+	size_t temp = 0;
+
+	if (estimate == NULL) {
+		estimate = &temp;
+	}
+
 	int exp = 0;
-	size_t estimate = 2;
+	*estimate = 1;
+	size_t original = number;
 
 	while (number > 1) {
 		exp++;
-		estimate <<= 1;
+		*estimate <<= 1;
 		number >>= 1;
 	}
 
-	if (round && estimate < number) {
+	if (round_up && *estimate < original) {
 		// 2^exp < number, caller wants 2^exp
 		// to fit number
 		exp++;
+	} else if (!round_up && *estimate > original) {
+		// 2^exp > number, caller wants 2^exp to
+		// fit into number
+		printf("huh\n");
+		exp--;
 	}
 
 	return exp;
 }
 
-int split(struct ARC_BuddyMeta *meta, struct buddy_node *node) {
+int split(struct ARC_BuddyMeta *meta, struct buddy_node *node, int depth) {
 	// Expected: node is locked
 
 	if (node == NULL || node->exponent < 0) {
@@ -70,8 +82,14 @@ int split(struct ARC_BuddyMeta *meta, struct buddy_node *node) {
 		return -2;
 	}
 
+	int level = abs(node->exponent) - 1;
+
+	if (level < depth) {
+		return -3;
+	}
+
 	struct buddy_node *new = (struct buddy_node *)Arc_ListAlloc(meta->allocator);
-	new->exponent = node->exponent - 1;
+	new->exponent = level;
 	new->base = node->base;
 	new->size = node->size / 2;
 	Arc_MutexStaticInit(&node->mutex);
@@ -79,12 +97,29 @@ int split(struct ARC_BuddyMeta *meta, struct buddy_node *node) {
 	node->left = new;
 
 	new = (struct buddy_node *)Arc_ListAlloc(meta->allocator);
-	new->exponent = node->exponent - 1;
+	new->exponent = level;
 	new->base = node->base + (node->size / 2);
 	new->size = node->size / 2;
 	Arc_MutexStaticInit(&node->mutex);
 
 	node->right = new;
+
+	node->left->buddy = node->right;
+
+	Arc_MutexLock(&meta->mutex);
+
+	// Update levels
+	struct buddy_node *last = meta->levels[level];
+
+	if (last != NULL) {
+		last->buddy = node->left;
+	}
+	meta->levels[level] = node->right;
+
+	Arc_MutexUnlock(&meta->mutex);
+
+	split(meta, node->left, depth);
+	split(meta, node->right, depth);
 
 	return 0;
 }
@@ -96,7 +131,7 @@ void *Arc_BuddyAlloc(struct ARC_BuddyMeta *meta, size_t size) {
 
 	struct buddy_node *current = (struct buddy_node *)meta->tree;
 
-	int exponent = quick_log2(size, 1);
+	int exponent = quick_log2(size, NULL, 1);
 
 	if (exponent > abs(current->exponent) || -exponent == current->exponent) {
 		// Requested size it too large, or perfect but this top node is
@@ -107,7 +142,7 @@ void *Arc_BuddyAlloc(struct ARC_BuddyMeta *meta, size_t size) {
 	Arc_MutexLock(&current->mutex);
 
 	struct buddy_node *last = current;
-	while (current != NULL && (abs(current->exponent) > exponent || -exponent == current->exponent)) {
+	while (current != NULL && (abs(current->exponent) >= exponent || -exponent == current->exponent)) {
 		// Unlock the last last mutex, and advance last
 		if (last != current) {
 			Arc_MutexUnlock(&last->mutex);
@@ -140,28 +175,15 @@ void *Arc_BuddyAlloc(struct ARC_BuddyMeta *meta, size_t size) {
 	// Last is invalid, return allocation failure
 	if (current == NULL) {
 		return NULL;
-	} else if (current->exponent < 0) {
+	} else if (current->exponent < 0 || abs(current->exponent) != exponent) {
 		Arc_MutexUnlock(&last->mutex);
 		return NULL;
-	}
-
-	// Current is still larger than the target,
-	// split current
-	while (current->exponent > exponent) {
-		if (split(meta, current) != 0) {
-			Arc_MutexUnlock(&current->mutex);
-			return NULL;
-		}
-
-		Arc_MutexLock(&current->left->mutex);
-		Arc_MutexUnlock(&current->mutex);
-		current = current->left;
 	}
 
 	current->exponent *= -1;
 	Arc_MutexUnlock(&current->mutex);
 
-        return last->base;
+        return current->base;
 }
 
 void *Arc_BuddyFree(struct ARC_BuddyMeta *meta, void *address) {
@@ -203,7 +225,7 @@ void *Arc_BuddyFree(struct ARC_BuddyMeta *meta, void *address) {
 
 	Arc_MutexUnlock(&current->mutex);
 
-        return 0;
+        return address;
 }
 
 int Arc_InitBuddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowest_exponent) {
@@ -220,16 +242,21 @@ int Arc_InitBuddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowes
 	uint64_t alloc_base = (uint64_t)Arc_ContiguousAllocPMM(128);
 	meta->allocator = Arc_InitializeFreelist(alloc_base, alloc_base + 128 * PAGE_SIZE, sizeof(struct buddy_node));
 
-	// Approximate log2(size)
-	int max_exponent = quick_log2(size, 0);
-
 	struct buddy_node *head = (struct buddy_node *)Arc_ListAlloc(meta->allocator);
+	// Approximate log2(size)
+	int max_exponent = quick_log2(size, &head->size, 0);
+
 	head->exponent = max_exponent;
 	head->base = base;
-	head->size = size;
+	meta->tree = (void *)head;
 	Arc_MutexStaticInit(&head->mutex);
 
-	meta->tree = (void *)head;
+	if (split(meta, head, lowest_exponent) != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize tree\n");
+		return -1;
+	}
+
+	ARC_DEBUG(INFO, "\tExponent range: [%d, %d]\n", lowest_exponent, max_exponent)
 
         return 0;
 }

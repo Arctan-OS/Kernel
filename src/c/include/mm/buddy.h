@@ -42,6 +42,8 @@ struct ARC_BuddyMeta {
 	void *tree;
 	/// The lowest exponent of two an allocation can be aligned to.
 	int lowest_exponent;
+	/// Buddy list
+	void *levels[64]; // 64 = system width
 	/// Allocator for the tree
 	struct ARC_FreelistMeta *allocator;
 	/// Lock for the meta.

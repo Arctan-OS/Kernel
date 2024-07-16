@@ -74,6 +74,9 @@ void *Arc_SlabFree(struct ARC_SlabMeta *meta, void *address) {
 int Arc_InitSlabAllocator(struct ARC_SlabMeta *meta, size_t init_page_count) {
 	ARC_DEBUG(INFO, "Initializing SLAB allocator (%d)\n", init_page_count);
 
+	// TODO: Abstract this away, so that it uses a given memory range rather than
+	//       allocating its own.
+
 	size_t object_size = 16;
 	for (int i = 0; i < 8; i++) {
 		ARC_DEBUG(INFO, "Initializing SLAB (%p) list %d { .size = %lu pages, .obj_size = %lu bytes }\n", meta, i, init_page_count, object_size);
