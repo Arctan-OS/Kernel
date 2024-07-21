@@ -30,30 +30,41 @@
 static struct ARC_BuddyMeta vmm_meta = { 0 };
 
 void *Arc_AllocVMM(size_t size) {
-	return NULL;
+	void *virtual = Arc_BuddyAlloc(&vmm_meta, size);
+
+	// TODO: Mapping code
+
+	return virtual;
 }
 
 void *Arc_FreeVMM(void *address) {
-	return NULL;
+	void *virtual = Arc_BuddyFree(&vmm_meta, address);
+
+	// TODO: Mapping code
+
+	return virtual;
 }
 
 int Arc_InitVMM(void *addr, size_t size) {
-	// Initialize buddy allocator for region
-	// addr -> addr + size. This lets the caller
-	// specify where to put the virtual memory space
-	Arc_InitBuddy(&vmm_meta, addr, size, 3);
+	Arc_InitBuddy(&vmm_meta, addr, size, 12);
 
 	void *a = NULL;
-	printf("%p\n", (a = Arc_BuddyAlloc(&vmm_meta, 100)));
-	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 100));
-	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 100));
-	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 100));
-	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 24));
-	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 24));
-	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 24));
-	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 128));
-	Arc_BuddyFree(&vmm_meta, a);
-	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 24));
+	void *b = NULL;
+	printf("a=%p\n", (a = Arc_BuddyAlloc(&vmm_meta, 0x1000)));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x2400));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x10000));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x2400));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x1000));
+	printf("b=%p\n", (b = Arc_BuddyAlloc(&vmm_meta, 0x2040)));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x1000));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x2400));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x12800));
+	printf("Free a %p\n", Arc_BuddyFree(&vmm_meta, a));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x24000));
+	printf("Free b %p\n", Arc_BuddyFree(&vmm_meta, b));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x1280));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x2400));
+	printf("%p\n", Arc_BuddyAlloc(&vmm_meta, 0x2400));
 
 	return 0;
 }

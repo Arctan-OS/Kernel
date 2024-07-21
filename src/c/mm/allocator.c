@@ -23,21 +23,48 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Implements functions used for in kernel allocations.
 */
 #include <mm/allocator.h>
+#include <mm/slab.h>
+#include <global.h>
+
+struct ARC_SlabMeta top_alloc = { 0 };
 
 void *Arc_Alloc(size_t size) {
-	return 0;
+	return Arc_SlabAlloc(&top_alloc, size);
+}
+
+void *Arc_Calloc(size_t size, size_t count) {
+	return Arc_SlabAlloc(&top_alloc, size * count);
 }
 
 void *Arc_Free(void *address) {
-	return 0;
+	return Arc_SlabFree(&top_alloc, address);
 }
 
-int Arc_ExpandAllocator(int pages) {
-	return 0;
+void *Arc_Realloc(void *address, size_t size) {
+	(void)address;
+	(void)size;
+
+	ARC_DEBUG(ERR, "Unimplemented Arc_Realloc\n");
+
+	return NULL;
 }
 
-int Arc_InitializeAllocator(int pages) {
-	return 0;
+int Arc_ExpandAllocator(size_t pages) {
+	int cumulative_err = (Arc_ExpandSlab(&top_alloc, 0, pages) == 0);
+	cumulative_err += (Arc_ExpandSlab(&top_alloc, 1, pages) == 0);
+	cumulative_err += (Arc_ExpandSlab(&top_alloc, 2, pages) == 0);
+	cumulative_err += (Arc_ExpandSlab(&top_alloc, 3, pages) == 0);
+	cumulative_err += (Arc_ExpandSlab(&top_alloc, 4, pages) == 0);
+	cumulative_err += (Arc_ExpandSlab(&top_alloc, 5, pages) == 0);
+	cumulative_err += (Arc_ExpandSlab(&top_alloc, 6, pages) == 0);
+	cumulative_err += (Arc_ExpandSlab(&top_alloc, 7, pages) == 0);
+
+	return cumulative_err;
+}
+
+int Arc_InitializeAllocator(size_t pages) {
+	return Arc_InitSlabAllocator(&top_alloc, pages);
 }

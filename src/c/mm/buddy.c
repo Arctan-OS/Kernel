@@ -27,20 +27,23 @@
 
 #include <mm/buddy.h>
 #include <mm/pmm.h>
+#include <mm/allocator.h>
 #include <global.h>
 #include <stdbool.h>
+#include <lib/util.h>
 
 struct buddy_node {
 	struct buddy_node *left;
 	struct buddy_node *right;
-	struct buddy_node *buddy;
+	struct buddy_node *parent;
 	void *base;
 	size_t size;
-	int exponent; // Encodes node's usage (-: Allocated, +: Free)
-	ARC_GenericMutex mutex;
+	int exponent;
+	uint8_t in_use : 1;    // Set if a sub-tree is allocated, but this node
+	uint8_t allocated : 1; // Set if this node is allocated, and cannot be
 };
 
-int quick_log2(size_t number, size_t *estimate, bool round_up) {
+static int quick_log2(size_t number, size_t *estimate, bool round_up) {
 	size_t temp = 0;
 
 	if (estimate == NULL) {
@@ -64,16 +67,13 @@ int quick_log2(size_t number, size_t *estimate, bool round_up) {
 	} else if (!round_up && *estimate > original) {
 		// 2^exp > number, caller wants 2^exp to
 		// fit into number
-		printf("huh\n");
 		exp--;
 	}
 
 	return exp;
 }
 
-int split(struct ARC_BuddyMeta *meta, struct buddy_node *node, int depth, void **levels) {
-	// Expected: node is locked
-
+static int split(struct ARC_BuddyMeta *meta, struct buddy_node *node) {
 	if (node == NULL || node->exponent < 0) {
 		return -1;
 	}
@@ -84,38 +84,37 @@ int split(struct ARC_BuddyMeta *meta, struct buddy_node *node, int depth, void *
 
 	int level = abs(node->exponent) - 1;
 
-	if (level < depth) {
+	if (level < meta->lowest_exponent) {
 		return -3;
 	}
 
-	struct buddy_node *new = (struct buddy_node *)Arc_ListAlloc(meta->allocator);
+	struct buddy_node *new = (struct buddy_node *)Arc_Alloc(sizeof(struct buddy_node));
+
+	if (new == NULL) {
+		return -4;
+	}
+
+	memset(new, 0, sizeof(struct buddy_node));
+
 	new->exponent = level;
 	new->base = node->base;
 	new->size = node->size / 2;
-	Arc_MutexStaticInit(&node->mutex);
-
+	new->parent = node;
 	node->left = new;
 
-	new = (struct buddy_node *)Arc_ListAlloc(meta->allocator);
+	new = (struct buddy_node *)Arc_Alloc(sizeof(struct buddy_node));
+
+	if (new == NULL) {
+		return -4;
+	}
+
+	memset(new, 0, sizeof(struct buddy_node));
+
 	new->exponent = level;
 	new->base = node->base + (node->size / 2);
 	new->size = node->size / 2;
-	Arc_MutexStaticInit(&node->mutex);
-
+	new->parent = node;
 	node->right = new;
-
-	node->left->buddy = node->right;
-
-	// Update levels
-	struct buddy_node *last = levels[level];
-
-	if (last != NULL) {
-		last->buddy = node->left;
-	}
-	levels[level] = node->right;
-
-	split(meta, node->left, depth, levels);
-	split(meta, node->right, depth, levels);
 
 	return 0;
 }
@@ -125,61 +124,77 @@ void *Arc_BuddyAlloc(struct ARC_BuddyMeta *meta, size_t size) {
 		return NULL;
 	}
 
-	struct buddy_node *current = (struct buddy_node *)meta->tree;
-
 	int exponent = quick_log2(size, NULL, 1);
 
-	if (exponent > abs(current->exponent) || -exponent == current->exponent) {
-		// Requested size it too large, or perfect but this top node is
-		// already allocated
-		return NULL;
-	}
+	struct buddy_node *current = (struct buddy_node *)meta->tree;
+	struct buddy_node *stack[abs(current->exponent)];
 
-	Arc_MutexLock(&current->mutex);
+	stack[0] = current->right;
 
-	struct buddy_node *last = current;
-	while (current != NULL && (abs(current->exponent) >= exponent || -exponent == current->exponent)) {
-		// Unlock the last last mutex, and advance last
-		if (last != current) {
-			Arc_MutexUnlock(&last->mutex);
-		}
-	
-		last = current;
+	int stack_pointer = 1;
 
-		if (current->exponent < 0) {
-			// Current block is allocated, continue to its buddy
-			// if possible
-			if (current->buddy != NULL) {
-				Arc_MutexLock(&current->buddy->mutex);
-			}
+	Arc_MutexLock(&meta->mutex);
 
-			current = current->buddy;
+	while (current != NULL) {
+		if (current->allocated) {
+			current = stack[--stack_pointer];
 			continue;
 		}
 
-		// Current block is still larger than the desired allocation
-		// go lower
-		if (current->left != NULL) {
-			Arc_MutexLock(&current->left->mutex);
+		// NOTE: If current->left is NULL, it can be assumed that current->right is NULL
+		if (current->left == NULL && current->exponent != exponent && split(meta, current) != 0) {
+			// Node does not have sub-nodes, is not on the target exponent, and failed to split
+			Arc_MutexUnlock(&meta->mutex);
+			return NULL;
 		}
 
-		current = current->left;
+		// Not on the parent level, push right node
+		// and continue to the left
+		if (current->exponent != exponent + 1) {
+			stack[stack_pointer++] = current->right;
+			current = current->left;
+			continue;
+		}
+
+		bool left = current->left->allocated | current->left->in_use;
+		bool right = current->right->allocated | current->right->in_use;
+
+		// No available nodes here, go back to the right
+		if (left == 1 && right == 1) {
+			current = stack[--stack_pointer];
+			continue;
+		}
+
+		// Allocate
+		if (left == 1) {
+			current = current->right;
+			break;
+		} else {
+			current = current->left;
+			break;
+		}
 	}
 
-	current = last;
-
-	// Last is invalid, return allocation failure
 	if (current == NULL) {
-		return NULL;
-	} else if (current->exponent < 0 || abs(current->exponent) != exponent) {
-		Arc_MutexUnlock(&last->mutex);
+		Arc_MutexUnlock(&meta->mutex);
 		return NULL;
 	}
 
-	current->exponent *= -1;
-	Arc_MutexUnlock(&current->mutex);
+	void *address = current->base;
 
-        return current->base;
+	current->allocated = 1;
+
+	do {
+		current = current->parent;
+
+		if (current != NULL) {
+			current->in_use = 1;
+		}
+	} while (current != NULL);
+
+	Arc_MutexUnlock(&meta->mutex);
+
+        return address;
 }
 
 void *Arc_BuddyFree(struct ARC_BuddyMeta *meta, void *address) {
@@ -187,73 +202,72 @@ void *Arc_BuddyFree(struct ARC_BuddyMeta *meta, void *address) {
 		return NULL;
 	}
 
+	Arc_MutexLock(&meta->mutex);
+
 	struct buddy_node *current = (struct buddy_node *)meta->tree;
 
-	Arc_MutexLock(&current->mutex);
-
-	while (current != NULL && (current->base != address || current->exponent > 0)) {
-		if (address > current->base) {
-			// Addresses to the right are higher in memory
-			if (current->left != NULL) {
-				Arc_MutexLock(&current->right->mutex);
-			}
-			Arc_MutexUnlock(&current->mutex);
-		
+	while (current != NULL && !current->allocated) {
+		if (address >= (void *)(current->base + current->size / 2)) {
 			current = current->right;
-		
 			continue;
 		}
-
-		// Addresses to the left are lower in memory
-		if (current->right != NULL) {
-			Arc_MutexLock(&current->left->mutex);
-		}
-		Arc_MutexUnlock(&current->mutex);
 
 		current = current->left;
 	}
 
 	if (current == NULL) {
+		Arc_MutexUnlock(&meta->mutex);
 		return NULL;
 	}
 
-	current->exponent *= -1;
+	current->allocated = 0;
 
-	Arc_MutexUnlock(&current->mutex);
+	do {
+		current = current->parent;
+
+		if (current == NULL) {
+			break;
+		}
+
+		bool left = current->left == NULL ? 0 : (current->left->allocated | current->left->in_use);
+		bool right = current->right == NULL ? 0 : (current->right->allocated | current->right->in_use);
+
+		current->in_use = left | right;
+	} while (current != NULL);
+
+	Arc_MutexUnlock(&meta->mutex);
 
         return address;
 }
 
 int Arc_InitBuddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowest_exponent) {
-        ARC_DEBUG(INFO, "Initializing new buddy allocator (%llu bytes, lowest exponent 2^%d bytes) at %p\n", size, lowest_exponent, base);
+        ARC_DEBUG(INFO, "Initializing new buddy allocator (%llu bytes, lowest 2^%d bytes) at %p\n", size, lowest_exponent, base);
 
+	// Setup meta
 	meta->base = base;
 	meta->ceil = base + size;
 	meta->lowest_exponent = lowest_exponent;
 	meta->next = NULL;
 	Arc_MutexStaticInit(&meta->mutex);
 
-	// 128 pages is quite a lot, might be worth while to calculate
-	// the maximum size of the tree
-	uint64_t alloc_base = (uint64_t)Arc_ContiguousAllocPMM(128);
-	meta->allocator = Arc_InitializeFreelist(alloc_base, alloc_base + 128 * PAGE_SIZE, sizeof(struct buddy_node));
-
-	struct buddy_node *head = (struct buddy_node *)Arc_ListAlloc(meta->allocator);
 	// Approximate log2(size)
-	int max_exponent = quick_log2(size, &head->size, 0);
+	int max_exponent = quick_log2(size, &size, 0);
+	ARC_DEBUG(INFO, "\tExponent range: [%d, %d]\n", lowest_exponent, max_exponent);
+	ARC_DEBUG(INFO, "\tNew size: %llu\n", size);
 
-	head->exponent = max_exponent;
-	head->base = base;
-	meta->tree = (void *)head;
-	Arc_MutexStaticInit(&head->mutex);
+	// Setup top node
+	struct buddy_node *head = (struct buddy_node *)Arc_Alloc(sizeof(struct buddy_node));
 
-	void *levels[64] = { 0 };
-	if (split(meta, head, lowest_exponent, levels) != 0) {
-		ARC_DEBUG(ERR, "Failed to initialize tree\n");
+	if (head == NULL) {
 		return -1;
 	}
 
-	ARC_DEBUG(INFO, "\tExponent range: [%d, %d]\n", lowest_exponent, max_exponent)
+	memset(head, 0, sizeof(struct buddy_node));
+
+	head->exponent = max_exponent;
+	head->base = base;
+	head->size = size;
+	meta->tree = (void *)head;
 
         return 0;
 }

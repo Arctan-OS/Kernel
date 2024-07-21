@@ -88,8 +88,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         // Initialize memory
 	Arc_InitPager();
 	Arc_InitPMM((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len);
-	Arc_InitVMM((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 5000);
 	Arc_InitializeAllocator(128);
+	Arc_InitVMM((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000);
 
         // Initialize more complicated things
 	Arc_InitializeVFS();

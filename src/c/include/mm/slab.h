@@ -53,6 +53,18 @@ void *Arc_SlabAlloc(struct ARC_SlabMeta *meta, size_t size);
 void *Arc_SlabFree(struct ARC_SlabMeta *meta, void *address);
 
 /**
+ * Expand a given SLAB's list
+ *
+ * This will expand a certain list (0-7) by the given number
+ * of pages.
+ *
+ * @param struct ARC_SlabMeta *slab - The SLAB to expand.
+ * @param int list - The freelist within the SLAB (0-7).
+ * @param int pages - The number of pages to expand the list by.
+ * @return zero upon success.
+ * */
+int Arc_ExpandSlab(struct ARC_SlabMeta *slab, int list, int pages);
+/**
  * Initialize the kernel SLAB allocator.
  *
  * @param struct ARC_FreelistMeta *memory - The freelist in which to initialize the allocator's lists.

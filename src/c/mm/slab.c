@@ -69,13 +69,19 @@ void *Arc_SlabFree(struct ARC_SlabMeta *meta, void *address) {
 	return Arc_ListFree(meta->lists[list], address);
 }
 
-// TODO: Realloc, Calloc
+int Arc_ExpandSlab(struct ARC_SlabMeta *slab, int list, int pages) {
+	if (slab == NULL || list < 0 || list > 7 || pages == 0) {
+		return -1;
+	}
+
+	uint64_t base = (uint64_t)Arc_ContiguousAllocPMM(pages);
+	struct ARC_FreelistMeta *meta = Arc_InitializeFreelist(base, base + (pages * PAGE_SIZE), slab->list_sizes[list]);
+
+	return Arc_ListLink(slab->lists[list], meta);
+}
 
 int Arc_InitSlabAllocator(struct ARC_SlabMeta *meta, size_t init_page_count) {
 	ARC_DEBUG(INFO, "Initializing SLAB allocator (%d)\n", init_page_count);
-
-	// TODO: Abstract this away, so that it uses a given memory range rather than
-	//       allocating its own.
 
 	size_t object_size = 16;
 	for (int i = 0; i < 8; i++) {

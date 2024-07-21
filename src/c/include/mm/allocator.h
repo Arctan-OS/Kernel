@@ -30,9 +30,12 @@
 #include <stddef.h>
 
 void *Arc_Alloc(size_t size);
+void *Arc_Calloc(size_t size, size_t count);
 void *Arc_Free(void *address);
+void *Arc_Realloc(void *address, size_t size);
 
-int Arc_ExpandAllocator(int pages);
-int Arc_InitializeAllocator(int pages);
+int Arc_ExpandAllocator(size_t pages);
+
+int Arc_InitializeAllocator(size_t pages);
 
 #endif
