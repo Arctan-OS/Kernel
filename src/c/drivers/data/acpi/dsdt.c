@@ -70,7 +70,7 @@ int init_dsdt(struct ARC_Resource *res, void *arg) {
 	}
 	}
 
-	cAML_ParseDefinitionBlock(table->bytes, table->base.length - sizeof(struct xsdt));
+	caml_parse_def_block(table->bytes, table->base.length - sizeof(struct xsdt));
 
 	return 0;
 }

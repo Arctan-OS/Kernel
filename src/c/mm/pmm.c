@@ -120,7 +120,7 @@ int init_pmm(struct ARC_MMap *mmap, int entries) {
 		ARC_DEBUG(INFO, "\t\tEntry is not in list, adding\n");
 
 		// Found a memory entry that is not yet in the allocator
-		struct ARC_FreelistMeta *list = Arc_InitializeFreelist(ARC_PHYS_TO_HHDM(entry.base), ARC_PHYS_TO_HHDM(entry.base + entry.len), 0x1000);
+		struct ARC_FreelistMeta *list = init_freelist(ARC_PHYS_TO_HHDM(entry.base), ARC_PHYS_TO_HHDM(entry.base + entry.len), 0x1000);
 
 
 		int ret = link_freelists(highest_meta, list);

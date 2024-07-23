@@ -30,6 +30,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size);
+int caml_parse_def_block(uint8_t *buffer, size_t size);
 
 #endif

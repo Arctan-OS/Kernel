@@ -75,7 +75,7 @@ int slab_expand(struct ARC_SlabMeta *slab, int list, int pages) {
 	}
 
 	uint64_t base = (uint64_t)pmm_contig_alloc(pages);
-	struct ARC_FreelistMeta *meta = Arc_InitializeFreelist(base, base + (pages * PAGE_SIZE), slab->list_sizes[list]);
+	struct ARC_FreelistMeta *meta = init_freelist(base, base + (pages * PAGE_SIZE), slab->list_sizes[list]);
 
 	return link_freelists(slab->lists[list], meta);
 }
@@ -88,7 +88,7 @@ int init_slab(struct ARC_SlabMeta *meta, size_t init_page_count) {
 		ARC_DEBUG(INFO, "Initializing SLAB (%p) list %d { .size = %lu pages, .obj_size = %lu bytes }\n", meta, i, init_page_count, object_size);
 
 		uint64_t base = (uint64_t)pmm_contig_alloc(init_page_count);
-		meta->lists[i] = Arc_InitializeFreelist(base, base + (init_page_count * PAGE_SIZE), object_size);
+		meta->lists[i] = init_freelist(base, base + (init_page_count * PAGE_SIZE), object_size);
 		meta->list_sizes[i] = object_size;
 
 		object_size *= 2;
