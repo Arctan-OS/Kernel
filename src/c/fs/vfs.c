@@ -68,7 +68,7 @@ int vfs_mount(char *mountpoint, struct ARC_Resource *resource) {
 	struct arc_vfs_traverse_info info = { .type = ARC_VFS_N_DIR, .create_level = ARC_VFS_GR_CREAT };
 	ARC_VFS_DETERMINE_START(info, mountpoint);
 
-	if (arc_vfs_traverse(mountpoint, &info, 0) != 0) {
+	if (vfs_traverse(mountpoint, &info, 0) != 0) {
 		ARC_DEBUG(ERR, "Failed to traverse graph\n");
 		return -1;
 	}
@@ -94,7 +94,7 @@ int vfs_mount(char *mountpoint, struct ARC_Resource *resource) {
 
 	qunlock(&mount->branch_lock);
 
-	ARC_DEBUG(INFO, "Successfully mounted resource %p at %s (%d, %p)\n", resource, mountpoint, mount);
+	ARC_DEBUG(INFO, "Successfully mounted resource %p at %s (%p)\n", resource, mountpoint, mount);
 
 	return 0;
 }
@@ -148,7 +148,7 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 	struct arc_vfs_traverse_info info = { .create_level = ARC_VFS_GR_CREAT };
 	ARC_VFS_DETERMINE_START(info, path);
 
-	int info_ret = arc_vfs_traverse(path, &info, link_depth);
+	int info_ret = vfs_traverse(path, &info, link_depth);
 	if (info_ret != 0) {
 		ARC_DEBUG(ERR, "Failed to traverse node graph (%d)\n", info_ret);
 		return -1;
@@ -301,7 +301,7 @@ int vfs_close(struct ARC_File *file) {
 	// TODO: Account if node->type == ARC_VFS_N_LINK
 
 	if (node->ref_count > 1 || (node->type != ARC_VFS_N_FILE && node->type != ARC_VFS_N_LINK)) {
-		ARC_DEBUG(INFO, "ref_count (%d) > 1, closing file descriptor\n", node->ref_count);
+		ARC_DEBUG(INFO, "ref_count (%lu) > 1, closing file descriptor\n", node->ref_count);
 
 		unrefrence_resource(file->reference);
 		free(file);
@@ -324,8 +324,8 @@ int vfs_close(struct ARC_File *file) {
 
 	struct ARC_VFSNode *parent = node->parent;
 	struct ARC_VFSNode *top = node->mount;
-	arc_vfs_delete_node(node, 0);
-	arc_vfs_bottom_up_prune(parent, top);
+	vfs_delete_node(node, 0);
+	vfs_bottom_up_prune(parent, top);
 	free(file);
 
 	ARC_DEBUG(INFO, "Closed file successfully\n");
@@ -346,7 +346,7 @@ int vfs_create(char *path, uint32_t mode, int type, void *arg) {
 
 	ARC_DEBUG(INFO, "Creating node graph %s from node %p\n", path, info.start);
 
-	int ret = arc_vfs_traverse(path, &info, 0);
+	int ret = vfs_traverse(path, &info, 0);
 
 	if (ret == 0) {
 		qunlock(&info.node->branch_lock);
@@ -367,7 +367,7 @@ int vfs_remove(char *filepath, bool physical, bool recurse) {
 	struct arc_vfs_traverse_info info = { .create_level = ARC_VFS_NO_CREAT };
 	ARC_VFS_DETERMINE_START(info, filepath);
 
-	int ret = arc_vfs_traverse(filepath, &info, 0);
+	int ret = vfs_traverse(filepath, &info, 0);
 
 	if (ret != 0 || info.node == NULL) {
 		ARC_DEBUG(ERR, "%s does not exist in node graph\n", filepath);
@@ -413,8 +413,8 @@ int vfs_remove(char *filepath, bool physical, bool recurse) {
 	}
 
 	struct ARC_VFSNode *parent = info.node->parent;
-	arc_vfs_delete_node(info.node, recurse);
-	arc_vfs_bottom_up_prune(parent, info.mount);
+	vfs_delete_node(info.node, recurse);
+	vfs_bottom_up_prune(parent, info.mount);
 
 	return 0;
 };
@@ -430,7 +430,7 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 
 	ARC_DEBUG(INFO, "Linking %s -> %s (%o)\n", a, b, mode);
 
-	int ret = arc_vfs_traverse(a, &info_a, 0);
+	int ret = vfs_traverse(a, &info_a, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find %s\n", a);
@@ -440,7 +440,7 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT, .mode = mode, .type = ARC_VFS_N_LINK };
 	ARC_VFS_DETERMINE_START(info_b, b);
 
-	ret = arc_vfs_traverse(b, &info_b, 0);
+	ret = vfs_traverse(b, &info_b, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find or create %s\n", b);
@@ -473,7 +473,7 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 	// TODO: Think about if b already exists
 	// TODO: Perms check
 
-	ARC_DEBUG(INFO, "Linked %s (%p, %d) -> %s (%p, %d)\n", a, src, src->ref_count, b, lnk, lnk->ref_count);
+	ARC_DEBUG(INFO, "Linked %s (%p, %lu) -> %s (%p, %lu)\n", a, src, src->ref_count, b, lnk, lnk->ref_count);
 
 	return 0;
 }
@@ -489,7 +489,7 @@ int vfs_rename(char *a, char *b) {
 	struct arc_vfs_traverse_info info_a = { .create_level = ARC_VFS_GR_CREAT };
 	ARC_VFS_DETERMINE_START(info_a, a);
 
-	int ret = arc_vfs_traverse(a, &info_a, 0);
+	int ret = vfs_traverse(a, &info_a, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find %s in node graph\n", a);
@@ -505,7 +505,7 @@ int vfs_rename(char *a, char *b) {
 	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT | ARC_VFS_NOLCMP, .mode = info_a.mode };
 	ARC_VFS_DETERMINE_START(info_b, b);
 
-	ret = arc_vfs_traverse(b, &info_b, 0);
+	ret = vfs_traverse(b, &info_b, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find or create %s in node graph / on disk\n", b);
@@ -623,7 +623,7 @@ int vfs_list(struct ARC_VFSNode *node, int recurse, int org) {
 			printf("\t");
 		}
 
-		printf("%s (%s, 0x%X, 0x%X B)\n", child->name, names[child->type], child->stat.st_mode, child->stat.st_size);
+		printf("%s (%s, %o, 0x%"PRIx64" B)\n", child->name, names[child->type], child->stat.st_mode, child->stat.st_size);
 
 		if (recurse > 0) {
 			vfs_list(child, recurse - 1, org);
@@ -644,7 +644,7 @@ int list(char *path, int recurse) {
 
 	ARC_VFS_DETERMINE_START(info, path);
 
-	if (arc_vfs_traverse(path, &info, 0) != 0) {
+	if (vfs_traverse(path, &info, 0) != 0) {
 		return -1;
 	}
 
@@ -668,7 +668,7 @@ struct ARC_VFSNode *vfs_create_rel(char *relative_path, struct ARC_VFSNode *star
 
 	struct arc_vfs_traverse_info info = { .start = start, .mode = mode, .type = type, .create_level = ARC_VFS_GR_CREAT, .overwrite_arg = arg };
 
-	int ret = arc_vfs_traverse(relative_path, &info, 0);
+	int ret = vfs_traverse(relative_path, &info, 0);
 
 	if (ret == 0) {
 		qunlock(&info.node->branch_lock);

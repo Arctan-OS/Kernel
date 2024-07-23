@@ -63,7 +63,7 @@ void *slab_free(struct ARC_SlabMeta *meta, void *address);
  * @param int pages - The number of pages to expand the list by.
  * @return zero upon success.
  * */
-int slab_expand(struct ARC_SlabMeta *slab, int list, int pages);
+int slab_expand(struct ARC_SlabMeta *slab, int list, size_t pages);
 /**
  * Initialize the kernel SLAB allocator.
  *

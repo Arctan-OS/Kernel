@@ -74,4 +74,6 @@ int init_sse() {
 
 	// Set MXCSR Register
 	ARC_DEBUG(INFO, "Enabled SSE support\n");
+
+	return 0;
 }

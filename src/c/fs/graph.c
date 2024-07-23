@@ -81,7 +81,7 @@ uint64_t vfs_type2idx(int type, struct ARC_VFSNode *mount) {
 }
 
 
-int arc_vfs_delete_node_recurse(struct ARC_VFSNode *node) {
+int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
 		return 1;
 	}
@@ -90,7 +90,7 @@ int arc_vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 
 	struct ARC_VFSNode *child = node->children;
 	while (child != NULL) {
-		err += arc_vfs_delete_node_recurse(child);
+		err += vfs_delete_node_recurse(child);
 		child = child->next;
 	}
 
@@ -102,7 +102,7 @@ int arc_vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 }
 
 
-int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
+int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
 		return 1;
 	}
@@ -112,7 +112,7 @@ int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 	int err = 0;
 
 	while (child != NULL && recurse == 1) {
-		err = arc_vfs_delete_node_recurse(child);
+		err = vfs_delete_node_recurse(child);
 		child = child->next;
 	}
 
@@ -142,7 +142,7 @@ int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 //       First, it needs testing like the remove and close functions.
 //       Second, this may become costly in terms of speed, as quite a
 //       big lock is grabbed (locking the topmost node).
-int arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
+int vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
 	struct ARC_VFSNode *current = bottom;
 	int freed = 0;
 
@@ -157,7 +157,7 @@ int arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top)
 		void *tmp = current->parent;
 
 		if (current->children == NULL && current->ref_count == 0) {
-			arc_vfs_delete_node(current, 0);
+			vfs_delete_node(current, 0);
 			freed++;
 		}
 
@@ -202,7 +202,7 @@ int vfs_top_down_prune_recurs(struct ARC_VFSNode *node, int depth) {
 }
 
 
-int arc_vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
+int vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
 	if (top == NULL) {
 		ARC_DEBUG(ERR, "Start node is NULL\n");
 		return -1;
@@ -251,7 +251,9 @@ int vfs_open_vfs_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int li
 	return 0;
 }
 
-int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_depth) {
+int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_depth) {
+	(void)link_depth;
+
 	if (filepath == NULL || info == NULL) {
 		return -1;
 	}

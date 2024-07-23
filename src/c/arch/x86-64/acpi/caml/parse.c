@@ -153,7 +153,7 @@ int caml_parse_computational_data(struct caml_state *state) {
 	}
 
 	default: {
-		ARC_DEBUG(ERR, "Unhandled lead 0x%X\n", lead);
+		ARC_DEBUG(ERR, "Unhandled lead 0x%x\n", lead);
 	}
 	}
 
@@ -163,11 +163,13 @@ int caml_parse_computational_data(struct caml_state *state) {
 }
 
 int caml_parse_def_pkg(struct caml_state *state) {
+	(void)state;
 	ARC_DEBUG(WARN, "Unimplemented function\n");
 	return 0;
 }
 
 int caml_parse_def_var_pkg(struct caml_state *state) {
+	(void)state;
 	ARC_DEBUG(WARN, "Unimplemented function\n");
 	return 0;
 }
@@ -181,6 +183,7 @@ int caml_parse_data_obj(struct caml_state *state) {
 }
 
 int caml_parse_obj_ref(struct caml_state *state) {
+	(void)state;
 	ARC_DEBUG(WARN, "Unimplemented function\n");
 
 	return 0;
@@ -286,18 +289,24 @@ char *caml_parse_name_str(struct caml_state *state) {
 }
 
 int caml_parse_simple_name(struct caml_state *state) {
+	(void)state;
+
 	// NameString | ArgObj | LocalObj
 	ARC_DEBUG(WARN, "Definitely implemented\n");
 	return 0;
 }
 
 int caml_parse_super_name(struct caml_state *state) {
+	(void)state;
+
 	// SimpleName | DebugObj | ReferenceTypeOpcode
 	ARC_DEBUG(WARN, "Definitely implemented\n");
 	return 0;
 }
 
 int caml_parse_target(struct caml_state *state) {
+	(void)state;
+
 	// SuperName | NullName
 	ARC_DEBUG(WARN, "Definitely implemented\n");
 	return 0;
@@ -327,9 +336,9 @@ int caml_extops(struct caml_state *state) {
 		length = state->uret;
 
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
-		ARC_DEBUG(INFO, "\tSpace: 0x%X\n", space);
-		ARC_DEBUG(INFO, "\tOffset: 0x%X\n", offset);
-		ARC_DEBUG(INFO, "\tLength: 0x%X\n", length);
+		ARC_DEBUG(INFO, "\tSpace: 0x%"PRIx64"\n", space);
+		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIx64"\n", offset);
+		ARC_DEBUG(INFO, "\tLength: 0x%"PRIx64"\n", length);
 
 		free(name);
 
@@ -372,7 +381,7 @@ int caml_extops(struct caml_state *state) {
 		package_length -= delta;
 
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
-		ARC_DEBUG(INFO, "\tFlags: 0x%X\n", flags);
+		ARC_DEBUG(INFO, "\tFlags: 0x%x\n", flags);
 
 		free(name);
 
@@ -382,7 +391,7 @@ int caml_extops(struct caml_state *state) {
 	}
 
 	default: {
-		ARC_DEBUG(ERR, "Unhandled EXTOP: 0x%X\n", *state->buffer);
+		ARC_DEBUG(ERR, "Unhandled EXTOP: 0x%x\n", *state->buffer);
 		ADVANCE_STATE(state);
 
 		break;
@@ -410,7 +419,7 @@ int caml_parse_pkg(struct caml_state *state) {
 		delta -= state->max;
 		package_size -= delta;
 
-		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
+		ARC_DEBUG(INFO, "\tPkgLength: %lu\n", package_size);
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 
 		struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
@@ -435,7 +444,7 @@ int caml_parse_pkg(struct caml_state *state) {
 		caml_parse_data_ref_obj(state);
 
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
-		ARC_DEBUG(INFO, "\tUret: %d\n", state->uret);
+		ARC_DEBUG(INFO, "\tUret: %lu\n", state->uret);
 		ARC_DEBUG(INFO, "\tPret: %p\n", state->pret);
 
 		struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
@@ -462,9 +471,9 @@ int caml_parse_pkg(struct caml_state *state) {
 		delta -= state->max;
 		package_size -= delta;
 
-		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
+		ARC_DEBUG(INFO, "\tPkgLength: %lu\n", package_size);
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
-		ARC_DEBUG(INFO, "\tFlags: 0x%X\n", flags);
+		ARC_DEBUG(INFO, "\tFlags: 0x%x\n", flags);
 
 		ADVANCE_STATE_BY(state, package_size);
 
@@ -503,7 +512,7 @@ int caml_parse_pkg(struct caml_state *state) {
 	// Parse out NamedObjects too
 
 	default: {
-		ARC_DEBUG(ERR, "Unhandled lead 0x%X\n", lead);
+		ARC_DEBUG(ERR, "Unhandled lead 0x%x\n", lead);
 
 		return 0;
 	}
@@ -528,7 +537,7 @@ int caml_parse_def_block(uint8_t *buffer, size_t size) {
 
 	CHECK_STATE(state, return -1);
 
-	ARC_DEBUG(INFO, "Parsing definition block %p (%d B)\n", buffer, size);
+	ARC_DEBUG(INFO, "Parsing definition block %p (%lu B)\n", buffer, size);
 
 	while (caml_parse_pkg(state) > 0) {
 		CHECK_STATE(state, return -1);

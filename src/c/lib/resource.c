@@ -96,7 +96,7 @@ struct ARC_Resource *init_resource(int dri_group, uint64_t dri_index, void *args
 
 	memset(resource, 0, sizeof(struct ARC_Resource));
 
-	ARC_DEBUG(INFO, "Initializing resource %llu (%d, %lu)\n", current_id, dri_group, dri_index);
+	ARC_DEBUG(INFO, "Initializing resource %lu (%d, %lu)\n", current_id, dri_group, dri_index);
 
 	// Initialize resource properties
 	resource->id = current_id++; // TODO: Atomize
@@ -130,11 +130,11 @@ int uninit_resource(struct ARC_Resource *resource) {
 	}
 
 	if (resource->ref_count > 0) {
-		ARC_DEBUG(ERR, "Resource %llu is in use!\n", resource->id);
+		ARC_DEBUG(ERR, "Resource %lu is in use!\n", resource->id);
 		return 2;
 	}
 
-	ARC_DEBUG(INFO, "Uninitializing resource: %llu\n", resource->id);
+	ARC_DEBUG(INFO, "Uninitializing resource: %lu\n", resource->id);
 
 	// Close all references
 	struct ARC_Reference *current_ref = resource->references;

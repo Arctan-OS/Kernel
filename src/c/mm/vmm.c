@@ -46,7 +46,7 @@ void *vmm_free(void *address) {
 }
 
 int init_vmm(void *addr, size_t size) {
-	Arc_InitBuddy(&vmm_meta, addr, size, 12);
+	init_buddy(&vmm_meta, addr, size, 12);
 
 	void *a = NULL;
 	void *b = NULL;

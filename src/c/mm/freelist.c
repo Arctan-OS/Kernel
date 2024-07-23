@@ -30,7 +30,6 @@
 #include <global.h>
 #include <mm/freelist.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <inttypes.h>
 
 #define ADDRESS_IN_META(address, meta) ((void *)meta->base <= (void *)address && (void *)address <= (void *)meta->ceil)

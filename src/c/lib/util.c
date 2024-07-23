@@ -39,7 +39,7 @@ int strcmp(char *a, char *b) {
 		max = b_len;
 	}
 
-	int i = 0;
+	size_t i = 0;
 	for (; i < max - 1; i++) {
 		if (ua[i] != ub[i] || ua[i] == 0 || ub[i] == 0) {
 			break;
@@ -53,7 +53,7 @@ int strncmp(char *a, char *b, size_t len) {
 	uint8_t *ua = (uint8_t *)a;
 	uint8_t *ub = (uint8_t *)b;
 
-	int i = 0;
+	size_t i = 0;
 	for (; i < len - 1; i++) {
 		if (ua[i] != ub[i] || ua[i] == 0 || ub[i] == 0) {
 			break;

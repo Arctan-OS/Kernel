@@ -49,7 +49,10 @@ int empty_hpet() {
 }
 
 int init_hpet(struct ARC_Resource *res, void *arg) {
+	(void)res;
+
 	struct hpet *hpet = (struct hpet *)arg;
+	(void)hpet;
 
 	return 0;
 };

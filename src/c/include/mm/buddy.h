@@ -58,6 +58,6 @@ void *buddy_free(struct ARC_BuddyMeta *meta, void *address);
  * @param int lowest_exponent - The exponent of the smallest region (ideally log2(system_width)).
  * @return zero upon success.
  *  */
-int Arc_InitBuddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowest_exponent);
+int init_buddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowest_exponent);
 
 #endif

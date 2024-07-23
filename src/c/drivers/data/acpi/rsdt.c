@@ -124,6 +124,8 @@ int do_rsdt(void *address) {
 
 int do_xsdt(void *address) {
 	struct xsdt *table = (struct xsdt *)address;
+	(void)table;
+
 	ARC_DEBUG(ERR, "XSDT table\n");
 	return 0;
 }

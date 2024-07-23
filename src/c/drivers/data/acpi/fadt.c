@@ -93,6 +93,8 @@ int empty_fadt() {
 }
 
 int init_fadt(struct ARC_Resource *res, void *arg) {
+	(void)res;
+
 	struct fadt *fadt = (struct fadt *)arg;
 
 	void *dsdt = (void *)ARC_PHYS_TO_HHDM(fadt->x_dsdt == 0 ? fadt->dsdt : fadt->x_dsdt);

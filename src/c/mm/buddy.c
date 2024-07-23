@@ -240,8 +240,8 @@ void *buddy_free(struct ARC_BuddyMeta *meta, void *address) {
         return address;
 }
 
-int Arc_InitBuddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowest_exponent) {
-        ARC_DEBUG(INFO, "Initializing new buddy allocator (%llu bytes, lowest 2^%d bytes) at %p\n", size, lowest_exponent, base);
+int init_buddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowest_exponent) {
+        ARC_DEBUG(INFO, "Initializing new buddy allocator (%lu bytes, lowest 2^%d bytes) at %p\n", size, lowest_exponent, base);
 
 	// Setup meta
 	meta->base = base;
@@ -253,7 +253,7 @@ int Arc_InitBuddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowes
 	// Approximate log2(size)
 	int max_exponent = quick_log2(size, &size, 0);
 	ARC_DEBUG(INFO, "\tExponent range: [%d, %d]\n", lowest_exponent, max_exponent);
-	ARC_DEBUG(INFO, "\tNew size: %llu\n", size);
+	ARC_DEBUG(INFO, "\tNew size: %lu\n", size);
 
 	// Setup top node
 	struct buddy_node *head = (struct buddy_node *)alloc(sizeof(struct buddy_node));

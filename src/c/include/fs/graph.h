@@ -65,16 +65,6 @@ struct arc_vfs_traverse_info {
 };
 
 /**
- * Internal recursive delete function.
- *
- * Recursively destroy the node.
- *
- * @param struct ARC_VFSNode *node - The node to start recursive destruction from.
- * @return the number of nodes that were not destroyed.
- * */
-int arc_vfs_delete_node_recurse(struct ARC_VFSNode *node);
-
-/**
  * Delete a node from the node graph.
  *
  * General function for deleting nodes. Parent
@@ -85,7 +75,7 @@ int arc_vfs_delete_node_recurse(struct ARC_VFSNode *node);
  * @param bool recurse - Whether to recurse or not.
  * @return number of nodes which were not destroyed.
  * */
-int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse);
+int vfs_delete_node(struct ARC_VFSNode *node, bool recurse);
 
 /**
  * Prune unused nodes from bottom to top.
@@ -98,7 +88,7 @@ int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse);
  * @param struct ARC_VFSNode *top - Topmost node to end on.
  * @return positive integer indicating the number of nodes freed.
  * */
-int arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top);
+int vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top);
 
 /**
  * Prune unused nodes from top to a depth.
@@ -111,8 +101,8 @@ int arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top)
  * @param int depth - How far down the function can traverse.
  * @return poisitive integer indicating the number of nodes freed.
  * */
-int arc_vfs_top_down_prune(struct ARC_VFSNode *top, int depth);
+int vfs_top_down_prune(struct ARC_VFSNode *top, int depth);
 
-int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_depth);
+int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_depth);
 
 #endif

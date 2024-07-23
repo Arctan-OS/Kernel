@@ -43,6 +43,8 @@ struct xsdt {
 }__attribute__((packed));
 
 int init_dsdt(struct ARC_Resource *res, void *arg) {
+	(void)res;
+
 	struct xsdt *table = (struct xsdt *)arg;
 
 	if (acpi_checksum(table, table->base.length) != 0) {

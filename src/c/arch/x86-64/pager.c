@@ -50,6 +50,8 @@
 static uint64_t *pml4 = NULL;
 
 uint64_t *get_page_table(uint64_t *parent, int level, uint64_t virtual, uint32_t attributes) {
+	(void)attributes;
+
 	int shift = ((level - 1) * 9) + 12;
 	int index = (virtual >> shift) & 0x1FF;
 
@@ -150,12 +152,17 @@ int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attribu
 }
 
 int pager_unmap(uint64_t virtual, size_t size) {
+	(void)virtual;
+	(void)size;
 
 	return 0;
 }
 
 int pager_set_attr(uint64_t virtual, size_t size, uint32_t attributes) {
 	// Set the attributes of the given region
+	(void)virtual;
+	(void)size;
+	(void)attributes;
 
 	return 0;
 }

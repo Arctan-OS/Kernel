@@ -32,7 +32,7 @@
 void *slab_alloc(struct ARC_SlabMeta *meta, size_t size) {
 	if (size > 0x1000) {
 		// Just allocate a contiguous set of pages
-		ARC_DEBUG(ERR, "Failed to allocate size %d\n", size);
+		ARC_DEBUG(ERR, "Failed to allocate size %lu\n", size);
 		return NULL;
 	}
 
@@ -69,7 +69,7 @@ void *slab_free(struct ARC_SlabMeta *meta, void *address) {
 	return freelist_free(meta->lists[list], address);
 }
 
-int slab_expand(struct ARC_SlabMeta *slab, int list, int pages) {
+int slab_expand(struct ARC_SlabMeta *slab, int list, size_t pages) {
 	if (slab == NULL || list < 0 || list > 7 || pages == 0) {
 		return -1;
 	}
@@ -77,11 +77,13 @@ int slab_expand(struct ARC_SlabMeta *slab, int list, int pages) {
 	uint64_t base = (uint64_t)pmm_contig_alloc(pages);
 	struct ARC_FreelistMeta *meta = init_freelist(base, base + (pages * PAGE_SIZE), slab->list_sizes[list]);
 
+	ARC_DEBUG(INFO, "Expanding SLAB %p (%d) by %lu pages\n", slab, list, pages);
+
 	return link_freelists(slab->lists[list], meta);
 }
 
 int init_slab(struct ARC_SlabMeta *meta, size_t init_page_count) {
-	ARC_DEBUG(INFO, "Initializing SLAB allocator (%d)\n", init_page_count);
+	ARC_DEBUG(INFO, "Initializing SLAB allocator (%lu)\n", init_page_count);
 
 	size_t object_size = 16;
 	for (int i = 0; i < 8; i++) {
