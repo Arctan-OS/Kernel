@@ -152,7 +152,7 @@ int (*Arc_SyscallTable[])(struct ARC_SyscallArgs *args) = {
 };
 
 extern int _syscall(uint64_t code, struct ARC_SyscallArgs *args);
-int Arc_InitializeSyscall() {
+int init_syscall() {
 	uint64_t ia32_fmask = 0;
 	_x86_WRMSR(0xC0000084, ia32_fmask);
 

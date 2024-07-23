@@ -54,7 +54,7 @@ struct ARC_RSDTBaseEntry {
 	uint32_t creator_rev;
 }__attribute__((packed));
 
-int Arc_ChecksumACPI(void *data, size_t length);
-int Arc_InitializeACPI(uint64_t rsdp_ptr);
+int acpi_checksum(void *data, size_t length);
+int init_acpi(uint64_t rsdp_ptr);
 
 #endif

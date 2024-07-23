@@ -62,7 +62,7 @@ int do_rsdt(void *address) {
 		return -1;
 	}
 
-	if (Arc_ChecksumACPI(table, table->base.length) != 0) {
+	if (acpi_checksum(table, table->base.length) != 0) {
 		return -1;
 	}
 
@@ -85,11 +85,11 @@ int do_rsdt(void *address) {
 		switch (entry->signature) {
 		case ARC_ACPI_TBLSIG_APIC: {
 			 size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry) - 8;
-			 Arc_CreateVFS("/dev/acpi/apic", 0, ARC_VFS_N_BUFF, &size);
+			 vfs_create("/dev/acpi/apic", 0, ARC_VFS_N_BUFF, &size);
 			 struct ARC_File *file = NULL;
-			 Arc_OpenVFS("/dev/acpi/apic", 0, 0, 0, (void *)&file);
-			 Arc_WriteVFS((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
-			 Arc_CloseVFS(file);
+			 vfs_open("/dev/acpi/apic", 0, 0, 0, (void *)&file);
+			 vfs_write((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
+			 vfs_close(file);
 
 			continue;
 		}
@@ -114,9 +114,9 @@ int do_rsdt(void *address) {
 		}
 		}
 
-		Arc_CreateVFS(path, 0, ARC_VFS_N_DIR, NULL);
-		struct ARC_Resource *res = Arc_InitializeResource(ARC_DRI_DEV, index, (void *)entry);
-		Arc_MountVFS(path, res);
+		vfs_create(path, 0, ARC_VFS_N_DIR, NULL);
+		struct ARC_Resource *res = init_resource(ARC_DRI_DEV, index, (void *)entry);
+		vfs_mount(path, res);
 	}
 
 	return 0;
@@ -137,10 +137,10 @@ int init_rsdt(struct ARC_Resource *res, void *arg) {
 
 	struct rsdp *rsdp = (struct rsdp *)arg;
 
-	if (rsdp->revision == 0 && Arc_ChecksumACPI(rsdp, 20) == 0) {
+	if (rsdp->revision == 0 && acpi_checksum(rsdp, 20) == 0) {
 		// Revision 0
 		return do_rsdt((void *)ARC_PHYS_TO_HHDM(rsdp->rsdt_addr));
-	} else if (Arc_ChecksumACPI(rsdp, sizeof(struct rsdp)) == 0) {
+	} else if (acpi_checksum(rsdp, sizeof(struct rsdp)) == 0) {
 		// Revision N
 		return do_xsdt((void *)ARC_PHYS_TO_HHDM(rsdp->xsdt_addr));
 	} else {

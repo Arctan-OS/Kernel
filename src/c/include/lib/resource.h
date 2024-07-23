@@ -115,10 +115,9 @@ struct ARC_SuperDriverDef {
 }__attribute__((packed));
 // /Driver definitions
 
-struct ARC_Resource *Arc_InitializeResource(int dri_group, uint64_t dri_index, void *args);
-int Arc_UninitializeResource(struct ARC_Resource *resource);
-struct ARC_Reference *Arc_ReferenceResource(struct ARC_Resource *resource);
-int Arc_UnreferenceResource(struct ARC_Reference *reference);
-struct ARC_DriverDef *Arc_GetDriverDef(int group, uint64_t index);
+struct ARC_Resource *init_resource(int dri_group, uint64_t dri_index, void *args);
+int uninit_resource(struct ARC_Resource *resource);
+struct ARC_Reference *reference_resource(struct ARC_Resource *resource);
+int unrefrence_resource(struct ARC_Reference *reference);
 
 #endif

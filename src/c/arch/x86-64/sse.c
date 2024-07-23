@@ -41,7 +41,7 @@ extern void _osxsave_support();
  * */
 uint8_t fxsave_space[512] __attribute__((aligned(16), section(".data")));
 
-int Arc_InitSSE() {
+int init_sse() {
 	register uint32_t eax;
 	register uint32_t ebx;
 	register uint32_t ecx;

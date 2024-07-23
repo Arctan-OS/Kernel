@@ -30,11 +30,11 @@
 #include <mm/freelist.h>
 #include <global.h>
 
-void *Arc_AllocPMM();
-void *Arc_ContiguousAllocPMM(size_t objects);
-void *Arc_FreePMM(void *address);
-void *Arc_ContiguousFreePMM(void *address, size_t objects);
+void *pmm_alloc();
+void *pmm_contig_alloc(size_t objects);
+void *pmm_free(void *address);
+void *pmm_contig_free(void *address, size_t objects);
 
-int Arc_InitPMM(struct ARC_MMap *mmap, int entries);
+int init_pmm(struct ARC_MMap *mmap, int entries);
 
 #endif

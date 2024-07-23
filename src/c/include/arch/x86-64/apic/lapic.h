@@ -32,8 +32,6 @@
  * LAPIC
  * */
 
-int Arc_InitLAPIC();
-
-
+int init_lapic();
 
 #endif

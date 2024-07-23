@@ -25,4 +25,4 @@
  * @DESCRIPTION
 */
 
-int Arc_InitAPIC();
+int init_apic();

@@ -30,9 +30,9 @@
 #include <global.h>
 #include <stddef.h>
 
-void *Arc_AllocVMM(size_t size);
-void *Arc_FreeVMM(void *address);
+void *vmm_alloc(size_t size);
+void *vmm_free(void *address);
 
-int Arc_InitVMM(void *addr, size_t size);
+int init_vmm(void *addr, size_t size);
 
 #endif

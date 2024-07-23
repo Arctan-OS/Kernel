@@ -76,41 +76,41 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	ARC_DEBUG(INFO, "Sucessfully entered long mode\n");
 
         // Initialize really basic things
-	Arc_InstallGDT();
-	Arc_InstallIDT();
-	Arc_InitSSE();
-	Arc_ParseBootInfo();
+	init_gdt();
+	init_idt();
+	init_sse();
+	parse_boot_info();
 
 	if (Arc_MainTerm.framebuffer != NULL) {
 		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
 	}
 
         // Initialize memory
-	Arc_InitPager();
-	Arc_InitPMM((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len);
-	Arc_InitializeAllocator(128);
-	Arc_InitVMM((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000);
+	init_pager();
+	init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len);
+	init_allocator(128);
+	init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000);
 
         // Initialize more complicated things
-	Arc_InitializeVFS();
+	init_vfs();
 
-	Arc_CreateVFS("/initramfs/", 0, ARC_VFS_N_DIR, NULL);
-        Arc_CreateVFS("/dev/", 0, ARC_VFS_N_DIR, NULL);
+	vfs_create("/initramfs/", 0, ARC_VFS_N_DIR, NULL);
+        vfs_create("/dev/", 0, ARC_VFS_N_DIR, NULL);
 
-        Arc_InitializeACPI(Arc_BootMeta->rsdp);
+        init_acpi(Arc_BootMeta->rsdp);
         // TODO: Implement properly
-        Arc_InitAPIC();
-	Arc_InitializeSyscall();
+        init_apic();
+	init_syscall();
 
-	Arc_InitramfsRes = Arc_InitializeResource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
-	Arc_MountVFS("/initramfs/", Arc_InitramfsRes);
-	Arc_LinkVFS("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
-	Arc_RenameVFS("/font.fnt", "/fonts/font.fnt");
-	Arc_OpenVFS("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
+	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
+	vfs_mount("/initramfs/", Arc_InitramfsRes);
+	vfs_link("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
+	vfs_rename("/font.fnt", "/fonts/font.fnt");
+	vfs_open("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	Arc_ListVFS("/", 8);
+	list("/", 8);
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
@@ -121,7 +121,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	}
 
 	for (;;) {
-		Arc_TermDraw(&Arc_MainTerm);
+		term_draw(&Arc_MainTerm);
 	}
 
 	return 0;

@@ -94,9 +94,9 @@ int arc_vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 		child = child->next;
 	}
 
-	Arc_Free(node->name);
-	Arc_UninitializeResource(node->resource);
-	Arc_Free(node);
+	free(node->name);
+	uninit_resource(node->resource);
+	free(node);
 
 	return err;
 }
@@ -120,8 +120,8 @@ int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 		return err + 1;
 	}
 
-	Arc_Free(node->name);
-	Arc_UninitializeResource(node->resource);
+	free(node->name);
+	uninit_resource(node->resource);
 
 	if (node->prev == NULL) {
 		node->parent->children = node->next;
@@ -133,7 +133,7 @@ int arc_vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 		node->next->prev = node->prev;
 	}
 
-	Arc_Free(node);
+	free(node);
 
 	return err;
 }
@@ -146,10 +146,10 @@ int arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top)
 	struct ARC_VFSNode *current = bottom;
 	int freed = 0;
 
-	if (Arc_QLock(&top->branch_lock) != 0) {
+	if (qlock(&top->branch_lock) != 0) {
 		return -1;
 	}
-	Arc_QYield(&top->branch_lock);
+	qlock_yield(&top->branch_lock);
 
 	// We have the topmost node held
 	// Delete unused directories
@@ -164,7 +164,7 @@ int arc_vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top)
 		current = tmp;
 	} while (current != top && current != NULL && current->type != ARC_VFS_N_MOUNT);
 
-	Arc_QUnlock(&top->branch_lock);
+	qunlock(&top->branch_lock);
 
 	return freed;
 }
@@ -212,10 +212,10 @@ int arc_vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
 		return 0;
 	}
 
-	if (Arc_QLock(&top->branch_lock) != 0) {
+	if (qlock(&top->branch_lock) != 0) {
 		return -2;
 	}
-	Arc_QYield(&top->branch_lock);
+	qlock_yield(&top->branch_lock);
 
 	struct ARC_VFSNode *node = top->children;
 	int count = 0;
@@ -229,7 +229,7 @@ int arc_vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
 }
 
 
-int vfs_open_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int link_depth) {
+int vfs_open_vfs_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int link_depth) {
 	(void)node;
 	(void)ret;
 	(void)link_depth;
@@ -267,7 +267,7 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 	struct ARC_VFSNode *node = info->start;
 	node->ref_count++; // TODO: Atomize
 
-	if (Arc_QLock(&node->branch_lock) != 0) {
+	if (qlock(&node->branch_lock) != 0) {
 		ARC_DEBUG(ERR, "Lock error\n");
 		return -1;
 	}
@@ -320,7 +320,7 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 		}
 
 		// Wait to acquire lock on current node
-		Arc_QYield(&node->branch_lock);
+		qlock_yield(&node->branch_lock);
 
 		struct ARC_VFSNode *next = NULL;
 
@@ -358,7 +358,7 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 
 			// NOTE: ARC_VFS_GR_CREAT is not really used
 
-			next = (struct ARC_VFSNode *)Arc_Alloc(sizeof(struct ARC_VFSNode));
+			next = (struct ARC_VFSNode *)alloc(sizeof(struct ARC_VFSNode));
 
 			if (next == NULL) {
 				ARC_DEBUG(ERR, "Failed to allocate new node\n");
@@ -378,8 +378,8 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 			// Set properties
 			next->name = strndup(component, component_size);
 			next->type = is_last ? info->type : ARC_VFS_N_DIR;
-			Arc_QLockStaticInit(&next->branch_lock);
-			Arc_MutexStaticInit(&next->property_lock);
+			init_static_qlock(&next->branch_lock);
+			init_static_mutex(&next->property_lock);
 
 			ARC_DEBUG(INFO, "Created new node %s (%p)\n", next->name, next);
 
@@ -423,7 +423,7 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 			}
 
 			if (info->mount != NULL) {
-				Arc_MutexLock(&info->mount->resource->dri_state_mutex);
+				mutex_lock(&info->mount->resource->dri_state_mutex);
 			}
 
 			// Figure out the index from the given type
@@ -434,10 +434,10 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 			// Determine the arguments
 			void *args = (info->overwrite_arg == NULL && info->mount != NULL ? info->mount->resource->driver_state : info->overwrite_arg);
 
-			next->resource = Arc_InitializeResource(group, index, args);
+			next->resource = init_resource(group, index, args);
 
 			if (info->mount != NULL) {
-				Arc_MutexUnlock(&info->mount->resource->dri_state_mutex);
+				mutex_unlock(&info->mount->resource->dri_state_mutex);
 
 			}
 			skip_resource:;
@@ -446,11 +446,11 @@ int arc_vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int lin
 		resolve:;
 
 		// Next node should not be NULL
-		if (Arc_QLock(&next->branch_lock) != 0) {
+		if (qlock(&next->branch_lock) != 0) {
 			ARC_DEBUG(ERR, "Lock error!\n");
 			// TODO: Do something
 		}
-		Arc_QUnlock(&node->branch_lock);
+		qunlock(&node->branch_lock);
 
 		node->ref_count--; // TODO: Atomize
 		node = next;

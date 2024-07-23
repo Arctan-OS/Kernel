@@ -46,8 +46,8 @@ struct ARC_BuddyMeta {
 	ARC_GenericMutex mutex;
 };
 
-void *Arc_BuddyAlloc(struct ARC_BuddyMeta *meta, size_t size);
-void *Arc_BuddyFree(struct ARC_BuddyMeta *meta, void *address);
+void *buddy_alloc(struct ARC_BuddyMeta *meta, size_t size);
+void *buddy_free(struct ARC_BuddyMeta *meta, void *address);
 
 /**
  * Create a buddy allocator

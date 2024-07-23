@@ -33,6 +33,6 @@
  * @param int perms - Requested permissions.
  * @return Zero if the current program has requested privelleges.
  * */
-int Arc_CheckCurPerms(int perms);
+int check_current_perms(int perms);
 
 #endif

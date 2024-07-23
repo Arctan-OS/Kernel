@@ -89,7 +89,7 @@ struct ARC_VFSNode {
  *
  * @return 0: success
  * */
-int Arc_InitializeVFS();
+int init_vfs();
 
 /**
  * Create a new mounted device under the given mountpoint.
@@ -101,7 +101,7 @@ int Arc_InitializeVFS();
  * @param struct ARC_Resource *resource - The resource by which to address the mountpoint.
  * @return zero on success.
  * */
-int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource);
+int vfs_mount(char *mountpoint, struct ARC_Resource *resource);
 
 /**
  * Unmounts the given mountpoint
@@ -112,7 +112,7 @@ int Arc_MountVFS(char *mountpoint, struct ARC_Resource *resource);
  * @param struct ARC_VFSNode *mount - The mount to unmount
  * @return zero on success.
  * */
-int Arc_UnmountVFS(struct ARC_VFSNode *mount);
+int vfs_unmount(struct ARC_VFSNode *mount);
 
 /**
  * Open the given file with the given perms.
@@ -123,7 +123,7 @@ int Arc_UnmountVFS(struct ARC_VFSNode *mount);
  * @param struct ARC_Reference **reference - A reference to the resource.
  * @return A non-NULL pointer on success.
  * */
-int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret);
+int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret);
 
 /**
  * Read the given file.
@@ -137,11 +137,8 @@ int Arc_OpenVFS(char *path, int flags, uint32_t mode, int link_depth, void **ret
  * @param struct ARC_VFSNode *file - The file to read.
  * @return The number of words read.
  * */
-int Arc_ReadVFS(void *buffer, size_t size, size_t count, struct ARC_File *file);
-/**
- * Read directly from a VFSNode.
- * */
-int Arc_HeadlessReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node);
+int vfs_read(void *buffer, size_t size, size_t count, struct ARC_File *file);
+
 
 /**
  * Write to the given file.
@@ -155,12 +152,7 @@ int Arc_HeadlessReadVFS(void *buffer, size_t size, size_t count, struct ARC_VFSN
  * @param struct ARC_VFSNode *file - The file to write.
  * @return The number of words written.
  * */
-int Arc_WriteVFS(void *buffer, size_t size, size_t count, struct ARC_File *file);
-
-/**
- * Write directly to a VFSNode.
- * */
-int Arc_HeadlessWriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFSNode *node);
+int vfs_write(void *buffer, size_t size, size_t count, struct ARC_File *file);
 
 /**
  * Change the offset in the given file.
@@ -170,7 +162,7 @@ int Arc_HeadlessWriteVFS(void *buffer, size_t size, size_t count, struct ARC_VFS
  * @param int whence - The position from which to apply the offset to.
  * @return zero on success.
  * */
-int Arc_SeekVFS(struct ARC_File *file, long offset, int whence);
+int vfs_seek(struct ARC_File *file, long offset, int whence);
 
 /**
  * Close the given file in the VFS.
@@ -179,7 +171,7 @@ int Arc_SeekVFS(struct ARC_File *file, long offset, int whence);
  * @param struct ARC_Reference *reference - The reference which is closing the file.
  * @return zero on success.
  * */
-int Arc_CloseVFS(struct ARC_File *file);
+int vfs_close(struct ARC_File *file);
 
 /**
  * Get the status of a file
@@ -191,13 +183,13 @@ int Arc_CloseVFS(struct ARC_File *file);
  * @param struct stat *stat - The place where to put the information.
  * @return zero on success.
  * */
-int Arc_StatVFS(char *filepath, struct stat *stat);
+int vfs_stat(char *filepath, struct stat *stat);
 
-int Arc_CreateVFS(char *path, uint32_t mode, int type, void *arg);
-int Arc_RemoveVFS(char *filepath, bool physical, bool recurse);
-int Arc_LinkVFS(char *a, char *b, uint32_t mode);
-int Arc_RenameVFS(char *a, char *b);
-int Arc_ListVFS(char *path, int recurse);
-struct ARC_VFSNode *Arc_RelNodeCreateVFS(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type, void *arg);
+int vfs_create(char *path, uint32_t mode, int type, void *arg);
+int vfs_remove(char *filepath, bool physical, bool recurse);
+int vfs_link(char *a, char *b, uint32_t mode);
+int vfs_rename(char *a, char *b);
+int list(char *path, int recurse);
+struct ARC_VFSNode *vfs_create_rel(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type, void *arg);
 
 #endif

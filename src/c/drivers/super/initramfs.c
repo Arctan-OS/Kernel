@@ -108,7 +108,7 @@ static int initramfs_empty() {
 }
 
 static int initramfs_init(struct ARC_Resource *res, void *args) {
-	struct internal_driver_state *state = (struct internal_driver_state *)Arc_Alloc(sizeof(struct internal_driver_state));
+	struct internal_driver_state *state = (struct internal_driver_state *)alloc(sizeof(struct internal_driver_state));
 
 	state->initramfs_base = args;
 	state->resource = res;
@@ -118,7 +118,7 @@ static int initramfs_init(struct ARC_Resource *res, void *args) {
 }
 
 static int initramfs_uninit(struct ARC_Resource *res) {
-	Arc_Free(res->driver_state);
+	free(res->driver_state);
 
 	return 0;
 }

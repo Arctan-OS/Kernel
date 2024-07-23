@@ -68,9 +68,9 @@ struct ARC_TermMeta {
 	int tx_buf_idx;
 };
 
-void Arc_TermPutChar(struct ARC_TermMeta *term, char c);
-void Arc_TermDraw(struct ARC_TermMeta *term);
-int Arc_TermPush(struct ARC_TermMeta *term, int rx, char c);
-char Arc_TermPop(struct ARC_TermMeta *term, int rx);
+void term_putchar(struct ARC_TermMeta *term, char c);
+void term_draw(struct ARC_TermMeta *term);
+int term_push(struct ARC_TermMeta *term, int rx, char c);
+char term_pop(struct ARC_TermMeta *term, int rx);
 
 #endif

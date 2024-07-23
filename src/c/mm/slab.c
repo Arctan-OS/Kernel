@@ -29,7 +29,7 @@
 #include <global.h>
 #include <lib/util.h>
 
-void *Arc_SlabAlloc(struct ARC_SlabMeta *meta, size_t size) {
+void *slab_alloc(struct ARC_SlabMeta *meta, size_t size) {
 	if (size > 0x1000) {
 		// Just allocate a contiguous set of pages
 		ARC_DEBUG(ERR, "Failed to allocate size %d\n", size);
@@ -43,10 +43,10 @@ void *Arc_SlabAlloc(struct ARC_SlabMeta *meta, size_t size) {
 		}
 	}
 
-	return Arc_ListAlloc(meta->lists[i]);
+	return freelist_alloc(meta->lists[i]);
 }
 
-void *Arc_SlabFree(struct ARC_SlabMeta *meta, void *address) {
+void *slab_free(struct ARC_SlabMeta *meta, void *address) {
 	int list = -1;
 	for (int i = 0; i < 8; i++) {
 		void *base = meta->lists[i]->base;
@@ -66,28 +66,28 @@ void *Arc_SlabFree(struct ARC_SlabMeta *meta, void *address) {
 
 	memset(address, 0, meta->list_sizes[list]);
 
-	return Arc_ListFree(meta->lists[list], address);
+	return freelist_free(meta->lists[list], address);
 }
 
-int Arc_ExpandSlab(struct ARC_SlabMeta *slab, int list, int pages) {
+int slab_expand(struct ARC_SlabMeta *slab, int list, int pages) {
 	if (slab == NULL || list < 0 || list > 7 || pages == 0) {
 		return -1;
 	}
 
-	uint64_t base = (uint64_t)Arc_ContiguousAllocPMM(pages);
+	uint64_t base = (uint64_t)pmm_contig_alloc(pages);
 	struct ARC_FreelistMeta *meta = Arc_InitializeFreelist(base, base + (pages * PAGE_SIZE), slab->list_sizes[list]);
 
-	return Arc_ListLink(slab->lists[list], meta);
+	return link_freelists(slab->lists[list], meta);
 }
 
-int Arc_InitSlabAllocator(struct ARC_SlabMeta *meta, size_t init_page_count) {
+int init_slab(struct ARC_SlabMeta *meta, size_t init_page_count) {
 	ARC_DEBUG(INFO, "Initializing SLAB allocator (%d)\n", init_page_count);
 
 	size_t object_size = 16;
 	for (int i = 0; i < 8; i++) {
 		ARC_DEBUG(INFO, "Initializing SLAB (%p) list %d { .size = %lu pages, .obj_size = %lu bytes }\n", meta, i, init_page_count, object_size);
 
-		uint64_t base = (uint64_t)Arc_ContiguousAllocPMM(init_page_count);
+		uint64_t base = (uint64_t)pmm_contig_alloc(init_page_count);
 		meta->lists[i] = Arc_InitializeFreelist(base, base + (init_page_count * PAGE_SIZE), object_size);
 		meta->list_sizes[i] = object_size;
 

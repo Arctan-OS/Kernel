@@ -206,7 +206,7 @@ fall_through:;
 	printf("Return address: 0x%"PRIX64"\n", stack_elem);
 
 	memset(Arc_MainTerm.framebuffer, 0, Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8));
-	Arc_TermDraw(&Arc_MainTerm);
+	term_draw(&Arc_MainTerm);
 	ARC_HANG;
 EOI:
 	// Send EOI
@@ -253,7 +253,7 @@ extern void _idt_stub_31_();
 
 extern void _idt_stub_33_();
 
-void Arc_InstallIDT() {
+void init_idt() {
 	install_idt_gate(0, (uintptr_t)&_idt_stub_0_, 0x08, 0x8E);
 	install_idt_gate(1, (uintptr_t)&_idt_stub_1_, 0x08, 0x8E);
 	install_idt_gate(2, (uintptr_t)&_idt_stub_2_, 0x08, 0x8E);

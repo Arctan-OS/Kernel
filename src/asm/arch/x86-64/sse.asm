@@ -31,20 +31,21 @@ bits 64
 
 global _osxsave_support
 extern fxsave_space
-_osxsave_support:   push rcx
-                    push rdx
-                    push rax
-        
-                    lea rax, [rel fxsave_space]
-                    fxsave [rax]
+_osxsave_support:
+        push rcx
+        push rdx
+        push rax
 
-                    mov rcx, 0
-                    xgetbv
-                    or rax, 0b111
-                    xsetbv
+        lea rax, [rel fxsave_space]
+        fxsave [rax]
 
-                    pop rax
-                    pop rdx
-                    pop rcx
+        mov rcx, 0
+        xgetbv
+        or rax, 0b111
+        xsetbv
 
-                    ret
+        pop rax
+        pop rdx
+        pop rcx
+
+        ret

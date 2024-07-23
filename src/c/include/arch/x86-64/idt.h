@@ -28,6 +28,6 @@
 #ifndef ARC_ARCH_X86_64_IDT_H
 #define ARC_ARCH_X86_64_IDT_H
 
-void Arc_InstallIDT();
+void init_idt();
 
 #endif

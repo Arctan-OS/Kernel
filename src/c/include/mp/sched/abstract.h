@@ -32,11 +32,11 @@
 /**
  * Get the currently running thread ID.
  * */
-int64_t Arc_GetCurrentTID();
+int64_t get_current_tid();
 
 /**
  * Yield CPU to desired thread.
  * */
-int Arc_YieldCPU(int64_t tid);
+int yield_cpu(int64_t tid);
 
 #endif

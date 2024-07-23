@@ -31,19 +31,19 @@
 
 struct ARC_SlabMeta top_alloc = { 0 };
 
-void *Arc_Alloc(size_t size) {
-	return Arc_SlabAlloc(&top_alloc, size);
+void *alloc(size_t size) {
+	return slab_alloc(&top_alloc, size);
 }
 
-void *Arc_Calloc(size_t size, size_t count) {
-	return Arc_SlabAlloc(&top_alloc, size * count);
+void *calloc(size_t size, size_t count) {
+	return slab_alloc(&top_alloc, size * count);
 }
 
-void *Arc_Free(void *address) {
-	return Arc_SlabFree(&top_alloc, address);
+void *free(void *address) {
+	return slab_free(&top_alloc, address);
 }
 
-void *Arc_Realloc(void *address, size_t size) {
+void *realloc(void *address, size_t size) {
 	(void)address;
 	(void)size;
 
@@ -53,18 +53,18 @@ void *Arc_Realloc(void *address, size_t size) {
 }
 
 int Arc_ExpandAllocator(size_t pages) {
-	int cumulative_err = (Arc_ExpandSlab(&top_alloc, 0, pages) == 0);
-	cumulative_err += (Arc_ExpandSlab(&top_alloc, 1, pages) == 0);
-	cumulative_err += (Arc_ExpandSlab(&top_alloc, 2, pages) == 0);
-	cumulative_err += (Arc_ExpandSlab(&top_alloc, 3, pages) == 0);
-	cumulative_err += (Arc_ExpandSlab(&top_alloc, 4, pages) == 0);
-	cumulative_err += (Arc_ExpandSlab(&top_alloc, 5, pages) == 0);
-	cumulative_err += (Arc_ExpandSlab(&top_alloc, 6, pages) == 0);
-	cumulative_err += (Arc_ExpandSlab(&top_alloc, 7, pages) == 0);
+	int cumulative_err = (slab_expand(&top_alloc, 0, pages) == 0);
+	cumulative_err += (slab_expand(&top_alloc, 1, pages) == 0);
+	cumulative_err += (slab_expand(&top_alloc, 2, pages) == 0);
+	cumulative_err += (slab_expand(&top_alloc, 3, pages) == 0);
+	cumulative_err += (slab_expand(&top_alloc, 4, pages) == 0);
+	cumulative_err += (slab_expand(&top_alloc, 5, pages) == 0);
+	cumulative_err += (slab_expand(&top_alloc, 6, pages) == 0);
+	cumulative_err += (slab_expand(&top_alloc, 7, pages) == 0);
 
 	return cumulative_err;
 }
 
-int Arc_InitializeAllocator(size_t pages) {
-	return Arc_InitSlabAllocator(&top_alloc, pages);
+int init_allocator(size_t pages) {
+	return init_slab(&top_alloc, pages);
 }

@@ -27,12 +27,12 @@
 #include <mp/sched/abstract.h>
 #include <global.h>
 
-int64_t Arc_GetCurrentTID() {
+int64_t get_current_tid() {
 	return 1;
 }
 
-int Arc_YieldCPU(int64_t tid) {
-	if (Arc_GetCurrentTID() == tid) {
+int yield_cpu(int64_t tid) {
+	if (get_current_tid() == tid) {
 		return 0;
 	}
 

@@ -45,8 +45,8 @@ static int buffer_init(struct ARC_Resource *res, void *arg) {
 	}
 
 	size_t size = *(size_t *)arg;
-	struct buffer_dri_state *state = (struct buffer_dri_state *)Arc_Alloc(sizeof(struct buffer_dri_state));
-	state->buffer = (void *)Arc_Alloc(size);
+	struct buffer_dri_state *state = (struct buffer_dri_state *)alloc(sizeof(struct buffer_dri_state));
+	state->buffer = (void *)alloc(size);
 	state->size = size;
 
 	res->driver_state = state;
@@ -57,8 +57,8 @@ static int buffer_init(struct ARC_Resource *res, void *arg) {
 static int buffer_uninit(struct ARC_Resource *res) {
 	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
 
-	Arc_Free(state->buffer);
-	Arc_Free(state);
+	free(state->buffer);
+	free(state);
 
 	return 0;
 }
@@ -84,7 +84,7 @@ static int buffer_read(void *buffer, size_t size, size_t count, struct ARC_File 
 		return -1;
 	}
 
-	Arc_MutexLock(&res->dri_state_mutex);
+	mutex_lock(&res->dri_state_mutex);
 
 	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
 
@@ -93,7 +93,7 @@ static int buffer_read(void *buffer, size_t size, size_t count, struct ARC_File 
 
 	if (accessible == 0) {
 		return 0;
-		Arc_MutexUnlock(&res->dri_state_mutex);
+		mutex_unlock(&res->dri_state_mutex);
 	}
 
 	int64_t delta = wanted - accessible;
@@ -103,7 +103,7 @@ static int buffer_read(void *buffer, size_t size, size_t count, struct ARC_File 
 	// Do the actual giving
 	memcpy(buffer, state->buffer + file->offset, given);
 
-	Arc_MutexUnlock(&res->dri_state_mutex);
+	mutex_unlock(&res->dri_state_mutex);
 
 	return given;
 }
@@ -113,7 +113,7 @@ static int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File
 		return -1;
 	}
 
-	Arc_MutexLock(&res->dri_state_mutex);
+	mutex_lock(&res->dri_state_mutex);
 
 	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
 
@@ -122,7 +122,7 @@ static int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File
 
 	if (accessible == 0) {
 		return 0;
-		Arc_MutexUnlock(&res->dri_state_mutex);
+		mutex_unlock(&res->dri_state_mutex);
 	}
 
 	int64_t delta = wanted - accessible;
@@ -132,7 +132,7 @@ static int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File
 	// Do the actual receiving
 	memcpy(state->buffer + file->offset, buffer, given);
 
-	Arc_MutexUnlock(&res->dri_state_mutex);
+	mutex_unlock(&res->dri_state_mutex);
 
 	return given;
 }

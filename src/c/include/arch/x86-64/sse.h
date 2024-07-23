@@ -31,6 +31,6 @@
 /**
  * Detect and enable SSE.
  * */
-int Arc_InitSSE();
+int init_sse();
 
 #endif

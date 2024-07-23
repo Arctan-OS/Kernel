@@ -37,7 +37,7 @@ struct ARC_MB2BootInfo {
 	uint64_t fb;
 }__attribute__((packed));
 
-int Arc_ParseMB2I() {
+int parse_mb2i() {
 	ARC_DEBUG(INFO, "Parsing Multiboot2\n");
 
 	struct ARC_MB2BootInfo *info = (struct ARC_MB2BootInfo *)ARC_PHYS_TO_HHDM(Arc_BootMeta->boot_info);

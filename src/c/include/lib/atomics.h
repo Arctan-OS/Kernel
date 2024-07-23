@@ -60,19 +60,19 @@ struct ARC_QLock {
  * Allocate and zero a lock, return it in the
  * given doubly pointer.
  * */
-int Arc_QLockInit(struct ARC_QLock **lock);
+int init_qlock(struct ARC_QLock **lock);
 
 /**
  * Uninitialize dynamic qlock
  *
  * Deallocate the given lock.
  * */
-int Arc_QLockUninit(struct ARC_QLock *lock);
+int uninit_qlock(struct ARC_QLock *lock);
 
 /**
  * Initialize static qlock.
  * */
-int Arc_QLockStaticInit(struct ARC_QLock *head);
+int init_static_qlock(struct ARC_QLock *head);
 
 /**
  * Enqueue calling thread.
@@ -83,7 +83,7 @@ int Arc_QLockStaticInit(struct ARC_QLock *head);
  * @return tid of the current thread upon success (>= 0), -1: thread owns lock, -2: failed
  * to enqueue thread.
  * */
-int Arc_QLock(struct ARC_QLock *lock);
+int qlock(struct ARC_QLock *lock);
 
 /**
  * Yield current thread to lock owner thread.
@@ -93,7 +93,7 @@ int Arc_QLock(struct ARC_QLock *lock);
  * asked to yield the calling thread to the thread
  * which owns the lock.
  * */
-void Arc_QYield(struct ARC_QLock *lock);
+void qlock_yield(struct ARC_QLock *lock);
 
 /**
  * Dequeue current lock owner.
@@ -105,15 +105,15 @@ void Arc_QYield(struct ARC_QLock *lock);
  * @return 0: upon succes, 1: upon current lock owner tid and calling thread tid
  * mismatch.
  * */
-int Arc_QUnlock(struct ARC_QLock *lock);
+int qunlock(struct ARC_QLock *lock);
 
-int Arc_QFreeze(struct ARC_QLock *head);
-int Arc_QThaw(struct ARC_QLock *head);
+int qlock_freeze(struct ARC_QLock *head);
+int qlock_thaw(struct ARC_QLock *head);
 
-int Arc_MutexInit(ARC_GenericMutex **mutex);
-int Arc_MutexUninit(ARC_GenericMutex *mutex);
-int Arc_MutexStaticInit(ARC_GenericMutex *mutex);
-int Arc_MutexLock(ARC_GenericMutex *mutex);
-int Arc_MutexUnlock(ARC_GenericMutex *mutex);
+int init_mutex(ARC_GenericMutex **mutex);
+int uninit_mutex(ARC_GenericMutex *mutex);
+int init_static_mutex(ARC_GenericMutex *mutex);
+int mutex_lock(ARC_GenericMutex *mutex);
+int mutex_unlock(ARC_GenericMutex *mutex);
 
 #endif

@@ -61,7 +61,7 @@ struct ARC_FreelistMeta {
  * @param struct ARC_FreelistMeta *meta - The list from which to allocate one object
  * @return A void * to the base of the newly allocated object.
  * */
-void *Arc_ListAlloc(struct ARC_FreelistMeta *meta);
+void *freelist_alloc(struct ARC_FreelistMeta *meta);
 
 /**
  * Allocate a contiguous section of memory.
@@ -70,7 +70,7 @@ void *Arc_ListAlloc(struct ARC_FreelistMeta *meta);
  * @param uint64_t objects - Number of contiguous objects to allocate.
  * @return The base address of the contiguous section.
  * */
-void *Arc_ListContiguousAlloc(struct ARC_FreelistMeta *meta, uint64_t objects);
+void *freelist_contig_alloc(struct ARC_FreelistMeta *meta, uint64_t objects);
 
 /**
  * Free the object at the given address in the given meta.
@@ -79,7 +79,7 @@ void *Arc_ListContiguousAlloc(struct ARC_FreelistMeta *meta, uint64_t objects);
  * @param void *address - A pointer to the base of the given object to be freed.
  * @return /a address when successfull.
  * */
-void *Arc_ListFree(struct ARC_FreelistMeta *meta, void *address);
+void *freelist_free(struct ARC_FreelistMeta *meta, void *address);
 
 /**
  * Free a contiguous section of memory.
@@ -88,7 +88,7 @@ void *Arc_ListFree(struct ARC_FreelistMeta *meta, void *address);
  * @param void *address - The base address of the contiguous section.
  * @param uint64_t objects - The number of objects the section consists of.
  * @return The base address if the free was successful. */
-void *Arc_ListContiguousFree(struct ARC_FreelistMeta *meta, void *address, uint64_t objects);
+void *freelist_contig_free(struct ARC_FreelistMeta *meta, void *address, uint64_t objects);
 
 /**
  * Combine list A and list B.
@@ -97,7 +97,7 @@ void *Arc_ListContiguousFree(struct ARC_FreelistMeta *meta, void *address, uint6
  * When a -1 is returned, the object size of A and B don't match.\n
  * When a -2 is returned, either list is NULL.\n
  * */
-int Arc_ListLink(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B);
+int link_freelists(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B);
 
 /**
  * Initialize the given memory as a freelist.

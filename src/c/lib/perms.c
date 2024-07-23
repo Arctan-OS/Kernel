@@ -26,7 +26,7 @@
 */
 #include <lib/perms.h>
 
-int Arc_CheckCurPerms(int perms) {
+int check_current_perms(int perms) {
 	// You can do whatever you want
 	(void)perms;
 	return 0;

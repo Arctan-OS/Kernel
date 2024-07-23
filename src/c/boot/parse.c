@@ -28,12 +28,12 @@
 #include <boot/mb2.h>
 #include <global.h>
 
-int Arc_ParseBootInfo() {
+int parse_boot_info() {
 	ARC_DEBUG(INFO, "Parsing boot information\n");
 
 	switch (Arc_BootMeta->boot_proc) {
 	case ARC_BOOTPROC_MB2: {
-		Arc_ParseMB2I();
+		parse_mb2i();
 		break;
 	}
 

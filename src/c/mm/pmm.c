@@ -32,43 +32,43 @@
 
 static struct ARC_FreelistMeta *arc_physical_mem = NULL;
 
-void *Arc_AllocPMM() {
+void *pmm_alloc() {
 	if (arc_physical_mem == NULL) {
 		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
 		return NULL;
 	}
 
-	return Arc_ListAlloc(arc_physical_mem);
+	return freelist_alloc(arc_physical_mem);
 }
 
-void *Arc_ContiguousAllocPMM(size_t objects) {
+void *pmm_contig_alloc(size_t objects) {
 	if (arc_physical_mem == NULL) {
 		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
 		return NULL;
 	}
 
-	return Arc_ListContiguousAlloc(arc_physical_mem, objects);
+	return freelist_contig_alloc(arc_physical_mem, objects);
 }
 
-void *Arc_FreePMM(void *address) {
+void *pmm_free(void *address) {
 	if (arc_physical_mem == NULL) {
 		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
 		return NULL;
 	}
 
-	return Arc_ListFree(arc_physical_mem, address);
+	return freelist_free(arc_physical_mem, address);
 }
 
-void *Arc_ContiguousFreePMM(void *address, size_t objects) {
+void *pmm_contig_free(void *address, size_t objects) {
 	if (arc_physical_mem == NULL) {
 		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
 		return NULL;
 	}
 
-	return Arc_ListContiguousFree(arc_physical_mem, address, objects);
+	return freelist_contig_free(arc_physical_mem, address, objects);
 }
 
-int Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
+int init_pmm(struct ARC_MMap *mmap, int entries) {
 	if (mmap == NULL || entries == 0) {
 		ARC_DEBUG(ERR, "Failed to initialize 64-bit PMM (one or more are NULL: %p %d)\n", mmap, entries);
 		ARC_HANG;
@@ -123,7 +123,7 @@ int Arc_InitPMM(struct ARC_MMap *mmap, int entries) {
 		struct ARC_FreelistMeta *list = Arc_InitializeFreelist(ARC_PHYS_TO_HHDM(entry.base), ARC_PHYS_TO_HHDM(entry.base + entry.len), 0x1000);
 
 
-		int ret = Arc_ListLink(highest_meta, list);
+		int ret = link_freelists(highest_meta, list);
 		if (ret != 0) {
 			ARC_DEBUG(ERR, "\t\tFailed to link lists (%d)\n", ret);
 			continue;

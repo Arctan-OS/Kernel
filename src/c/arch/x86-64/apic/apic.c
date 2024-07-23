@@ -48,9 +48,9 @@
 #define ENTRY_TYPE_ITS                 0x0F
 #define ENTRY_TYPE_MP_WAKEUP           0x10
 
-int Arc_InitAPIC() {
+int init_apic() {
 	struct ARC_File *apic = NULL;
-	Arc_OpenVFS("/dev/acpi/apic", 0, 0, 0, (void *)&apic);
+	vfs_open("/dev/acpi/apic", 0, 0, 0, (void *)&apic);
 
 	if (apic == NULL) {
 		return -1;
@@ -58,7 +58,7 @@ int Arc_InitAPIC() {
 
 	uint8_t data[2] = { 0 };
 
-	while (Arc_ReadVFS(data, 1, 2, apic) > 0) {
+	while (vfs_read(data, 1, 2, apic) > 0) {
 		switch (data[0]) {
 		case ENTRY_TYPE_LAPIC: {
 			ARC_DEBUG(INFO, "LAPIC found\n");
@@ -86,11 +86,12 @@ int Arc_InitAPIC() {
 		}
 		}
 
-		Arc_SeekVFS(apic, data[1] - 2, ARC_VFS_SEEK_CUR);
+		vfs_seek(apic, data[1] - 2, ARC_VFS_SEEK_CUR);
 	}
 
-	Arc_CloseVFS(apic);
+	vfs_close(apic);
 
-	Arc_InitLAPIC();
+	init_lapic();
+
 	return 0;
 }

@@ -96,9 +96,9 @@ int init_fadt(struct ARC_Resource *res, void *arg) {
 	struct fadt *fadt = (struct fadt *)arg;
 
 	void *dsdt = (void *)ARC_PHYS_TO_HHDM(fadt->x_dsdt == 0 ? fadt->dsdt : fadt->x_dsdt);
-	Arc_CreateVFS("/dev/acpi/fadt/dsdt/", 0, ARC_VFS_N_DIR, NULL);
-	struct ARC_Resource *dsdt_res = Arc_InitializeResource(ARC_DRI_DEV, ARC_DRI_DSDT, dsdt);
-	Arc_MountVFS("/dev/acpi/fadt/dsdt/", dsdt_res);
+	vfs_create("/dev/acpi/fadt/dsdt/", 0, ARC_VFS_N_DIR, NULL);
+	struct ARC_Resource *dsdt_res = init_resource(ARC_DRI_DEV, ARC_DRI_DSDT, dsdt);
+	vfs_mount("/dev/acpi/fadt/dsdt/", dsdt_res);
 
 	return 0;
 }

@@ -45,7 +45,7 @@ struct xsdt {
 int init_dsdt(struct ARC_Resource *res, void *arg) {
 	struct xsdt *table = (struct xsdt *)arg;
 
-	if (Arc_ChecksumACPI(table, table->base.length) != 0) {
+	if (acpi_checksum(table, table->base.length) != 0) {
 		return -1;
 	}
 

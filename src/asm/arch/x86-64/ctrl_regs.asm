@@ -52,51 +52,63 @@ section .text
 %endmacro
 
 global _x86_getCR0
-_x86_getCR0:    GET_DATA _x86_CR0, cr0
+_x86_getCR0:
+        GET_DATA _x86_CR0, cr0
 
 global _x86_setCR0
-_x86_setCR0:    SET_DATA _x86_CR0, cr0
+_x86_setCR0:
+        SET_DATA _x86_CR0, cr0
 
 global _x86_getCR1
-_x86_getCR1:    GET_DATA _x86_CR1, cr1
+_x86_getCR1:
+        GET_DATA _x86_CR1, cr1
 
 global _x86_setCR1
-_x86_setCR1:    SET_DATA _x86_CR1, cr1
+_x86_setCR1:
+        SET_DATA _x86_CR1, cr1
 
 global _x86_getCR2
-_x86_getCR2:    GET_DATA _x86_CR2, cr2
+_x86_getCR2:
+        GET_DATA _x86_CR2, cr2
 
 global _x86_setCR2
-_x86_setCR2:    SET_DATA _x86_CR2, cr2
+_x86_setCR2:
+        SET_DATA _x86_CR2, cr2
 
 global _x86_getCR3
-_x86_getCR3:    GET_DATA _x86_CR3, cr3
+_x86_getCR3:
+        GET_DATA _x86_CR3, cr3
 
 global _x86_setCR3
-_x86_setCR3:    SET_DATA _x86_CR3, cr3
+_x86_setCR3:
+        SET_DATA _x86_CR3, cr3
 
 global _x86_getCR4
-_x86_getCR4:    GET_DATA _x86_CR4, cr4
+_x86_getCR4:
+        GET_DATA _x86_CR4, cr4
 
 global _x86_setCR4
-_x86_setCR4:    SET_DATA _x86_CR4, cr4
+_x86_setCR4:
+        SET_DATA _x86_CR4, cr4
 
 global _x86_RDMSR
-_x86_RDMSR:     xor rax, rax
-                xor rdx, rdx
-                mov ecx, edi
-                rdmsr
-                rol rdx, 32
-                or rax, rdx
-                ret
+_x86_RDMSR:
+        xor rax, rax
+        xor rdx, rdx
+        mov ecx, edi
+        rdmsr
+        rol rdx, 32
+        or rax, rdx
+        ret
 
 global _x86_WRMSR
-_x86_WRMSR:     mov ecx, edi
-                mov eax, esi
-                ror rsi, 32
-                mov edx, esi
-                wrmsr
-                ret
+_x86_WRMSR:
+        mov ecx, edi
+        mov eax, esi
+        ror rsi, 32
+        mov edx, esi
+        wrmsr
+        ret
 
     
 section .bss
@@ -105,8 +117,13 @@ global _x86_CR1
 global _x86_CR2
 global _x86_CR3
 global _x86_CR4
-_x86_CR0:   resb 8
-_x86_CR1:   resb 8
-_x86_CR2:   resb 8
-_x86_CR3:   resb 8
-_x86_CR4:   resb 8
+_x86_CR0:
+        resb 8
+_x86_CR1:
+        resb 8
+_x86_CR2:
+        resb 8
+_x86_CR3:
+        resb 8
+_x86_CR4:
+        resb 8

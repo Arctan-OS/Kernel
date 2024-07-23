@@ -36,6 +36,6 @@ struct ARC_FramebufferMeta {
 	int lock;
 };
 
-int Arc_CreateFramebuffer(struct ARC_FramebufferMeta *framebuffer);
+int init_framebuffer(struct ARC_FramebufferMeta *framebuffer);
 
 #endif

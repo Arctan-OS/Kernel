@@ -110,7 +110,7 @@ static int initramfs_empty() {
 
 static int initramfs_init(struct ARC_Resource *res, void *args) {
 	struct internal_driver_state *org_state = (struct internal_driver_state *)args;
-	struct internal_driver_state *state = (struct internal_driver_state *)Arc_Alloc(sizeof(struct internal_driver_state));
+	struct internal_driver_state *state = (struct internal_driver_state *)alloc(sizeof(struct internal_driver_state));
 
 	state->initramfs_base = org_state->initramfs_base;
 	state->resource = res;
@@ -120,7 +120,7 @@ static int initramfs_init(struct ARC_Resource *res, void *args) {
 }
 
 static int initramfs_uninit(struct ARC_Resource *res) {
-	Arc_Free(res->driver_state);
+	free(res->driver_state);
 
 	return 0;
 }
@@ -132,12 +132,12 @@ static int initramfs_open(struct ARC_File *file, struct ARC_Resource *res, char 
 		return EINVAL;
 	}
 
-	if (Arc_CheckCurPerms(mode) != 0) {
+	if (check_current_perms(mode) != 0) {
 		return EPERM;
 	}
 
 	// Lock dir_state
-	Arc_MutexLock(&res->dri_state_mutex);
+	mutex_lock(&res->dri_state_mutex);
 
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
 	struct ARC_HeaderCPIO *header = initramfs_find_file(state->initramfs_base, path);
@@ -145,7 +145,7 @@ static int initramfs_open(struct ARC_File *file, struct ARC_Resource *res, char 
 	if (header == NULL) {
 		ARC_DEBUG(ERR, "Failed to open file\n");
 		// Unlock dri_state
-		Arc_MutexUnlock(&res->dri_state_mutex);
+		mutex_unlock(&res->dri_state_mutex);
 
 		return 1;
 	}
@@ -153,7 +153,7 @@ static int initramfs_open(struct ARC_File *file, struct ARC_Resource *res, char 
 	state->initramfs_base = (void *)header;
 
 	// Unlock dri_state
-	Arc_MutexUnlock(&res->dri_state_mutex);
+	mutex_unlock(&res->dri_state_mutex);
 
 	initramfs_internal_stat(header, &file->node->stat);
 

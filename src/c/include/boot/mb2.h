@@ -29,6 +29,6 @@
 
 #include <global.h>
 
-int Arc_ParseMB2I(void);
+int parse_mb2i(void);
 
 #endif

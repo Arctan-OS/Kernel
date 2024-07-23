@@ -88,7 +88,7 @@ size_t strlen(char *a) {
 char *strdup(char *a) {
 	size_t len = strlen(a);
 
-	char *b = Arc_Alloc(len + 1);
+	char *b = alloc(len + 1);
 	memset(b, 0, len + 1);
 	memcpy(b, a, len);
 
@@ -96,7 +96,7 @@ char *strdup(char *a) {
 }
 
 char *strndup(char *a, size_t n) {
-	char *b = Arc_Alloc(n + 1);
+	char *b = alloc(n + 1);
 	memset(b, 0, n + 1);
 	memcpy(b, a, n);
 

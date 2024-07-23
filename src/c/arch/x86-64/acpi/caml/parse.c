@@ -53,9 +53,9 @@ struct caml_state {
 	void *pret; // Pointers
 };
 
-int cAML_ParsePackage(struct caml_state *state);
+int caml_parse_pkg(struct caml_state *state);
 
-size_t cAML_ParsePkgLength(struct caml_state *state) {
+size_t caml_parse_pkg_len(struct caml_state *state) {
 	uint8_t pkglead = *state->buffer;
 	uint8_t count = (pkglead >> 6) & 0b11;
 	size_t package_size = pkglead & 0x3F;
@@ -75,7 +75,7 @@ size_t cAML_ParsePkgLength(struct caml_state *state) {
 	return package_size - (count + 1);
 }
 
-int cAML_ParseComputationalData(struct caml_state *state) {
+int caml_parse_computational_data(struct caml_state *state) {
 	uint8_t lead = *state->buffer;
 
 	ADVANCE_STATE(state);
@@ -143,7 +143,7 @@ int cAML_ParseComputationalData(struct caml_state *state) {
 		size_t length = 1;
 		for (; state->buffer[length - 1] != 0; length++);
 
-		char *str = (char *)Arc_Alloc(length);
+		char *str = (char *)alloc(length);
 		memcpy(str, state->buffer, length);
 		state->pret = str;
 
@@ -162,38 +162,39 @@ int cAML_ParseComputationalData(struct caml_state *state) {
 	return 1;
 }
 
-int cAML_ParseDefPkg(struct caml_state *state) {
+int caml_parse_def_pkg(struct caml_state *state) {
 	ARC_DEBUG(WARN, "Unimplemented function\n");
 	return 0;
 }
 
-int cAML_ParseDefVarPkg(struct caml_state *state) {
+int caml_parse_def_var_pkg(struct caml_state *state) {
 	ARC_DEBUG(WARN, "Unimplemented function\n");
 	return 0;
 }
 
-int cAML_ParseDataObject(struct caml_state *state) {
-	CALL_CHECK(cAML_ParseComputationalData(state));
-	CALL_CHECK(cAML_ParseDefPkg(state));
-	CALL_CHECK(cAML_ParseDefVarPkg(state));
+int caml_parse_data_obj(struct caml_state *state) {
+	CALL_CHECK(caml_parse_computational_data(state));
+	CALL_CHECK(caml_parse_def_pkg(state));
+	CALL_CHECK(caml_parse_def_var_pkg(state));
 
 	return 1;
 }
 
-int cAML_ParseObjectRef(struct caml_state *state) {
+int caml_parse_obj_ref(struct caml_state *state) {
 	ARC_DEBUG(WARN, "Unimplemented function\n");
+
 	return 0;
 }
 
-int cAML_ParseDataRefObject(struct caml_state *state) {
-	CALL_CHECK(cAML_ParseDataObject(state));
-	CALL_CHECK(cAML_ParseObjectRef(state));
+int caml_parse_data_ref_obj(struct caml_state *state) {
+	CALL_CHECK(caml_parse_data_obj(state));
+	CALL_CHECK(caml_parse_obj_ref(state));
 
 	// Didn't parse anything
 	return 1;
 }
 
-int cAML_ParseTermList(struct caml_state *state, size_t size, struct ARC_VFSNode *root) {
+int caml_parse_term_list(struct caml_state *state, size_t size, struct ARC_VFSNode *root) {
 	// In the grammer, a TermList is just comprised
 	// of a linear set of bytes which is basically
 	// equivalent to how parsing is started. This means
@@ -210,7 +211,7 @@ int cAML_ParseTermList(struct caml_state *state, size_t size, struct ARC_VFSNode
 	state->max = size;
 	state->current = root;
 
-	while (cAML_ParsePackage(state) > 0) {
+	while (caml_parse_pkg(state) > 0) {
 		// Basically the same thing
 		CHECK_STATE(state, break);
 	}
@@ -224,7 +225,7 @@ int cAML_ParseTermList(struct caml_state *state, size_t size, struct ARC_VFSNode
 	return 0;
 }
 
-char *cAML_ParseNameString(struct caml_state *state) {
+char *caml_parse_name_str(struct caml_state *state) {
 	struct ARC_VFSNode *parent = state->current;
 	char *name = NULL;
 
@@ -243,7 +244,7 @@ char *cAML_ParseNameString(struct caml_state *state) {
 	switch (*state->buffer) {
 	case DUAL_NAME_PREFIX: {
 		ADVANCE_STATE(state);
-		name = Arc_Alloc(8);
+		name = alloc(8);
 		memcpy(name, state->buffer, 8);
 		ADVANCE_STATE_BY(state, 8);
 
@@ -253,7 +254,7 @@ char *cAML_ParseNameString(struct caml_state *state) {
 	case MULTI_NAME_PREFIX: {
 		ADVANCE_STATE(state);
 		uint8_t length = *(state->buffer);
-		name = Arc_Alloc(length * 4);
+		name = alloc(length * 4);
 		memcpy(name, state->buffer, length * 4);
 		ADVANCE_STATE_BY(state, length * 4);
 
@@ -266,14 +267,14 @@ char *cAML_ParseNameString(struct caml_state *state) {
 		//       caller to blindly free anything that has been
 		//       returned
 		ADVANCE_STATE(state);
-		name = Arc_Alloc(1);
+		name = alloc(1);
 		*name = 0;
 
 		break;
 	}
 
 	default: {
-		name = Arc_Alloc(4);
+		name = alloc(4);
 		memcpy(name, state->buffer, 4);
 		ADVANCE_STATE_BY(state, 4);
 
@@ -284,25 +285,25 @@ char *cAML_ParseNameString(struct caml_state *state) {
 	return name;
 }
 
-int cAML_ParseSimpleName(struct caml_state *state) {
+int caml_parse_simple_name(struct caml_state *state) {
 	// NameString | ArgObj | LocalObj
 	ARC_DEBUG(WARN, "Definitely implemented\n");
 	return 0;
 }
 
-int cAML_ParseSuperName(struct caml_state *state) {
+int caml_parse_super_name(struct caml_state *state) {
 	// SimpleName | DebugObj | ReferenceTypeOpcode
 	ARC_DEBUG(WARN, "Definitely implemented\n");
 	return 0;
 }
 
-int cAML_ParseTarget(struct caml_state *state) {
+int caml_parse_target(struct caml_state *state) {
 	// SuperName | NullName
 	ARC_DEBUG(WARN, "Definitely implemented\n");
 	return 0;
 }
 
-int cAML_EXTOPs(struct caml_state *state) {
+int caml_extops(struct caml_state *state) {
 	uint8_t lead = *state->buffer;
 
 	ADVANCE_STATE(state);
@@ -311,18 +312,18 @@ int cAML_EXTOPs(struct caml_state *state) {
 	case EXTOP_REGION_OP: {
 		ARC_DEBUG(INFO, "Region\n");
 
-		char *name = cAML_ParseNameString(state);
+		char *name = caml_parse_name_str(state);
 
 		uint64_t space = -1;
-		cAML_ParseComputationalData(state);
+		caml_parse_computational_data(state);
 		space = state->uret;
 
 		uint64_t offset = -1;
-		cAML_ParseComputationalData(state);
+		caml_parse_computational_data(state);
 		offset = state->uret;
 
 		uint64_t length = -1;
-		cAML_ParseComputationalData(state);
+		caml_parse_computational_data(state);
 		length = state->uret;
 
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
@@ -330,7 +331,7 @@ int cAML_EXTOPs(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tOffset: 0x%X\n", offset);
 		ARC_DEBUG(INFO, "\tLength: 0x%X\n", length);
 
-		Arc_Free(name);
+		free(name);
 
 		break;
 	}
@@ -338,17 +339,17 @@ int cAML_EXTOPs(struct caml_state *state) {
 	case EXTOP_DEVICE_OP: {
 		ARC_DEBUG(INFO, "Device\n");
 
-		size_t package_length = cAML_ParsePkgLength(state);
+		size_t package_length = caml_parse_pkg_len(state);
 		size_t delta = state->max;
 	
-		char *name = cAML_ParseNameString(state);
+		char *name = caml_parse_name_str(state);
 
 		delta -= state->max;
 		package_length -= delta;
 
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 
-		Arc_Free(name);
+		free(name);
 
 		ADVANCE_STATE_BY(state, package_length);
 
@@ -358,10 +359,10 @@ int cAML_EXTOPs(struct caml_state *state) {
 	case EXTOP_FIELD_OP: {
 		ARC_DEBUG(INFO, "Field\n");
 
-		size_t package_length = cAML_ParsePkgLength(state);
+		size_t package_length = caml_parse_pkg_len(state);
 		size_t delta = state->max;
 
-		char *name = cAML_ParseNameString(state);
+		char *name = caml_parse_name_str(state);
 		uint8_t flags = *(uint8_t *)state->buffer;
 		ADVANCE_STATE(state);
 
@@ -373,7 +374,7 @@ int cAML_EXTOPs(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 		ARC_DEBUG(INFO, "\tFlags: 0x%X\n", flags);
 
-		Arc_Free(name);
+		free(name);
 
 		ADVANCE_STATE_BY(state, package_length);
 
@@ -391,7 +392,7 @@ int cAML_EXTOPs(struct caml_state *state) {
 	return 0;
 }
 
-int cAML_ParsePackage(struct caml_state *state) {
+int caml_parse_pkg(struct caml_state *state) {
 	uint8_t lead = *state->buffer;
 	size_t org_max = state->max;
 
@@ -401,10 +402,10 @@ int cAML_ParsePackage(struct caml_state *state) {
 	case SCOPE_OP: {
 		ARC_DEBUG(INFO, "Reading scope %p:\n", state->buffer);
 
-		size_t package_size = cAML_ParsePkgLength(state);
+		size_t package_size = caml_parse_pkg_len(state);
 
 		size_t delta = state->max;
-		char *name = cAML_ParseNameString(state);
+		char *name = caml_parse_name_str(state);
 
 		delta -= state->max;
 		package_size -= delta;
@@ -412,17 +413,17 @@ int cAML_ParsePackage(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tPkgLength: %d\n", package_size);
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 
-		struct ARC_VFSNode *node = strlen(name) > 0 ? Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
+		struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
 
 		if (node == NULL) {
 			ARC_DEBUG(ERR, "Failed to create new node\n");
 		}
 
-		cAML_ParseTermList(state, package_size, node);
+		caml_parse_term_list(state, package_size, node);
 
 //		ADVANCE_STATE_BY(state, package_size);
 
-		Arc_Free(name);
+		free(name);
 
 		break;
 	}
@@ -430,20 +431,20 @@ int cAML_ParsePackage(struct caml_state *state) {
 	case NAME_OP: {
 		ARC_DEBUG(INFO, "Reading name %p:\n", state->buffer);
 
-		char *name = cAML_ParseNameString(state);
-		cAML_ParseDataRefObject(state);
+		char *name = caml_parse_name_str(state);
+		caml_parse_data_ref_obj(state);
 
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 		ARC_DEBUG(INFO, "\tUret: %d\n", state->uret);
 		ARC_DEBUG(INFO, "\tPret: %p\n", state->pret);
 
-		struct ARC_VFSNode *node = strlen(name) > 0 ? Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
+		struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
 
 		if (node == NULL) {
 			ARC_DEBUG(ERR, "Failed to create new node\n");
 		}
 
-		Arc_Free(name);
+		free(name);
 
 		break;
 	}
@@ -451,10 +452,10 @@ int cAML_ParsePackage(struct caml_state *state) {
 	case METHOD_OP: {
 		ARC_DEBUG(INFO, "Reading method %p:\n", state->buffer);
 
-		size_t package_size = cAML_ParsePkgLength(state);
+		size_t package_size = caml_parse_pkg_len(state);
 		size_t delta = state->max;
 
-		char *name = cAML_ParseNameString(state);
+		char *name = caml_parse_name_str(state);
 		uint8_t flags = *state->buffer;
 		ADVANCE_STATE(state);
 
@@ -468,7 +469,7 @@ int cAML_ParsePackage(struct caml_state *state) {
 		ADVANCE_STATE_BY(state, package_size);
 
 		if (strlen(name) > 0) {
-			Arc_RelNodeCreateVFS(name, state->current, 0, ARC_VFS_N_BUFF, &package_size);
+			vfs_create_rel(name, state->current, 0, ARC_VFS_N_BUFF, &package_size);
 
 			// TODO: Work out the absolute path to the node that has just
 			//       been created and write data to it
@@ -476,25 +477,25 @@ int cAML_ParsePackage(struct caml_state *state) {
 			ARC_DEBUG(WARN, "Definitely wrote data to buffer\n");
 		}
 
-		Arc_Free(name);
+		free(name);
 
 		break;
 	}
 
 	case ALIAS_OP: {
-		char *a = cAML_ParseNameString(state);
-		char *b = cAML_ParseNameString(state);
+		char *a = caml_parse_name_str(state);
+		char *b = caml_parse_name_str(state);
 
 		ARC_DEBUG(INFO, "Found alias \"%s\" -> \"%s\"", a, b);
 
-		Arc_Free(a);
-		Arc_Free(b);
+		free(a);
+		free(b);
 
 		break;
 	}
 
 	case EXTOP_PREFIX: {
-		cAML_EXTOPs(state);
+		caml_extops(state);
 
 		break;
 	}
@@ -511,12 +512,12 @@ int cAML_ParsePackage(struct caml_state *state) {
 	return org_max - state->max;
 }
 
-int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
-	struct caml_state *state = (struct caml_state *)Arc_Alloc(sizeof(struct caml_state));
+int caml_parse_def_block(uint8_t *buffer, size_t size) {
+	struct caml_state *state = (struct caml_state *)alloc(sizeof(struct caml_state));
 	memset(state, 0, sizeof(struct caml_state));
 
 	struct ARC_File *file = NULL;
-	if (Arc_OpenVFS("/dev/acpi/", 0, 0, 0, (void *)&file) != 0) {
+	if (vfs_open("/dev/acpi/", 0, 0, 0, (void *)&file) != 0) {
 		return -1;
 	}
 
@@ -529,13 +530,13 @@ int cAML_ParseDefinitionBlock(uint8_t *buffer, size_t size) {
 
 	ARC_DEBUG(INFO, "Parsing definition block %p (%d B)\n", buffer, size);
 
-	while (cAML_ParsePackage(state) > 0) {
+	while (caml_parse_pkg(state) > 0) {
 		CHECK_STATE(state, return -1);
 	}
 
-	Arc_CloseVFS(file);
+	vfs_close(file);
 
-	Arc_Free(state);
+	free(state);
 
 	return 0;
 }

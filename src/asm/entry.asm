@@ -30,8 +30,17 @@ bits 64
 
 global _kernel_entry
 extern kernel_main
-extern __KERNEL_STACK__
-_kernel_entry:  mov rbp, __KERNEL_STACK__
-                mov rsp, rbp
-                call kernel_main
-                jmp $
+_kernel_entry:
+        mov rbp, __KERNEL_STACK__
+        mov rsp, rbp
+        call kernel_main
+        jmp $
+
+section .bss
+
+        ;; 16 byte alignment is so SSE instructions
+        ;; can use the stack without a #GP
+align 16
+        resb 0x4000
+global __KERKENL_STACK__
+__KERNEL_STACK__:

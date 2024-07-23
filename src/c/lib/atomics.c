@@ -34,8 +34,8 @@ struct internal_qlock_node {
 	struct internal_qlock_node *next;
 };
 
-int Arc_QLockInit(struct ARC_QLock **lock) {
-	*lock = Arc_Alloc(sizeof(struct ARC_QLock));
+int init_qlock(struct ARC_QLock **lock) {
+	*lock = alloc(sizeof(struct ARC_QLock));
 
 	if (*lock == NULL) {
 		return 1;
@@ -49,13 +49,13 @@ int Arc_QLockInit(struct ARC_QLock **lock) {
 	return 0;
 }
 
-int Arc_QLockStaticInit(struct ARC_QLock *head) {
+int init_static_qlock(struct ARC_QLock *head) {
 	memset(head, 0, sizeof(struct ARC_QLock));
 
 	return 0;
 }
 
-int Arc_QLock(struct ARC_QLock *head) {
+int qlock(struct ARC_QLock *head) {
 	if (head == NULL) {
 		ARC_DEBUG(ERR, "Head is NULL\n");
 		return -4;
@@ -66,13 +66,13 @@ int Arc_QLock(struct ARC_QLock *head) {
 		return -3;
 	}
 
-	int64_t tid = Arc_GetCurrentTID();
+	int64_t tid = get_current_tid();
 
 	if (head->next != NULL && ((struct internal_qlock_node *)head->next)->tid == tid) {
 		return 0;
 	}
 
-	register struct internal_qlock_node *next = (struct internal_qlock_node *)Arc_Alloc(sizeof(struct internal_qlock_node));
+	register struct internal_qlock_node *next = (struct internal_qlock_node *)alloc(sizeof(struct internal_qlock_node));
 
 	if (next == NULL) {
 		ARC_DEBUG(ERR, "Failed to allocate next link\n");
@@ -83,7 +83,7 @@ int Arc_QLock(struct ARC_QLock *head) {
 
 	next->tid = tid;
 
-	Arc_MutexUnlock(&head->lock);
+	mutex_unlock(&head->lock);
 
 	if (head->last == NULL) {
 		head->next = next;
@@ -93,28 +93,28 @@ int Arc_QLock(struct ARC_QLock *head) {
 
 	head->last = next;
 
-	Arc_MutexUnlock(&head->lock);
+	mutex_unlock(&head->lock);
 
 	return 0;
 }
 
-void Arc_QYield(struct ARC_QLock *head) {
+void qlock_yield(struct ARC_QLock *head) {
 	if (head == NULL) {
 		ARC_DEBUG(ERR, "Head is NULL\n");
 		// TODO: What to do?
 	}
 	int64_t current_tid = ((struct internal_qlock_node *)head->next)->tid;
 
-	if (current_tid == Arc_GetCurrentTID()) {
+	if (current_tid == get_current_tid()) {
 		return;
 	}
 
-	while (current_tid != Arc_GetCurrentTID()) {
-		Arc_YieldCPU(current_tid);
+	while (current_tid != get_current_tid()) {
+		yield_cpu(current_tid);
 	}
 }
 
-int Arc_QUnlock(struct ARC_QLock *head) {
+int qunlock(struct ARC_QLock *head) {
 	if (head == NULL) {
 		ARC_DEBUG(ERR, "Head is NULL\n");
 		return -4;
@@ -129,14 +129,14 @@ int Arc_QUnlock(struct ARC_QLock *head) {
 
 	struct internal_qlock_node *next = current->next;
 
-	if (current->tid != Arc_GetCurrentTID()) {
-		ARC_DEBUG(ERR, "Lock is not owned by 0x%"PRIx64" (!= 0x%"PRIx64")\n", Arc_GetCurrentTID(), current->tid);
+	if (current->tid != get_current_tid()) {
+		ARC_DEBUG(ERR, "Lock is not owned by 0x%"PRIx64" (!= 0x%"PRIx64")\n", get_current_tid(), current->tid);
 		return -1;
 	}
 
-	Arc_MutexLock(&head->lock);
+	mutex_lock(&head->lock);
 
-	Arc_Free(head->next);
+	free(head->next);
 
 	head->next = next;
 
@@ -144,12 +144,12 @@ int Arc_QUnlock(struct ARC_QLock *head) {
 		head->last = NULL;
 	}
 
-	Arc_MutexUnlock(&head->lock);
+	mutex_unlock(&head->lock);
 
 	return 0;
 }
 
-int Arc_QFreeze(struct ARC_QLock *head) {
+int qlock_freeze(struct ARC_QLock *head) {
 	// Freeze the lock, let no new owners in,
 	// but advance through all of the other owners
 	// already in the queue.
@@ -175,13 +175,13 @@ int Arc_QFreeze(struct ARC_QLock *head) {
 
 	return 0;
 }
-int Arc_QThaw(struct ARC_QLock *head) {
+int qlock_thaw(struct ARC_QLock *head) {
 	// Thaw a frozen lock
 	if (head->is_frozen == 0) {
 		return 0;
 	}
 
-	if (((struct internal_qlock_node *)head->next)->tid != Arc_GetCurrentTID()) {
+	if (((struct internal_qlock_node *)head->next)->tid != get_current_tid()) {
 		return -1;
 	}
 
@@ -190,12 +190,12 @@ int Arc_QThaw(struct ARC_QLock *head) {
 	return 0;
 }
 
-int Arc_MutexInit(ARC_GenericMutex **mutex) {
+int init_mutex(ARC_GenericMutex **mutex) {
 	if (mutex == NULL) {
 		return 1;
 	}
 
-	*mutex = (ARC_GenericMutex *)Arc_Alloc(sizeof(ARC_GenericMutex));
+	*mutex = (ARC_GenericMutex *)alloc(sizeof(ARC_GenericMutex));
 
 	if (*mutex == NULL) {
 		return 1;
@@ -206,13 +206,13 @@ int Arc_MutexInit(ARC_GenericMutex **mutex) {
 	return 0;
 }
 
-int Arc_MutexUninit(ARC_GenericMutex *mutex) {
-	Arc_Free(mutex);
+int uninit_mutex(ARC_GenericMutex *mutex) {
+	free(mutex);
 
 	return 0;
 }
 
-int Arc_MutexStaticInit(ARC_GenericMutex *mutex) {
+int init_static_mutex(ARC_GenericMutex *mutex) {
 	if (mutex == NULL) {
 		return 1;
 	}
@@ -222,13 +222,13 @@ int Arc_MutexStaticInit(ARC_GenericMutex *mutex) {
 	return 0;
 }
 
-int Arc_MutexLock(ARC_GenericMutex *mutex) {
+int mutex_lock(ARC_GenericMutex *mutex) {
 	// Atomically lock and yield if it is locked
 	(void)mutex;
 	return 0;
 }
 
-int Arc_MutexUnlock(ARC_GenericMutex *mutex) {
+int mutex_unlock(ARC_GenericMutex *mutex) {
 	// Atomically unlock
 	(void)mutex;
 	return 0;

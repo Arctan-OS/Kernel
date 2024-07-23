@@ -33,6 +33,6 @@ struct ARC_CompositeMode {
 	int lock;
 };
 
-int Arc_BinaryComposite(struct ARC_CompositeMode *mode, struct ARC_FramebufferMeta *master, struct ARC_FramebufferMeta *addition);
+int binary_composite(struct ARC_CompositeMode *mode, struct ARC_FramebufferMeta *master, struct ARC_FramebufferMeta *addition);
 
 #endif

@@ -27,6 +27,6 @@
 #ifndef ARC_BOOT_PARSE_H
 #define ARC_BOOT_PARSE_H
 
-int Arc_ParseBootInfo();
+int parse_boot_info();
 
 #endif

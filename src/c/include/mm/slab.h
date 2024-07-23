@@ -42,7 +42,7 @@ struct ARC_SlabMeta {
  * @param size_t size - The number of bytes to allocate.
  * @return The base address of the allocation.
  * */
-void *Arc_SlabAlloc(struct ARC_SlabMeta *meta, size_t size);
+void *slab_alloc(struct ARC_SlabMeta *meta, size_t size);
 
 /**
  * Free the allocation at \a address.
@@ -50,7 +50,7 @@ void *Arc_SlabAlloc(struct ARC_SlabMeta *meta, size_t size);
  * @param void *address - The allocation to free from the kernel heap.
  * @return The given address if successful.
  * */
-void *Arc_SlabFree(struct ARC_SlabMeta *meta, void *address);
+void *slab_free(struct ARC_SlabMeta *meta, void *address);
 
 /**
  * Expand a given SLAB's list
@@ -63,7 +63,7 @@ void *Arc_SlabFree(struct ARC_SlabMeta *meta, void *address);
  * @param int pages - The number of pages to expand the list by.
  * @return zero upon success.
  * */
-int Arc_ExpandSlab(struct ARC_SlabMeta *slab, int list, int pages);
+int slab_expand(struct ARC_SlabMeta *slab, int list, int pages);
 /**
  * Initialize the kernel SLAB allocator.
  *
@@ -71,6 +71,6 @@ int Arc_ExpandSlab(struct ARC_SlabMeta *slab, int list, int pages);
  * @param int init_page_count - The number of 0x1000 byte pages each list is given.
  * @return Error code (0: success).
  * */
-int Arc_InitSlabAllocator(struct ARC_SlabMeta *meta, size_t init_page_count);
+int init_slab(struct ARC_SlabMeta *meta, size_t init_page_count);
 
 #endif

@@ -46,10 +46,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-int Arc_MapPager(uint64_t virtual, uint64_t physical, size_t size, uint32_t attributes) ;
-int Arc_UnmapPager(uint64_t virtual, size_t size);
-int Arc_SetAttrsPager(uint64_t virtual, size_t size, uint32_t attributes);
+int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attributes) ;
+int pager_unmap(uint64_t virtual, size_t size);
+int pager_set_attr(uint64_t virtual, size_t size, uint32_t attributes);
 
-void Arc_InitPager();
+void init_pager();
 
 #endif

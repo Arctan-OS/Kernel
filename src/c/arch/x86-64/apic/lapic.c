@@ -69,7 +69,7 @@ struct lapic_reg {
         uint32_t resv8 __attribute__((aligned(16)));
 }__attribute__((packed));
 
-int Arc_InitLAPIC() {
+int init_lapic() {
         register uint32_t eax;
         register uint32_t ebx;
         register uint32_t ecx;
@@ -94,7 +94,7 @@ int Arc_InitLAPIC() {
         lapic_msr |= (1 << 11);
         _x86_WRMSR(0x1B, lapic_msr);
 
-	Arc_MapPager((uint64_t)reg, (uint64_t)reg, PAGE_SIZE, 0);
+	pager_map((uint64_t)reg, (uint64_t)reg, PAGE_SIZE, 0);
 
         ARC_DEBUG(INFO, "LAPIC register at %p\n", reg);
         // NOTE: Ignore bits 31:27 of reg->lapic_id on P6 and Pentium processors

@@ -58,7 +58,7 @@ uint64_t *get_page_table(uint64_t *parent, int level, uint64_t virtual, uint32_t
 
 	if (((entry & 1) == 0 || (void *)ARC_HHDM_TO_PHYS(address) == NULL)) {
 		// Not present, overwrite / create flag set
-		address = (uint64_t *)Arc_AllocPMM();
+		address = (uint64_t *)pmm_alloc();
 		// TODO: Attributes
 		parent[index] = (uintptr_t)ARC_HHDM_TO_PHYS(address) | 0b11;
 	}
@@ -66,7 +66,7 @@ uint64_t *get_page_table(uint64_t *parent, int level, uint64_t virtual, uint32_t
 	return address;
 }
 
-int Arc_MapPager(uint64_t virtual, uint64_t physical, size_t size, uint32_t attributes) {
+int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attributes) {
 	// Attributes (parentheses mark default)
 	//  Bit:
 	//   2:0 PAT
@@ -149,18 +149,18 @@ int Arc_MapPager(uint64_t virtual, uint64_t physical, size_t size, uint32_t attr
 	goto top;
 }
 
-int Arc_UnmapPager(uint64_t virtual, size_t size) {
+int pager_unmap(uint64_t virtual, size_t size) {
 
 	return 0;
 }
 
-int Arc_SetAttrsPager(uint64_t virtual, size_t size, uint32_t attributes) {
+int pager_set_attr(uint64_t virtual, size_t size, uint32_t attributes) {
 	// Set the attributes of the given region
 
 	return 0;
 }
 
-void Arc_InitPager() {
+void init_pager() {
 	ARC_DEBUG(INFO, "Initializing pager\n");
 
 	_x86_getCR3();

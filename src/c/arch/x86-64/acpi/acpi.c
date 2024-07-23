@@ -30,7 +30,7 @@
 #include <global.h>
 #include <drivers/dri_defs.h>
 
-int Arc_ChecksumACPI(void *data, size_t length) {
+int acpi_checksum(void *data, size_t length) {
 	int8_t *bytes = (int8_t *)data;
 	int8_t sum = *bytes;
 
@@ -41,22 +41,22 @@ int Arc_ChecksumACPI(void *data, size_t length) {
 	return sum;
 }
 
-int Arc_InitializeACPI(uint64_t rsdp_ptr) {
+int init_acpi(uint64_t rsdp_ptr) {
 	if (rsdp_ptr == 0) {
 		ARC_DEBUG(ERR, "NULL address provided\n");
 		return -1;
 	}
 
-        if (Arc_CreateVFS("/dev/acpi/", 0, ARC_VFS_N_DIR, NULL) != 0) {
+        if (vfs_create("/dev/acpi/", 0, ARC_VFS_N_DIR, NULL) != 0) {
                 ARC_DEBUG(ERR, "Failed to create ACPI directory\n");
                 return -1;
         }
 
 	rsdp_ptr = ARC_PHYS_TO_HHDM(rsdp_ptr);
 
-        Arc_CreateVFS("/dev/acpi", 0, ARC_VFS_N_DIR, NULL);
-        struct ARC_Resource *rsdt = Arc_InitializeResource(ARC_DRI_DEV, ARC_DRI_RSDT, (void *)rsdp_ptr);
-        Arc_MountVFS("/dev/acpi", rsdt);
+        vfs_create("/dev/acpi", 0, ARC_VFS_N_DIR, NULL);
+        struct ARC_Resource *rsdt = init_resource(ARC_DRI_DEV, ARC_DRI_RSDT, (void *)rsdp_ptr);
+        vfs_mount("/dev/acpi", rsdt);
 
         return 0;
 }
