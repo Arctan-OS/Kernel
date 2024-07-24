@@ -47,7 +47,7 @@ struct ARC_BuddyMeta {
 };
 
 void *buddy_alloc(struct ARC_BuddyMeta *meta, size_t size);
-void *buddy_free(struct ARC_BuddyMeta *meta, void *address);
+size_t buddy_free(struct ARC_BuddyMeta *meta, void *address);
 
 /**
  * Create a buddy allocator

@@ -41,12 +41,6 @@
 #define ONE_GIB 0x40000000
 #define TWO_MIB 0x200000
 
-#define ARC_PAGER_PAT 0
-#define ARC_PAGER_US  3
-#define ARC_PAGER_OVW 4
-#define ARC_PAGER_NX  5
-#define ARC_PAGER_4K  6
-
 static uint64_t *pml4 = NULL;
 
 uint64_t *get_page_table(uint64_t *parent, int level, uint64_t virtual, uint32_t attributes) {
@@ -68,6 +62,56 @@ uint64_t *get_page_table(uint64_t *parent, int level, uint64_t virtual, uint32_t
 	return address;
 }
 
+uint64_t get_entry_bits(int level, uint32_t attributes) {
+	// Level 0: Page
+	// Level 1: PT
+	// Level 2: PD
+	// Level 3: PDP
+	// Level 4: PML4
+
+	uint64_t bits = 0;
+
+	bits |= ((attributes >> (ARC_PAGER_PAT)) & 1) << 2; // PWT
+	bits |= ((attributes >> (ARC_PAGER_PAT + 1)) & 1) << 3; // PCD
+
+	switch (level) {
+		case 1: {
+			// PAT
+			bits |= ((attributes >> (ARC_PAGER_PAT + 2)) & 1) << 7;
+
+			break;
+		}
+
+		case 2: {
+			// PAT
+			bits |= ((attributes >> (ARC_PAGER_PAT + 2)) & 1) << 12;
+			// 2MiB pages unless 4K specified
+			bits |= (!((attributes >> (ARC_PAGER_4K)) & 1)) << 7;
+
+			break;
+		}
+
+		case 3: {
+			// PAT
+			bits |= ((attributes >> (ARC_PAGER_PAT + 2)) & 1) << 12;
+			// 1GiB pages unless 4K specified
+			bits |= (!((attributes >> (ARC_PAGER_4K)) & 1)) << 7;
+
+			break;
+		}
+
+		// On 4, 5, bit 7 is reserved
+	}
+
+	bits |= ((attributes >> ARC_PAGER_US) & 1) << 2;
+	bits |= ((attributes >> ARC_PAGER_RW) & 1) << 1;
+	bits |= 1; // Present
+	bits |= (uint64_t)((attributes >> ARC_PAGER_NX) & 1) << 63;
+
+	return bits;
+}
+
+// TODO: Could possibly clean up alot of this bit stuff in the if statements
 int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attributes) {
 	// Attributes (parentheses mark default)
 	//  Bit:
@@ -100,8 +144,7 @@ int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attribu
 
 	if ((Arc_BootMeta->paging_features & FLAGS_1GIB) != 0 && ((attributes >> ARC_PAGER_4K) & 1) == 0
 	    && size >= ONE_GIB && ((pml3[pml3_e] & 1) == 0 || ((attributes >> ARC_PAGER_OVW) & 1) == 1)) {
-		// TODO: Add attributes
-		pml3[pml3_e] = physical | 0b10000011; // PS | RW | P
+		pml3[pml3_e] = physical | get_entry_bits(3, attributes);
 
 		size -= ONE_GIB;
 		virtual += ONE_GIB;
@@ -109,7 +152,6 @@ int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attribu
 
 		goto top;
 	}
-
 
 	uint64_t *pml2 = get_page_table(pml3, 3, virtual, attributes);
 
@@ -121,7 +163,7 @@ int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attribu
 
 	if (((attributes >> ARC_PAGER_4K) & 1) == 0 && size >= TWO_MIB
 	    && ((pml2[pml2_e] & 1) == 0 || ((attributes >> ARC_PAGER_OVW) & 1) == 1)) {
-		pml2[pml2_e] = physical | 0b10000011; // PS | RW | P
+		pml2[pml2_e] = physical | get_entry_bits(2, attributes);
 
 		size -= TWO_MIB;
 		virtual += TWO_MIB;
@@ -139,8 +181,7 @@ int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attribu
 		return -3;
 	}
 
-	// TODO: Attributes
-	pml1[entry_idx] = physical | 0b11;
+	pml1[entry_idx] = physical | get_entry_bits(1, attributes);
 
 	__asm__("invlpg [%0]" : : "r"(virtual) : );
 

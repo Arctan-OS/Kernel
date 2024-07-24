@@ -197,9 +197,9 @@ void *buddy_alloc(struct ARC_BuddyMeta *meta, size_t size) {
         return address;
 }
 
-void *buddy_free(struct ARC_BuddyMeta *meta, void *address) {
+size_t buddy_free(struct ARC_BuddyMeta *meta, void *address) {
 	if (meta == NULL || meta->tree == NULL) {
-		return NULL;
+		return 0;
 	}
 
 	mutex_lock(&meta->mutex);
@@ -217,8 +217,10 @@ void *buddy_free(struct ARC_BuddyMeta *meta, void *address) {
 
 	if (current == NULL) {
 		mutex_unlock(&meta->mutex);
-		return NULL;
+		return 0;
 	}
+
+	size_t ret = current->size;
 
 	current->allocated = 0;
 
@@ -237,7 +239,7 @@ void *buddy_free(struct ARC_BuddyMeta *meta, void *address) {
 
 	mutex_unlock(&meta->mutex);
 
-        return address;
+        return ret;
 }
 
 int init_buddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowest_exponent) {

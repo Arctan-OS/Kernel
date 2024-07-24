@@ -27,21 +27,20 @@
 #ifndef ARC_ARCH_X86_64_PAGER_H
 #define ARC_ARCH_X86_64_PAGER_H
 
-
-/// The overwrite flag.
-#define ARC_VMM_OVERW_FLAG (1 << 31)
-/// The create flag.
-#define ARC_VMM_CREAT_FLAG (1 << 30)
-
-// PAT << 7 or 12 (2 MB ad 1 GB)
-// PWT << 2
-// PCD << 3
-#define ARC_PAGER_PAT_WB(npte) ((0 << ((npte * 5) + 7)) | (0 << 3) | (0 << 2))
-#define ARC_PAGER_PAT_UC(npte) ((0 << ((npte * 5) + 7)) | (0 << 3) | (1 << 2))
-#define ARC_PAGER_PAT_UCD(npte) ((0 << ((npte * 5) + 7)) | (1 << 3) | (1 << 2))
-#define ARC_PAGER_PAT_WC(npte) ((0 << ((npte * 5) + 7)) | (1 << 3) | (1 << 2))
-#define ARC_PAGER_PAT_WT(npte) ((1 << ((npte * 5) + 7)) | (0 << 3) | (0 << 2))
-#define ARC_PAGER_PAT_WP(npte) ((1 << ((npte * 5) + 7)) | (0 << 3) | (1 << 2))
+// * = Specific to Arctan
+// Offset of page attributes
+//  0: PWT, 1: PCD, 2: PAT
+#define ARC_PAGER_PAT 0
+// User / Supervisor bit
+#define ARC_PAGER_US  3
+// 1: Overwrite if entry is already present *
+#define ARC_PAGER_OVW 4
+// 1: Disable execution on entry
+#define ARC_PAGER_NX  5
+// 1: Use only 4K pages
+#define ARC_PAGER_4K  6
+// 1: Read and Write allowed
+#define ARC_PAGER_RW  7
 
 #include <stdint.h>
 #include <stddef.h>

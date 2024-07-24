@@ -26,45 +26,36 @@
 */
 #include <mm/vmm.h>
 #include <mm/buddy.h>
+#include <arch/x86-64/pager.h>
 
 static struct ARC_BuddyMeta vmm_meta = { 0 };
 
 void *vmm_alloc(size_t size) {
 	void *virtual = buddy_alloc(&vmm_meta, size);
 
-	// TODO: Mapping code
+	if (pager_map((uintptr_t)virtual, 0, size, 0) != 0) {
+		buddy_free(&vmm_meta, virtual);
+
+		return NULL;
+	}
 
 	return virtual;
 }
 
 void *vmm_free(void *address) {
-	void *virtual = buddy_free(&vmm_meta, address);
+	size_t freed = buddy_free(&vmm_meta, address);
 
-	// TODO: Mapping code
+	if (freed == 0) {
+		return NULL;
+	}
 
-	return virtual;
+	if (pager_unmap((uintptr_t)address, freed) != 0) {
+		return NULL;
+	}
+
+	return address;
 }
 
 int init_vmm(void *addr, size_t size) {
-	init_buddy(&vmm_meta, addr, size, 12);
-
-	void *a = NULL;
-	void *b = NULL;
-	printf("a=%p\n", (a = buddy_alloc(&vmm_meta, 0x1000)));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x2400));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x10000));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x2400));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x1000));
-	printf("b=%p\n", (b = buddy_alloc(&vmm_meta, 0x2040)));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x1000));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x2400));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x12800));
-	printf("Free a %p\n", buddy_free(&vmm_meta, a));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x24000));
-	printf("Free b %p\n", buddy_free(&vmm_meta, b));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x1280));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x2400));
-	printf("%p\n", buddy_alloc(&vmm_meta, 0x2400));
-
-	return 0;
+	return init_buddy(&vmm_meta, addr, size, 12);
 }
