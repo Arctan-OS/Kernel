@@ -30,43 +30,35 @@
 #include <lib/util.h>
 
 void *slab_alloc(struct ARC_SlabMeta *meta, size_t size) {
-	if (size > 0x1000) {
+	if (size > meta->list_sizes[7]) {
 		// Just allocate a contiguous set of pages
 		ARC_DEBUG(ERR, "Failed to allocate size %lu\n", size);
 		return NULL;
 	}
 
-	int i = 0;
-	for (; i < 8; i++) {
+	for (int i = 0; i < 8; i++) {
 		if (size <= meta->list_sizes[i]) {
-			break;
+			return freelist_alloc(meta->lists[i]);
 		}
 	}
 
-	return freelist_alloc(meta->lists[i]);
+	return NULL;
 }
 
 void *slab_free(struct ARC_SlabMeta *meta, void *address) {
-	int list = -1;
 	for (int i = 0; i < 8; i++) {
 		void *base = meta->lists[i]->base;
 		void *ceil = meta->lists[i]->ceil;
 
 		if (base <= address && address <= ceil) {
-			list = i;
-			break;
+			memset(address, 0, meta->list_sizes[i]);
+			return freelist_free(meta->lists[i], address);
 		}
 	}
 
-	if (list == -1) {
-		// Could not find the list
-		ARC_DEBUG(ERR, "Failed to free %p\n", address);
-		return NULL;
-	}
+	ARC_DEBUG(ERR, "Failed to free %p\n", address);
 
-	memset(address, 0, meta->list_sizes[list]);
-
-	return freelist_free(meta->lists[list], address);
+	return NULL;
 }
 
 int slab_expand(struct ARC_SlabMeta *slab, int list, size_t pages) {

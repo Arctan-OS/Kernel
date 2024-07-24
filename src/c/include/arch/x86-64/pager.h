@@ -28,27 +28,72 @@
 #define ARC_ARCH_X86_64_PAGER_H
 
 // * = Specific to Arctan
+// () = Default value
 // Offset of page attributes
-//  0: PWT, 1: PCD, 2: PAT
+//  +0: PWT, +1: PCD, +2: PAT
+// Page attributes (0)
 #define ARC_PAGER_PAT 0
-// User / Supervisor bit
+// 1: User accessible page (0)
 #define ARC_PAGER_US  3
-// 1: Overwrite if entry is already present *
+// 1: Overwrite if entry is already present * (0)
 #define ARC_PAGER_OVW 4
-// 1: Disable execution on entry
+// 1: Disable execution on entry (0)
 #define ARC_PAGER_NX  5
-// 1: Use only 4K pages
+// 1: Use only 4K pages (0)
 #define ARC_PAGER_4K  6
-// 1: Read and Write allowed
+// 1: Read and Write allowed (0)
 #define ARC_PAGER_RW  7
 
 #include <stdint.h>
 #include <stddef.h>
 
-int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attributes) ;
-int pager_unmap(uint64_t virtual, size_t size);
-int pager_set_attr(uint64_t virtual, size_t size, uint32_t attributes);
+/**
+ * Map the given physical to the given virtual.
+ *
+ * Associates the range [virtual, virtual + size) with
+ * the range [physical, physical + size) and sets all page
+ * entries with the given attributes.
+ *
+ * NOTE: This function must only be used in conjunction with
+ *       pager_unmap!
+ *
+ * @param uintptr_t virtual - The base virtual address to map.
+ * @param uintptr_t physical - The base physical address to map.
+ * @param size_t size - The length of the physical and virtual ranges.
+ * @param uint32_t attributes - Attributes for page entries (see above ARC_PAGER_* definitions for bit offsets)
+ * @return zero on success.
+ * */
+int pager_map(uintptr_t virtual, uintptr_t physical, size_t size, uint32_t attributes) ;
 
+/**
+ * Unmap the given virtual range.
+ *
+ * NOTE: This function must only be used in conjunction with
+ *       pager_map
+ *
+ * @param uintptr_t virtual - The base virtual address to unmap.
+ * @param size_t size - The length of the virtual range.
+ * @return zero on success.
+ * */
+int pager_unmap(uintptr_t virtual, size_t size);
+
+/**
+ * Set paging attributes in the given range.
+ *
+ * Set the various paging attributes for page entries.
+ * See the above definitions following ARC_PAGER_* for the
+ * offsets for attributes parameter.
+ *
+ * @param uintptr_t virtual - The base virtual address.
+ * @param size_t size - The size of the virtual range.
+ * @param uint32_t attributes - The attributes to set.
+ * @return zero on success.
+ * */
+int pager_set_attr(uintptr_t virtual, size_t size, uint32_t attributes);
+
+/**
+ * Initialize the x86-64 pager.
+ * */
 void init_pager();
 
 #endif
