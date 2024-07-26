@@ -276,6 +276,8 @@ static int pager_internal_unmap_recurse(uint64_t *table, int level, uintptr_t *v
 		switch (level) {
 			case 3: {
 				table[index] = 0;
+				__asm__("invlpg [%0]" : : "r"(*virtual) : );
+
 				*virtual += ONE_GIB;
 				*size -= ONE_GIB;
 				counter++;
@@ -284,6 +286,8 @@ static int pager_internal_unmap_recurse(uint64_t *table, int level, uintptr_t *v
 			
 			case 2: {
 				table[index] = 0;
+				__asm__("invlpg [%0]" : : "r"(*virtual) : );
+
 				*virtual += TWO_MIB;
 				*size -= TWO_MIB;
 				counter++;
@@ -301,6 +305,8 @@ static int pager_internal_unmap_recurse(uint64_t *table, int level, uintptr_t *v
 		} else {
 			table[index] = 0;
 		}
+
+		__asm__("invlpg [%0]" : : "r"(*virtual) : );
 
 		*virtual += PAGE_SIZE;
 		*size -= PAGE_SIZE;

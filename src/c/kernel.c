@@ -123,6 +123,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	*data = 'A';
 	*(data + PAGE_SIZE) = 'A';
+	printf("%c %c\n", *data, *(data + PAGE_SIZE));
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
