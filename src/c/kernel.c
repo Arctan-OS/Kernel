@@ -114,15 +114,23 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	uint8_t *data = vmm_alloc(0x2000);
 	printf("%p\n", data);
+
 	*data = 'A';
 	*(data + PAGE_SIZE) = 'A';
 
 	printf("%c %c\n", *data, *(data + PAGE_SIZE));
 
+	uint8_t *data2 = vmm_alloc(0x2000);
+	printf("%p\n", data2);
+	*data2 = 'B';
+	*(data2 + PAGE_SIZE) = 'B';
+
+	printf("%c %c\n", *data2, *(data2 + PAGE_SIZE));
+
 	vmm_free(data);
 
-	*data = 'A';
-	*(data + PAGE_SIZE) = 'A';
+	printf("%c %c\n", *data2, *(data2 + PAGE_SIZE));
+
 	printf("%c %c\n", *data, *(data + PAGE_SIZE));
 
 	for (int i = 0; i < 60; i++) {

@@ -224,16 +224,16 @@ int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attribu
 		return -4;
 	}
 
-	int entry_idx = ((uint64_t)virtual >> 12) & 0x1FF;
+	index = ((uint64_t)virtual >> 12) & 0x1FF;
 
-	if ((pml1[entry_idx] & 1) == 1 && ((attributes >> ARC_PAGER_OVW) & 1) == 0) {
+	if ((pml1[index] & 1) == 1 && ((attributes >> ARC_PAGER_OVW) & 1) == 0) {
 		// Cannot overwrite
 		// NOTE: This whole system of overwriting entries may cause memory
 		//       leaks!
 		return -3;
 	}
 
-	pml1[entry_idx] = physical | get_entry_bits(1, attributes);
+	pml1[index] = physical | get_entry_bits(1, attributes);
 
 	__asm__("invlpg [%0]" : : "r"(virtual) : );
 
@@ -372,22 +372,23 @@ int pager_fly_map(uintptr_t virtual, size_t size, uint32_t attributes) {
 			return -1;
 		}
 
-
 		uint64_t *pml1 = get_page_table(pml2, 2, virtual, attributes, &index);
 		if (pml1 == NULL) {
 			return -1;
 		}
 
-		int entry_idx = ((uint64_t)virtual >> 12) & 0x1FF;
+		index = ((uint64_t)virtual >> 12) & 0x1FF;
 
-		if ((pml1[entry_idx] & 1) == 1 && ((attributes >> ARC_PAGER_OVW) & 1) == 0) {
+		if ((pml1[index] & 1) == 1 && ((attributes >> ARC_PAGER_OVW) & 1) == 0) {
 			// Cannot overwrite
 			// NOTE: This whole system of overwriting entries may cause memory
 			//       leaks!
 			return -3;
 		}
 
-		pml1[entry_idx] = ARC_HHDM_TO_PHYS(pmm_alloc()) | get_entry_bits(1, attributes);
+		pml1[index] = ARC_HHDM_TO_PHYS(pmm_alloc()) | get_entry_bits(1, attributes);
+
+		__asm__("invlpg [%0]" : : "r"(virtual) : );
 	}
 
 	return 0;
@@ -411,11 +412,70 @@ int pager_fly_unmap(uintptr_t virtual, size_t size) {
 
 int pager_set_attr(uint64_t virtual, size_t size, uint32_t attributes) {
 	// Set the attributes of the given region
-	(void)virtual;
-	(void)size;
-	(void)attributes;
+	if (size == 0) {
+		return -1;
+	}
+
+	size = ALIGN(size, PAGE_SIZE);
+
+	while (virtual < virtual + size) {
+		int index = 0;
+		uint64_t *pml3 = get_page_table(pml4, 4, virtual, 1 << ARC_PAGER_RESV2, &index);
+		if (pml3 == NULL) {
+			return -2;
+		}
+
+		uint64_t *pml2 = get_page_table(pml3, 3, virtual, 1 << ARC_PAGER_RESV2, &index);
+
+		if ((pml3[index] & 1) == 1 && ((pml3[index] >> 7) & 1) == 1) {
+			// GiB page
+			uintptr_t address = (uintptr_t)(pml3[index] & ADDRESS_MASK);
+			pml3[index] = address | get_entry_bits(3, attributes);
+
+			__asm__("invlpg [%0]" : : "r"(virtual) : );
+
+			virtual += ONE_GIB;
+			continue;
+		}
+
+		if (pml2 == NULL) {
+			return -3;
+		}
+
+		uint64_t *pml1 = get_page_table(pml2, 2, virtual, 1 << ARC_PAGER_RESV2, &index);
+
+		if (((pml2[index] >> 7) & 1) == 1) {
+			// MiB page
+			uintptr_t address = (uintptr_t)(pml2[index] & ADDRESS_MASK);
+			pml2[index] = address | get_entry_bits(2, attributes);
+
+			__asm__("invlpg [%0]" : : "r"(virtual) : );
+
+			virtual += TWO_MIB;
+			continue;
+		}
+
+		if (pml1 == NULL) {
+			return -4;
+		}
+
+		// KiB page
+		index = ((uint64_t)virtual >> 12) & 0x1FF;
+
+		if ((pml1[index] & 1) == 0) {
+			return -5;
+		}
+
+		uintptr_t address = (uintptr_t)(pml1[index] & ADDRESS_MASK);
+		pml1[index] = address | get_entry_bits(1, attributes);
+
+		__asm__("invlpg [%0]" : : "r"(virtual) : );
+
+		virtual += PAGE_SIZE;
+	}
 
 	return 0;
+
 }
 
 void init_pager() {
