@@ -85,9 +85,9 @@ int do_rsdt(void *address) {
 		switch (entry->signature) {
 			case ARC_ACPI_TBLSIG_APIC: {
 				size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry) - 8;
-				vfs_create("/dev/acpi/apic", 0, ARC_VFS_N_BUFF, &size);
+				vfs_create("/dev/acpi/apic", ARC_STD_PERM, ARC_VFS_N_BUFF, &size);
 				struct ARC_File *file = NULL;
-				vfs_open("/dev/acpi/apic", 0, 0, 0, (void *)&file);
+				vfs_open("/dev/acpi/apic", 0, ARC_STD_PERM, 0, (void *)&file);
 				vfs_write((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
 				vfs_close(file);
 
@@ -114,7 +114,7 @@ int do_rsdt(void *address) {
 			}
 		}
 
-		vfs_create(path, 0, ARC_VFS_N_DIR, NULL);
+		vfs_create(path, ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
 		struct ARC_Resource *res = init_resource(ARC_DRI_DEV, index, (void *)entry);
 		vfs_mount(path, res);
 	}

@@ -78,6 +78,10 @@
 
 #define PAGE_SIZE 0x1000
 
+
+#define ARC_STD_PERM S_IEXEC | S_IREAD | S_IWRITE
+
+
 extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta Arc_MainTerm;
 extern struct ARC_Resource *Arc_InitramfsRes;

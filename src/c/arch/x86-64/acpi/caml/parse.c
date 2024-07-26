@@ -422,15 +422,13 @@ int caml_parse_pkg(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tPkgLength: %lu\n", package_size);
 		ARC_DEBUG(INFO, "\tName: %s\n", name);
 
-		struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
+		struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->current, ARC_STD_PERM, ARC_VFS_N_DIR, NULL) : state->current;
 
 		if (node == NULL) {
 			ARC_DEBUG(ERR, "Failed to create new node\n");
 		}
 
 		caml_parse_term_list(state, package_size, node);
-
-//		ADVANCE_STATE_BY(state, package_size);
 
 		free(name);
 
@@ -447,7 +445,7 @@ int caml_parse_pkg(struct caml_state *state) {
 		ARC_DEBUG(INFO, "\tUret: %lu\n", state->uret);
 		ARC_DEBUG(INFO, "\tPret: %p\n", state->pret);
 
-		struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->current, 0, ARC_VFS_N_DIR, NULL) : state->current;
+		struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->current, ARC_STD_PERM, ARC_VFS_N_DIR, NULL) : state->current;
 
 		if (node == NULL) {
 			ARC_DEBUG(ERR, "Failed to create new node\n");
@@ -478,7 +476,7 @@ int caml_parse_pkg(struct caml_state *state) {
 		ADVANCE_STATE_BY(state, package_size);
 
 		if (strlen(name) > 0) {
-			vfs_create_rel(name, state->current, 0, ARC_VFS_N_BUFF, &package_size);
+			vfs_create_rel(name, state->current, ARC_STD_PERM, ARC_VFS_N_BUFF, &package_size);
 
 			// TODO: Work out the absolute path to the node that has just
 			//       been created and write data to it
@@ -526,7 +524,7 @@ int caml_parse_def_block(uint8_t *buffer, size_t size) {
 	memset(state, 0, sizeof(struct caml_state));
 
 	struct ARC_File *file = NULL;
-	if (vfs_open("/dev/acpi/", 0, 0, 0, (void *)&file) != 0) {
+	if (vfs_open("/dev/acpi/", 0, ARC_STD_PERM, 0, (void *)&file) != 0) {
 		return -1;
 	}
 

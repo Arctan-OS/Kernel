@@ -94,8 +94,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         // Initialize more complicated things
 	init_vfs();
 
-	vfs_create("/initramfs/", 0, ARC_VFS_N_DIR, NULL);
-        vfs_create("/dev/", 0, ARC_VFS_N_DIR, NULL);
+	vfs_create("/initramfs/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
+        vfs_create("/dev/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
 
         init_acpi(Arc_BootMeta->rsdp);
         // TODO: Implement properly
@@ -104,7 +104,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
-	vfs_link("/initramfs/boot/ANTIQUE.F14", "/font.fnt", 0);
+	vfs_link("/initramfs/boot/ANTIQUE.F14", "/font.fnt", -1);
 	vfs_rename("/font.fnt", "/fonts/font.fnt");
 	vfs_open("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
 

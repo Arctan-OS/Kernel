@@ -38,6 +38,9 @@
 #include <drivers/dri_defs.h>
 
 // TODO: Implement error cases for all functions.
+// TODO: Correct permissions, currently the inference
+//       of permissions for new paths is quite hacky
+//       and seems vulnerable
 
 static const char *root = "\0";
 static const struct ARC_Resource root_res = { 0 };
@@ -437,6 +440,10 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 		return 1;
 	}
 
+	if (mode == (uint32_t)-1) {
+		mode = info_a.node->stat.st_mode;
+	}
+
 	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT, .mode = mode, .type = ARC_VFS_N_LINK };
 	ARC_VFS_DETERMINE_START(info_b, b);
 
@@ -495,14 +502,15 @@ int vfs_rename(char *a, char *b) {
 		ARC_DEBUG(ERR, "Failed to find %s in node graph\n", a);
 		return -1;
 	}
+	struct ARC_VFSNode *node_a = info_a.node;
 
 	// Lock parent ASAP ensuring node_a is not modified
-	if (qlock(&info_a.node->parent->branch_lock) != 0) {
+	if (qlock(&node_a->parent->branch_lock) != 0) {
 		ARC_DEBUG(ERR, "Lock error\n");
 	}
-	qlock_yield(&info_a.node->parent->branch_lock);
+	qlock_yield(&node_a->parent->branch_lock);
 
-	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT | ARC_VFS_NOLCMP, .mode = info_a.mode };
+	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT | ARC_VFS_NOLCMP, .mode = node_a->stat.st_mode };
 	ARC_VFS_DETERMINE_START(info_b, b);
 
 	ret = vfs_traverse(b, &info_b, 0);
@@ -513,8 +521,8 @@ int vfs_rename(char *a, char *b) {
 		return -1;
 	}
 
-	struct ARC_VFSNode *node_a = info_a.node;
 	struct ARC_VFSNode *node_b = info_b.node;
+
 
 	if (node_b == node_a->parent) {
 		// Node A is already under B, just rename A.

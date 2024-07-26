@@ -58,6 +58,26 @@ int vfs_stat2type(struct stat stat) {
 	}
 }
 
+int vfs_type2mode(int type) {
+	switch (type) {
+		case ARC_VFS_N_DIR: {
+			return S_IFDIR;
+		}
+
+		case ARC_VFS_N_LINK: {
+			return S_IFLNK;
+		}
+
+		case ARC_VFS_N_FILE: {
+			return S_IFREG;
+		}
+
+		default: {
+			return ARC_VFS_NULL;
+		}
+	}
+}
+
 uint64_t vfs_type2idx(int type, struct ARC_VFSNode *mount) {
 	switch (type) {
 		case ARC_VFS_N_BUFF: {
@@ -383,9 +403,13 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_de
 			init_static_qlock(&next->branch_lock);
 			init_static_mutex(&next->property_lock);
 
+			next->stat.st_mode = (info->mode & 0777) | vfs_type2mode(next->type);
+			// TODO: Set stat
+			//       next->stat.st_uid = get_uid();
+			//       ...
+
 			ARC_DEBUG(INFO, "Created new node %s (%p)\n", next->name, next);
 
-			// TODO: Set stat according to current information
 
 			// Check for node on physical filesystem
 			if (info->mount == NULL) {
