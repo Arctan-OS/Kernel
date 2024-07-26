@@ -132,17 +132,17 @@ void handle_keyboard() {
 
         if (scancode < 0x81) {
                 switch (scancode) {
-                // Implement handling for function keys (arrows, caps, shift, f keys, etc...)
-                case 0x2A: // Shift
-                        caps = 1;
-                        break;
+			// Implement handling for function keys (arrows, caps, shift, f keys, etc...)
+			case 0x2A: // Shift
+				caps = 1;
+				break;
 
-                case 0x3A: // Caps lock
-                        caps = !caps;
-                        break;
+			case 0x3A: // Caps lock
+				caps = !caps;
+				break;
 
-                default:
-                        printf("%c", *((caps ? ALPHA_NUMERIC : alpha_numeric) + scancode));
+			default:
+				printf("%c", *((caps ? ALPHA_NUMERIC : alpha_numeric) + scancode));
                 }
 	}
 }
@@ -171,36 +171,36 @@ void interrupt_junction(struct junction_args *args, int code) {
 
 	// Handle error code if present
 	switch (code) {
-	case 21:
-		goto fall_through;
-	case 17:
-		goto fall_through;
-	case 14:
-		_x86_getCR2();
-		printf("CR2: 0x%"PRIX64"\n", _x86_CR2);
-		_x86_getCR3();
-		printf("CR3: 0x%"PRIX64"\n", _x86_CR3);
-		goto fall_through;
-	case 13:
-		handle_gp(stack_elem);
-		goto fall_through;
-	case 12:
-	case 11:
-		goto fall_through;
-		goto fall_through;
-	case 10:
-		goto fall_through;
-	case 8: {
-		// There is nothing we can do
+		case 21:
+			goto fall_through;
+		case 17:
+			goto fall_through;
+		case 14:
+			_x86_getCR2();
+			printf("CR2: 0x%"PRIX64"\n", _x86_CR2);
+			_x86_getCR3();
+			printf("CR3: 0x%"PRIX64"\n", _x86_CR3);
+			goto fall_through;
+		case 13:
+			handle_gp(stack_elem);
+			goto fall_through;
+		case 12:
+		case 11:
+			goto fall_through;
+			goto fall_through;
+		case 10:
+			goto fall_through;
+		case 8: {
+			// There is nothing we can do
 
-fall_through:;
-		// Pop the error code off the stack
-		args->rsp += 8;
-		// This should now be the return address
-		stack_elem = *(uint64_t *)args->rsp;
+			fall_through:;
+			// Pop the error code off the stack
+			args->rsp += 8;
+			// This should now be the return address
+			stack_elem = *(uint64_t *)args->rsp;
 
-		break;
-	}
+			break;
+		}
 	}
 
 	printf("Return address: 0x%"PRIX64"\n", stack_elem);

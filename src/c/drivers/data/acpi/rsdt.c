@@ -83,35 +83,35 @@ int do_rsdt(void *address) {
 		char *path = NULL;
 
 		switch (entry->signature) {
-		case ARC_ACPI_TBLSIG_APIC: {
-			 size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry) - 8;
-			 vfs_create("/dev/acpi/apic", 0, ARC_VFS_N_BUFF, &size);
-			 struct ARC_File *file = NULL;
-			 vfs_open("/dev/acpi/apic", 0, 0, 0, (void *)&file);
-			 vfs_write((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
-			 vfs_close(file);
+			case ARC_ACPI_TBLSIG_APIC: {
+				size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry) - 8;
+				vfs_create("/dev/acpi/apic", 0, ARC_VFS_N_BUFF, &size);
+				struct ARC_File *file = NULL;
+				vfs_open("/dev/acpi/apic", 0, 0, 0, (void *)&file);
+				vfs_write((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
+				vfs_close(file);
 
-			continue;
-		}
+				continue;
+			}
 
-		case ARC_ACPI_TBLSIG_FACP: {
-			index = ARC_DRI_FADT;
-			path = "/dev/acpi/fadt/";
+			case ARC_ACPI_TBLSIG_FACP: {
+				index = ARC_DRI_FADT;
+				path = "/dev/acpi/fadt/";
 
-			break;
-		}
+				break;
+			}
 
-		case ARC_ACPI_TBLSIG_HPET: {
-			index = ARC_DRI_HPET;
-			path = "/dev/acpi/hpet/";
+			case ARC_ACPI_TBLSIG_HPET: {
+				index = ARC_DRI_HPET;
+				path = "/dev/acpi/hpet/";
 
-			break;
-		}
+				break;
+			}
 
-		default: {
-			ARC_DEBUG(INFO, "Unimplemented RSDT table \"%.*s\", 0x%"PRIX32"\n", 4, (char *)&entry->signature, entry->signature);
-			continue;
-		}
+			default: {
+				ARC_DEBUG(INFO, "Unimplemented RSDT table \"%.*s\", 0x%"PRIX32"\n", 4, (char *)&entry->signature, entry->signature);
+				continue;
+			}
 		}
 
 		vfs_create(path, 0, ARC_VFS_N_DIR, NULL);

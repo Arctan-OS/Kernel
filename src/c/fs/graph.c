@@ -60,23 +60,23 @@ int vfs_stat2type(struct stat stat) {
 
 uint64_t vfs_type2idx(int type, struct ARC_VFSNode *mount) {
 	switch (type) {
-	case ARC_VFS_N_BUFF: {
-		return ARC_FDRI_BUFFER;
-	}
-
-	case ARC_VFS_N_FIFO: {
-		return ARC_FDRI_FIFO;
-	}
-
-	default: {
-		if (mount == NULL) {
-			// If the mount is NULL, then create a buffer
-			// that can hold some temporary data
+		case ARC_VFS_N_BUFF: {
 			return ARC_FDRI_BUFFER;
 		}
-	
-		return mount->resource->dri_index + 1;
-	}
+
+		case ARC_VFS_N_FIFO: {
+			return ARC_FDRI_FIFO;
+		}
+
+		default: {
+			if (mount == NULL) {
+				// If the mount is NULL, then create a buffer
+				// that can hold some temporary data
+				return ARC_FDRI_BUFFER;
+			}
+
+			return mount->resource->dri_index + 1;
+		}
 	}
 }
 

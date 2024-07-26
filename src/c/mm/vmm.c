@@ -33,7 +33,7 @@ static struct ARC_BuddyMeta vmm_meta = { 0 };
 void *vmm_alloc(size_t size) {
 	void *virtual = buddy_alloc(&vmm_meta, size);
 
-	if (pager_map((uintptr_t)virtual, 0, size, 0) != 0) {
+	if (pager_fly_map((uintptr_t)virtual, size, 0) != 0) {
 		buddy_free(&vmm_meta, virtual);
 
 		return NULL;
@@ -49,7 +49,7 @@ void *vmm_free(void *address) {
 		return NULL;
 	}
 
-	if (pager_unmap((uintptr_t)address, freed) != 0) {
+	if (pager_fly_unmap((uintptr_t)address, freed) != 0) {
 		return NULL;
 	}
 

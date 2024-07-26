@@ -60,30 +60,30 @@ int init_apic() {
 
 	while (vfs_read(data, 1, 2, apic) > 0) {
 		switch (data[0]) {
-		case ENTRY_TYPE_LAPIC: {
-			ARC_DEBUG(INFO, "LAPIC found\n");
-			break;
-		}
+			case ENTRY_TYPE_LAPIC: {
+				ARC_DEBUG(INFO, "LAPIC found\n");
+				break;
+			}
 
-		case ENTRY_TYPE_IOAPIC: {
-			ARC_DEBUG(INFO, "IOAPIC found\n");
-			break;
-		}
+			case ENTRY_TYPE_IOAPIC: {
+				ARC_DEBUG(INFO, "IOAPIC found\n");
+				break;
+			}
 
-		case ENTRY_TYPE_INT_OVERRIDE_SRC: {
-			ARC_DEBUG(INFO, "Interrupt Source Override found\n");
-			break;
-		}
+			case ENTRY_TYPE_INT_OVERRIDE_SRC: {
+				ARC_DEBUG(INFO, "Interrupt Source Override found\n");
+				break;
+			}
 
-		case ENTRY_TYPE_LAPIC_NMI: {
-			ARC_DEBUG(INFO, "LAPIC NMI found\n");
-			break;
-		}
+			case ENTRY_TYPE_LAPIC_NMI: {
+				ARC_DEBUG(INFO, "LAPIC NMI found\n");
+				break;
+			}
 
-		default: {
-			ARC_DEBUG(INFO, "Unhandled MADT entry of type %d\n", data[0]);
-			break;
-		}
+			default: {
+				ARC_DEBUG(INFO, "Unhandled MADT entry of type %d\n", data[0]);
+				break;
+			}
 		}
 
 		vfs_seek(apic, data[1] - 2, ARC_VFS_SEEK_CUR);

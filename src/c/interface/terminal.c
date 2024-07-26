@@ -42,27 +42,27 @@ void term_putchar(struct ARC_TermMeta *term, char c) {
 	}
 
 	switch (c) {
-	case '\n': {
-		term->cy++;
-		term->cx = 0;
+	        case '\n': {
+		        term->cy++;
+        		term->cx = 0;
 
-		break;
-	}
+        		break;
+        	}
 
-	default: {
-		if (term->term_mem != NULL) {
-			term->term_mem[term->cy * term->term_width + term->cx] = c;
-		}
+	        default: {
+        		if (term->term_mem != NULL) {
+        			term->term_mem[term->cy * term->term_width + term->cx] = c;
+        		}
 
-		term->cx++;
+        		term->cx++;
 
-		if (term->cx >= term->term_width) {
-			term->cy++;
-			term->cx = 0;
-		}
+        		if (term->cx >= term->term_width) {
+        			term->cy++;
+        			term->cx = 0;
+        		}
 
-		break;
-	}
+        		break;
+        	}
 	}
 }
 

@@ -147,33 +147,33 @@ static int buffer_seek(struct ARC_File *file, struct ARC_Resource *res, long off
 	long size = file->node->stat.st_size;
 
 	switch (whence) {
-	case ARC_VFS_SEEK_SET: {
-		if (offset < size) {
-			file->offset = offset;
+		case ARC_VFS_SEEK_SET: {
+			if (offset < size) {
+				file->offset = offset;
+			}
+
+			return 0;
 		}
 
-		return 0;
-	}
+		case ARC_VFS_SEEK_CUR: {
+			file->offset += offset;
 
-	case ARC_VFS_SEEK_CUR: {
-		file->offset += offset;
+			if (file->offset >= size) {
+				file->offset = size;
+			}
 
-		if (file->offset >= size) {
-			file->offset = size;
+			return 0;
 		}
 
-		return 0;
-	}
+		case ARC_VFS_SEEK_END: {
+			file->offset = size - offset - 1;
 
-	case ARC_VFS_SEEK_END: {
-		file->offset = size - offset - 1;
+			if (file->offset < 0) {
+				file->offset = 0;
+			}
 
-		if (file->offset < 0) {
-			file->offset = 0;
+			return 0;
 		}
-
-		return 0;
-	}
 	}
 	return 0;
 }

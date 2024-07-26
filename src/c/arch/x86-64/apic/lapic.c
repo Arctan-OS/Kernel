@@ -94,7 +94,7 @@ int init_lapic() {
         lapic_msr |= (1 << 11);
         _x86_WRMSR(0x1B, lapic_msr);
 
-	pager_map((uint64_t)reg, (uint64_t)reg, PAGE_SIZE, 0);
+	printf("%d\n", pager_map((uint64_t)reg, (uint64_t)reg, PAGE_SIZE, 1 << ARC_PAGER_RW));
 
         ARC_DEBUG(INFO, "LAPIC register at %p\n", reg);
         // NOTE: Ignore bits 31:27 of reg->lapic_id on P6 and Pentium processors

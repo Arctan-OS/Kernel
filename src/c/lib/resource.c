@@ -48,29 +48,29 @@ static struct ARC_DriverDef *get_dri_def(int group, uint64_t index) {
 	struct ARC_DriverDef *end = NULL;
 
 	switch (group) {
-	case 0: {
-		start = __DRIVERS0_START;
-		end = __DRIVERS0_END;
-		break;
-	}
+		case 0: {
+			start = __DRIVERS0_START;
+			end = __DRIVERS0_END;
+			break;
+		}
 
-	case 1: {
-		start = __DRIVERS1_START;
-		end = __DRIVERS1_END;
-		break;
-	}
+		case 1: {
+			start = __DRIVERS1_START;
+			end = __DRIVERS1_END;
+			break;
+		}
 
-	case 2: {
-		start = __DRIVERS2_START;
-		end = __DRIVERS2_END;
-		break;
-	}
+		case 2: {
+			start = __DRIVERS2_START;
+			end = __DRIVERS2_END;
+			break;
+		}
 
-	case 3: {
-		start = __DRIVERS3_START;
-		end = __DRIVERS3_END;
-		break;
-	}
+		case 3: {
+			start = __DRIVERS3_START;
+			end = __DRIVERS3_END;
+			break;
+		}
 	}
 
 	if (start == NULL || end == NULL) {

@@ -112,6 +112,18 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	list("/", 8);
 
+	uint8_t *data = vmm_alloc(0x2000);
+	printf("%p\n", data);
+	*data = 'A';
+	*(data + PAGE_SIZE) = 'A';
+
+	printf("%c %c\n", *data, *(data + PAGE_SIZE));
+
+	vmm_free(data);
+
+	*data = 'A';
+	*(data + PAGE_SIZE) = 'A';
+
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
 			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {

@@ -32,15 +32,15 @@ int parse_boot_info() {
 	ARC_DEBUG(INFO, "Parsing boot information\n");
 
 	switch (Arc_BootMeta->boot_proc) {
-	case ARC_BOOTPROC_MB2: {
-		parse_mb2i();
-		break;
-	}
+		case ARC_BOOTPROC_MB2: {
+			parse_mb2i();
+			break;
+		}
 
-	case 0: {
-		ARC_DEBUG(INFO, "No boot information found\n");
-		return -1;
-	}
+		case 0: {
+			ARC_DEBUG(INFO, "No boot information found\n");
+			return -1;
+		}
 	}
 
 	ARC_DEBUG(INFO, "Finished parsing boot information\n");

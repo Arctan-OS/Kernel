@@ -56,20 +56,20 @@ int init_dsdt(struct ARC_Resource *res, void *arg) {
 	//       non exist, except for loading order, but still
 	//       check
 	switch (table->base.signature) {
-	case ARC_ACPI_TBLSIG_DSDT: {
-		ARC_DEBUG(INFO, "Found DSDT at %p, loading\n", table);
-		break;
-	}
+		case ARC_ACPI_TBLSIG_DSDT: {
+			ARC_DEBUG(INFO, "Found DSDT at %p, loading\n", table);
+			break;
+		}
 
-	case ARC_ACPI_TBLSIG_SSDT: {
-		ARC_DEBUG(INFO, "Found SSDT at %p, loading\n", table);
-		break;
-	}
+		case ARC_ACPI_TBLSIG_SSDT: {
+			ARC_DEBUG(INFO, "Found SSDT at %p, loading\n", table);
+			break;
+		}
 
-	case ARC_ACPI_TBLSIG_PSDT: {
-		ARC_DEBUG(INFO, "Found PSDT at %p, loading\n", table);
-		break;
-	}
+		case ARC_ACPI_TBLSIG_PSDT: {
+			ARC_DEBUG(INFO, "Found PSDT at %p, loading\n", table);
+			break;
+		}
 	}
 
 	caml_parse_def_block(table->bytes, table->base.length - sizeof(struct xsdt));

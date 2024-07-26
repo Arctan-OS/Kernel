@@ -81,80 +81,80 @@ int caml_parse_computational_data(struct caml_state *state) {
 	ADVANCE_STATE(state);
 
 	switch (lead) {
-	case ZERO_OP:
-	case ONE_OP:
-	case ONES_OP: {
-		state->uret = lead;
+		case ZERO_OP:
+		case ONE_OP:
+		case ONES_OP: {
+			state->uret = lead;
 
-		return 0;
-	}
+			return 0;
+		}
 
-	case BYTE_PREFIX: {
-		state->uret = *state->buffer;
-		ADVANCE_STATE(state);
+		case BYTE_PREFIX: {
+			state->uret = *state->buffer;
+			ADVANCE_STATE(state);
 
-		return 0;
-	}
+			return 0;
+		}
 
-	case WORD_PREFIX: {
-		state->uret = *state->buffer;
-		ADVANCE_STATE(state);
-		state->uret |= *state->buffer << 8;
-		ADVANCE_STATE(state);
+		case WORD_PREFIX: {
+			state->uret = *state->buffer;
+			ADVANCE_STATE(state);
+			state->uret |= *state->buffer << 8;
+			ADVANCE_STATE(state);
 
-		return 0;
-	}
+			return 0;
+		}
 
-	case DWORD_PREFIX: {
-		state->uret = *state->buffer;
-		ADVANCE_STATE(state);
-		state->uret |= *state->buffer << 8;
-		ADVANCE_STATE(state);
-		state->uret |= *state->buffer << 16;
-		ADVANCE_STATE(state);
-		state->uret |= *state->buffer << 24;
-		ADVANCE_STATE(state);
+		case DWORD_PREFIX: {
+			state->uret = *state->buffer;
+			ADVANCE_STATE(state);
+			state->uret |= *state->buffer << 8;
+			ADVANCE_STATE(state);
+			state->uret |= *state->buffer << 16;
+			ADVANCE_STATE(state);
+			state->uret |= *state->buffer << 24;
+			ADVANCE_STATE(state);
 
-		return 0;
-	}
+			return 0;
+		}
 
-	case QWORD_PREFIX: {
-		state->uret = *state->buffer;
-		ADVANCE_STATE(state);
-		state->uret |= *state->buffer << 8;
-		ADVANCE_STATE(state);
-		state->uret |= *state->buffer << 16;
-		ADVANCE_STATE(state);
-		state->uret |= *state->buffer << 24;
-		ADVANCE_STATE(state);
-		state->uret = (uint64_t)(*state->buffer) << 32;
-		ADVANCE_STATE(state);
-		state->uret |= (uint64_t)*state->buffer << 40;
-		ADVANCE_STATE(state);
-		state->uret |= (uint64_t)(*state->buffer) << 48;
-		ADVANCE_STATE(state);
-		state->uret |= (uint64_t)(*state->buffer) << 56;
-		ADVANCE_STATE(state);
+		case QWORD_PREFIX: {
+			state->uret = *state->buffer;
+			ADVANCE_STATE(state);
+			state->uret |= *state->buffer << 8;
+			ADVANCE_STATE(state);
+			state->uret |= *state->buffer << 16;
+			ADVANCE_STATE(state);
+			state->uret |= *state->buffer << 24;
+			ADVANCE_STATE(state);
+			state->uret = (uint64_t)(*state->buffer) << 32;
+			ADVANCE_STATE(state);
+			state->uret |= (uint64_t)*state->buffer << 40;
+			ADVANCE_STATE(state);
+			state->uret |= (uint64_t)(*state->buffer) << 48;
+			ADVANCE_STATE(state);
+			state->uret |= (uint64_t)(*state->buffer) << 56;
+			ADVANCE_STATE(state);
 
-		return 0;
-	}
+			return 0;
+		}
 
-	case STRING_PREFIX: {
-		size_t length = 1;
-		for (; state->buffer[length - 1] != 0; length++);
+		case STRING_PREFIX: {
+			size_t length = 1;
+			for (; state->buffer[length - 1] != 0; length++);
 
-		char *str = (char *)alloc(length);
-		memcpy(str, state->buffer, length);
-		state->pret = str;
+			char *str = (char *)alloc(length);
+			memcpy(str, state->buffer, length);
+			state->pret = str;
 
-		ADVANCE_STATE_BY(state, length + 2); // + 1 for the NULL char, + 1 to get to the next byte
+			ADVANCE_STATE_BY(state, length + 2); // + 1 for the NULL char, + 1 to get to the next byte
 
-		return 0;
-	}
+			return 0;
+		}
 
-	default: {
-		ARC_DEBUG(ERR, "Unhandled lead 0x%x\n", lead);
-	}
+		default: {
+			ARC_DEBUG(ERR, "Unhandled lead 0x%x\n", lead);
+		}
 	}
 
 	REGRESS_STATE(state);
@@ -245,44 +245,44 @@ char *caml_parse_name_str(struct caml_state *state) {
 	state->current = parent;
 
 	switch (*state->buffer) {
-	case DUAL_NAME_PREFIX: {
-		ADVANCE_STATE(state);
-		name = alloc(8);
-		memcpy(name, state->buffer, 8);
-		ADVANCE_STATE_BY(state, 8);
+		case DUAL_NAME_PREFIX: {
+			ADVANCE_STATE(state);
+			name = alloc(8);
+			memcpy(name, state->buffer, 8);
+			ADVANCE_STATE_BY(state, 8);
 
-		break;
-	}
+			break;
+		}
 
-	case MULTI_NAME_PREFIX: {
-		ADVANCE_STATE(state);
-		uint8_t length = *(state->buffer);
-		name = alloc(length * 4);
-		memcpy(name, state->buffer, length * 4);
-		ADVANCE_STATE_BY(state, length * 4);
+		case MULTI_NAME_PREFIX: {
+			ADVANCE_STATE(state);
+			uint8_t length = *(state->buffer);
+			name = alloc(length * 4);
+			memcpy(name, state->buffer, length * 4);
+			ADVANCE_STATE_BY(state, length * 4);
 
-		break;
-	}
+			break;
+		}
 
-	case 0x00: {
-		// NullName
-		// NOTE: This is a bit wasteful, but it allows the
-		//       caller to blindly free anything that has been
-		//       returned
-		ADVANCE_STATE(state);
-		name = alloc(1);
-		*name = 0;
+		case 0x00: {
+			// NullName
+			// NOTE: This is a bit wasteful, but it allows the
+			//       caller to blindly free anything that has been
+			//       returned
+			ADVANCE_STATE(state);
+			name = alloc(1);
+			*name = 0;
 
-		break;
-	}
+			break;
+		}
 
-	default: {
-		name = alloc(4);
-		memcpy(name, state->buffer, 4);
-		ADVANCE_STATE_BY(state, 4);
+		default: {
+			name = alloc(4);
+			memcpy(name, state->buffer, 4);
+			ADVANCE_STATE_BY(state, 4);
 
-		break;
-	}
+			break;
+		}
 	}
 
 	return name;
@@ -318,84 +318,84 @@ int caml_extops(struct caml_state *state) {
 	ADVANCE_STATE(state);
 
 	switch (lead) {
-	case EXTOP_REGION_OP: {
-		ARC_DEBUG(INFO, "Region\n");
+		case EXTOP_REGION_OP: {
+			ARC_DEBUG(INFO, "Region\n");
 
-		char *name = caml_parse_name_str(state);
+			char *name = caml_parse_name_str(state);
 
-		uint64_t space = -1;
-		caml_parse_computational_data(state);
-		space = state->uret;
+			uint64_t space = -1;
+			caml_parse_computational_data(state);
+			space = state->uret;
 
-		uint64_t offset = -1;
-		caml_parse_computational_data(state);
-		offset = state->uret;
+			uint64_t offset = -1;
+			caml_parse_computational_data(state);
+			offset = state->uret;
 
-		uint64_t length = -1;
-		caml_parse_computational_data(state);
-		length = state->uret;
+			uint64_t length = -1;
+			caml_parse_computational_data(state);
+			length = state->uret;
 
-		ARC_DEBUG(INFO, "\tName: %s\n", name);
-		ARC_DEBUG(INFO, "\tSpace: 0x%"PRIx64"\n", space);
-		ARC_DEBUG(INFO, "\tOffset: 0x%"PRIx64"\n", offset);
-		ARC_DEBUG(INFO, "\tLength: 0x%"PRIx64"\n", length);
+			ARC_DEBUG(INFO, "\tName: %s\n", name);
+			ARC_DEBUG(INFO, "\tSpace: 0x%"PRIx64"\n", space);
+			ARC_DEBUG(INFO, "\tOffset: 0x%"PRIx64"\n", offset);
+			ARC_DEBUG(INFO, "\tLength: 0x%"PRIx64"\n", length);
 
-		free(name);
+			free(name);
 
-		break;
-	}
+			break;
+		}
 
-	case EXTOP_DEVICE_OP: {
-		ARC_DEBUG(INFO, "Device\n");
+		case EXTOP_DEVICE_OP: {
+			ARC_DEBUG(INFO, "Device\n");
 
-		size_t package_length = caml_parse_pkg_len(state);
-		size_t delta = state->max;
-	
-		char *name = caml_parse_name_str(state);
+			size_t package_length = caml_parse_pkg_len(state);
+			size_t delta = state->max;
 
-		delta -= state->max;
-		package_length -= delta;
+			char *name = caml_parse_name_str(state);
 
-		ARC_DEBUG(INFO, "\tName: %s\n", name);
+			delta -= state->max;
+			package_length -= delta;
 
-		free(name);
+			ARC_DEBUG(INFO, "\tName: %s\n", name);
 
-		ADVANCE_STATE_BY(state, package_length);
+			free(name);
 
-		break;
-	}
+			ADVANCE_STATE_BY(state, package_length);
 
-	case EXTOP_FIELD_OP: {
-		ARC_DEBUG(INFO, "Field\n");
+			break;
+		}
 
-		size_t package_length = caml_parse_pkg_len(state);
-		size_t delta = state->max;
+		case EXTOP_FIELD_OP: {
+			ARC_DEBUG(INFO, "Field\n");
 
-		char *name = caml_parse_name_str(state);
-		uint8_t flags = *(uint8_t *)state->buffer;
-		ADVANCE_STATE(state);
+			size_t package_length = caml_parse_pkg_len(state);
+			size_t delta = state->max;
 
-		// TODO: Parse FieldList
+			char *name = caml_parse_name_str(state);
+			uint8_t flags = *(uint8_t *)state->buffer;
+			ADVANCE_STATE(state);
 
-		delta -= state->max;
-		package_length -= delta;
+			// TODO: Parse FieldList
 
-		ARC_DEBUG(INFO, "\tName: %s\n", name);
-		ARC_DEBUG(INFO, "\tFlags: 0x%x\n", flags);
+			delta -= state->max;
+			package_length -= delta;
 
-		free(name);
+			ARC_DEBUG(INFO, "\tName: %s\n", name);
+			ARC_DEBUG(INFO, "\tFlags: 0x%x\n", flags);
 
-		ADVANCE_STATE_BY(state, package_length);
+			free(name);
 
-		break;
-	}
+			ADVANCE_STATE_BY(state, package_length);
 
-	default: {
-		ARC_DEBUG(ERR, "Unhandled EXTOP: 0x%x\n", *state->buffer);
-		ADVANCE_STATE(state);
+			break;
+		}
 
-		break;
-	}
+		default: {
+			ARC_DEBUG(ERR, "Unhandled EXTOP: 0x%x\n", *state->buffer);
+			ADVANCE_STATE(state);
+
+			break;
+		}
 	}
 
 	return 0;
