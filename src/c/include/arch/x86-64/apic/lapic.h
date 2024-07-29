@@ -27,6 +27,8 @@
 #ifndef ARC_ARCH_X86_64_APIC_LAPIC_H
 #define ARC_ARCH_X86_64_APIC_LAPIC_H
 
+int lapic_eoi();
+
 /*
  * This header contains functions which manage the
  * LAPIC

@@ -230,7 +230,7 @@ int pager_map(uint64_t virtual, uint64_t physical, size_t size, uint32_t attribu
 		// Cannot overwrite
 		// NOTE: This whole system of overwriting entries may cause memory
 		//       leaks!
-		return -3;
+		return -5;
 	}
 
 	pml1[index] = physical | get_entry_bits(1, attributes);

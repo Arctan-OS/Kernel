@@ -26,6 +26,7 @@
 */
 #include <arch/x86-64/apic/apic.h>
 #include <arch/x86-64/apic/lapic.h>
+#include <arch/x86-64/apic/ioapic.h>
 #include <mm/allocator.h>
 #include <fs/vfs.h>
 #include <global.h>
@@ -56,9 +57,13 @@ int init_apic() {
 		return -1;
 	}
 
-	uint8_t data[2] = { 0 };
+	uint8_t data[256] = { 0 };
+	uint32_t offset = 0;
 
-	while (vfs_read(data, 1, 2, apic) > 0) {
+	outb(0x21, 0xFF);
+	outb(0xA1, 0xFF);
+
+	while (vfs_read(data, 1, 256, apic) > 0) {
 		switch (data[0]) {
 			case ENTRY_TYPE_LAPIC: {
 				ARC_DEBUG(INFO, "LAPIC found\n");
@@ -67,6 +72,12 @@ int init_apic() {
 
 			case ENTRY_TYPE_IOAPIC: {
 				ARC_DEBUG(INFO, "IOAPIC found\n");
+
+				uint32_t address = *(uint32_t *)(data + 4);
+				uint32_t gsi = *(uint32_t *)(data + 8);
+
+				init_ioapic(address, gsi);
+
 				break;
 			}
 
@@ -86,7 +97,9 @@ int init_apic() {
 			}
 		}
 
-		vfs_seek(apic, data[1] - 2, ARC_VFS_SEEK_CUR);
+		offset += data[1];
+
+		vfs_seek(apic, offset, ARC_VFS_SEEK_SET);
 	}
 
 	vfs_close(apic);

@@ -48,6 +48,14 @@
 #define ARC_PAGER_RESV1   9
 #define ARC_PAGER_RESV2   10
 
+// Indices in the 0x277 MSR (page attributes)
+#define ARC_PAGER_PAT_WB  0 // WB
+#define ARC_PAGER_PAT_UC  1 // UC
+#define ARC_PAGER_PAT_UCM 2 // UC-
+#define ARC_PAGER_PAT_WC  3 // WC
+#define ARC_PAGER_PAT_WT  4 // WT
+#define ARC_PAGER_PAT_WP  5 // WP
+
 #include <stdint.h>
 #include <stddef.h>
 

@@ -26,11 +26,11 @@
  * The file which handles the 64-bit IDT.
 */
 #include <arch/x86-64/ctrl_regs.h>
-#include <arch/x86-64/io/port.h>
 #include <global.h>
 #include <arch/x86-64/idt.h>
 #include <interface/printf.h>
 #include <lib/util.h>
+#include <arch/x86-64/apic/lapic.h>
 
 struct idt_desc {
 	uint16_t limit;
@@ -209,12 +209,7 @@ void interrupt_junction(struct junction_args *args, int code) {
 	term_draw(&Arc_MainTerm);
 	ARC_HANG;
 EOI:
-	// Send EOI
-	if (code >= 8) {
-		outb(0xA0, 0x20);
-	}
-
-	outb(0x20, 0x20);
+	lapic_eoi();
 }
 
 extern void _install_idt();

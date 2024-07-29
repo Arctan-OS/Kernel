@@ -27,9 +27,8 @@
 #ifndef ARC_ARCH_X86_64_APIC_IOAPIC_H
 #define ARC_ARCH_X86_64_APIC_IOAPIC_H
 
-/*
- * This header defines functions that control
- * IOAPICs
- * */
+#include <stdint.h>
+
+int init_ioapic(uint32_t address, uint32_t gsi);
 
 #endif

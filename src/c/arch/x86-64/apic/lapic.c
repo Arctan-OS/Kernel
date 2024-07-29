@@ -69,6 +69,13 @@ struct lapic_reg {
         uint32_t resv8 __attribute__((aligned(16)));
 }__attribute__((packed));
 
+int lapic_eoi() {
+        uint64_t lapic_msr = _x86_RDMSR(0x1B);
+	struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
+	reg->eoi_reg = 0x0;
+	return 0;
+}
+
 int init_lapic() {
         register uint32_t eax;
         register uint32_t ebx;
@@ -94,7 +101,10 @@ int init_lapic() {
         lapic_msr |= (1 << 11);
         _x86_WRMSR(0x1B, lapic_msr);
 
-	printf("%d\n", pager_map((uint64_t)reg, (uint64_t)reg, PAGE_SIZE, 1 << ARC_PAGER_RW));
+	if (pager_map((uint64_t)reg, (uint64_t)reg, PAGE_SIZE, 1 << ARC_PAGER_RW | ARC_PAGER_PAT_UC) != 0) {
+		ARC_DEBUG(ERR, "Failed to map LAPIC register\n");
+		return -1;
+	}
 
         ARC_DEBUG(INFO, "LAPIC register at %p\n", reg);
         // NOTE: Ignore bits 31:27 of reg->lapic_id on P6 and Pentium processors
