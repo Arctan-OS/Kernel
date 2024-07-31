@@ -29,6 +29,7 @@
 #include <fs/vfs.h>
 #include <global.h>
 #include <drivers/dri_defs.h>
+#include <lib/util.h>
 
 int acpi_checksum(void *data, size_t length) {
 	int8_t *bytes = (int8_t *)data;

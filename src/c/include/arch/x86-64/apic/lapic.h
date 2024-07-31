@@ -27,7 +27,10 @@
 #ifndef ARC_ARCH_X86_64_APIC_LAPIC_H
 #define ARC_ARCH_X86_64_APIC_LAPIC_H
 
+#include <stdint.h>
+
 int lapic_eoi();
+int lapic_ipi(uint8_t vector, uint8_t destination, uint32_t flags);
 
 /*
  * This header contains functions which manage the

@@ -31,78 +31,48 @@
 #include <mm/vmm.h>
 #include <stdint.h>
 
-struct ioapic_register {
-        /// Register select
-        uint32_t ioregsel __attribute__((aligned(16)));
-        /// Data
-        uint32_t iowin __attribute__((aligned(16)));
-}__attribute__((packed));
-
-struct ioapic_redir_tbl {
-        uint8_t int_vec;
-        uint8_t del_mod : 3;
-        uint8_t dest_mod : 1;
-        uint8_t del_stat : 1;
-        uint8_t int_pol : 1;
-        uint8_t irr : 1;
-        uint8_t trigger : 1;
-        uint8_t mask : 1;
-        uint64_t resv0 : 39;
-        uint8_t destination;
-}__attribute__((packed));
-
-uint32_t read_register(struct ioapic_register *ioapic, uint32_t reg) {
+uint32_t ioapic_read_register(struct ioapic_register *ioapic, uint32_t reg) {
 	ioapic->ioregsel = reg;
 	return ioapic->iowin;
 }
 
-int write_register(struct ioapic_register *ioapic, uint32_t reg, uint32_t value) {
+int ioapic_write_register(struct ioapic_register *ioapic, uint32_t reg, uint32_t value) {
 	ioapic->ioregsel = reg;
 	ioapic->iowin = value;
 
 	return 0;
 }
 
-int write_redir_tbl(struct ioapic_register *ioapic, int table_idx, struct ioapic_redir_tbl *table) {
+int ioapic_write_redir_tbl(struct ioapic_register *ioapic, int table_idx, struct ioapic_redir_tbl *table) {
 	int low_dword_i = (table_idx * 2) + 0x10;
 	int high_dword_i = low_dword_i + 1;
 
 	uint64_t value = *(uint64_t *)table;
 
-	write_register(ioapic, low_dword_i, value & UINT32_MAX);
-	write_register(ioapic, high_dword_i, (value >> 32) & UINT32_MAX);
+	ioapic_write_register(ioapic, low_dword_i, value & UINT32_MAX);
+	ioapic_write_register(ioapic, high_dword_i, (value >> 32) & UINT32_MAX);
 
 	return 0;
 }
 
-uint64_t read_redir_tbl(struct ioapic_register *ioapic, int table_idx) {
+uint64_t ioapic_read_redir_tbl(struct ioapic_register *ioapic, int table_idx) {
 	int low_dword_i = (table_idx * 2) + 0x10;
 	int high_dword_i = low_dword_i + 1;
 
-	return (uint64_t)(read_register(ioapic, low_dword_i) | ((uint64_t)read_register(ioapic, high_dword_i) << 32));
+	return (uint64_t)(ioapic_read_register(ioapic, low_dword_i) | ((uint64_t)ioapic_read_register(ioapic, high_dword_i) << 32));
 }
 
-int init_ioapic(uint32_t address, uint32_t gsi) {
+uint32_t init_ioapic(uint32_t address) {
 	struct ioapic_register *ioapic = (struct ioapic_register *)((uintptr_t)address);
 
 	int map_res = pager_map((uintptr_t)ioapic, (uintptr_t)ioapic, PAGE_SIZE, 1 << ARC_PAGER_4K | ARC_PAGER_PAT_UC);
 
 	if (map_res != 0 && map_res != -5) {
 		ARC_DEBUG(ERR, "Mapping failed\n");
-		return -1;
+		return 0;
 	}
 
-	struct ioapic_redir_tbl table = {
-	        .mask = 0,
-		.destination = 0,
-		.dest_mod = 0,
-		.del_mod = 0,
-		.int_vec = 33,
-		.int_pol = 0,
-		.trigger = 0,
-        };
+	uint32_t ver = ioapic_read_register(ioapic, 0x01);
 
-	write_redir_tbl(ioapic, 1, &table);
-
-	return 0;
+	return ((ver >> 16) & 0xFF);
 }

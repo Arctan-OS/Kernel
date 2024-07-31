@@ -53,6 +53,8 @@
 
 #include <drivers/dri_defs.h>
 
+#include <mp/smp.h>
+
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
 struct ARC_Resource *Arc_InitramfsRes = NULL;
@@ -100,6 +102,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         init_acpi(Arc_BootMeta->rsdp);
         // TODO: Implement properly
         init_apic();
+	init_smp();
 	init_syscall();
 
 	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));

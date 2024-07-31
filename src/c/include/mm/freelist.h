@@ -105,7 +105,6 @@ int link_freelists(struct ARC_FreelistMeta *A, struct ARC_FreelistMeta *B);
  * @param uint64_t _base - The lowest address within the list.
  * @param uint64_t _ceil - The highest address within the list + object_size.
  * @param uint64_t _object_size - The size of each object in bytes.
- * @param struct ARC_FrelistMeta *meta - The variable in which list information should be stored.
  * @return returns the pointer to the freelist meta (_base == return value).
  * */
 struct ARC_FreelistMeta *init_freelist(uint64_t _base, uint64_t _ceil, uint64_t _object_size);

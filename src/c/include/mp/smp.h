@@ -1,5 +1,5 @@
 /**
- * @file apic.h
+ * @file smp.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,8 +24,5 @@
  *
  * @DESCRIPTION
 */
-#include <stdint.h>
 
-int apic_map_gsi_irq(uint8_t gsi, uint8_t irq, uint32_t destination, uint32_t flags);
-
-int init_apic();
+int init_smp();

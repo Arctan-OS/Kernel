@@ -279,7 +279,7 @@ struct ARC_FreelistMeta *init_freelist(uint64_t _base, uint64_t _ceil, uint64_t 
 	init_static_mutex(&meta->mutex);
 
 	// Number of objects to accomodate meta
-	int objects = sizeof(struct ARC_FreelistMeta) / _object_size;
+	int objects = (sizeof(struct ARC_FreelistMeta) / _object_size) + 1;
 	_base += objects * _object_size;
 	_ceil -= _object_size;
 

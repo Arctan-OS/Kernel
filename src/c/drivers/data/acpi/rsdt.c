@@ -59,10 +59,12 @@ int do_rsdt(void *address) {
 	struct rsdt *table = (struct rsdt *)address;
 
 	if (table->base.signature != ARC_ACPI_TBLSIG_RSDT) {
+		ARC_DEBUG(ERR, "Invalid RSDT signature!\n");
 		return -1;
 	}
 
 	if (acpi_checksum(table, table->base.length) != 0) {
+		ARC_DEBUG(ERR, "Invalid RSDT checksum!\n");
 		return -1;
 	}
 
@@ -124,9 +126,70 @@ int do_rsdt(void *address) {
 
 int do_xsdt(void *address) {
 	struct xsdt *table = (struct xsdt *)address;
-	(void)table;
 
-	ARC_DEBUG(ERR, "XSDT table\n");
+	if (table->base.signature != ARC_ACPI_TBLSIG_XSDT) {
+		ARC_DEBUG(ERR, "Invalid XSDT signature!\n");
+		return -1;
+	}
+
+	if (acpi_checksum(table, table->base.length) != 0) {
+		ARC_DEBUG(ERR, "Invalid XSDT checksum!\n");
+		return -1;
+	}
+
+	ARC_DEBUG(INFO, "XSDT:\n");
+	ARC_DEBUG(INFO, "\tRevision: %d\n", table->base.revision);
+	ARC_DEBUG(INFO, "\tLength: %d B\n", table->base.length);
+	ARC_DEBUG(INFO, "\tOEMID: %.*s\n", 6, table->base.OEMID);
+	ARC_DEBUG(INFO, "\tOEMTID: %.*s\n", 8, table->base.OEMTID);
+	ARC_DEBUG(INFO, "\tOEMREV: %d\n", table->base.OEMREV);
+	ARC_DEBUG(INFO, "\tCID: %.*s\n", 4, table->base.creator_id);
+	ARC_DEBUG(INFO, "\tCREV: %d\n", table->base.creator_rev);
+
+	int entries = (table->base.length - sizeof(struct xsdt)) / 8;
+	for (int i = 0; i < entries; i++) {
+		struct ARC_RSDTBaseEntry *entry = (void *)ARC_PHYS_TO_HHDM(table->entries[i]);
+
+		int index = -1;
+		char *path = NULL;
+
+		switch (entry->signature) {
+			case ARC_ACPI_TBLSIG_APIC: {
+				size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry) - 8;
+				vfs_create("/dev/acpi/apic", ARC_STD_PERM, ARC_VFS_N_BUFF, &size);
+				struct ARC_File *file = NULL;
+				vfs_open("/dev/acpi/apic", 0, ARC_STD_PERM, 0, (void *)&file);
+				vfs_write((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
+				vfs_close(file);
+
+				continue;
+			}
+
+			case ARC_ACPI_TBLSIG_FACP: {
+				index = ARC_DRI_FADT;
+				path = "/dev/acpi/fadt/";
+
+				break;
+			}
+
+			case ARC_ACPI_TBLSIG_HPET: {
+				index = ARC_DRI_HPET;
+				path = "/dev/acpi/hpet/";
+
+				break;
+			}
+
+			default: {
+				ARC_DEBUG(INFO, "Unimplemented RSDT table \"%.*s\", 0x%"PRIX32"\n", 4, (char *)&entry->signature, entry->signature);
+				continue;
+			}
+		}
+
+		vfs_create(path, ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
+		struct ARC_Resource *res = init_resource(ARC_DRI_DEV, index, (void *)entry);
+		vfs_mount(path, res);
+	}
+
 	return 0;
 }
 

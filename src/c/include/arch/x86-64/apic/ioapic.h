@@ -29,6 +29,31 @@
 
 #include <stdint.h>
 
-int init_ioapic(uint32_t address, uint32_t gsi);
+struct ioapic_register {
+        /// Register select
+        uint32_t ioregsel __attribute__((aligned(16)));
+        /// Data
+        uint32_t iowin __attribute__((aligned(16)));
+}__attribute__((packed));
+
+struct ioapic_redir_tbl {
+        uint8_t int_vec;
+        uint8_t del_mod : 3;
+        uint8_t dest_mod : 1;
+        uint8_t del_stat : 1;
+        uint8_t int_pol : 1;
+        uint8_t irr : 1;
+        uint8_t trigger : 1;
+        uint8_t mask : 1;
+        uint64_t resv0 : 39;
+        uint8_t destination;
+}__attribute__((packed));
+
+uint32_t ioapic_read_register(struct ioapic_register *ioapic, uint32_t reg);
+int ioapic_write_register(struct ioapic_register *ioapic, uint32_t reg, uint32_t value);
+int ioapic_write_redir_tbl(struct ioapic_register *ioapic, int table_idx, struct ioapic_redir_tbl *table);
+uint64_t ioapic_read_redir_tbl(struct ioapic_register *ioapic, int table_idx);
+
+uint32_t init_ioapic(uint32_t address);
 
 #endif

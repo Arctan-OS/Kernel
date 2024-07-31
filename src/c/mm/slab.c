@@ -85,7 +85,7 @@ int init_slab(struct ARC_SlabMeta *meta, size_t init_page_count) {
 		meta->lists[i] = init_freelist(base, base + (init_page_count * PAGE_SIZE), object_size);
 		meta->list_sizes[i] = object_size;
 
-		object_size *= 2;
+		object_size <<= 1;
 	}
 
 	ARC_DEBUG(INFO, "Initialized SLAB allocator\n");

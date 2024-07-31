@@ -148,9 +148,15 @@ void handle_keyboard() {
 }
 
 void interrupt_junction(struct junction_args *args, int code) {
-	// TEMP
-	if (code == 33) {
-		handle_keyboard();
+
+	if (code >= 32) {
+		switch (code) {
+			case 33: {
+				handle_keyboard();
+				break;
+			}
+		}
+
 		goto EOI;
 	}
 
@@ -245,8 +251,25 @@ extern void _idt_stub_28_();
 extern void _idt_stub_29_();
 extern void _idt_stub_30_();
 extern void _idt_stub_31_();
-
+extern void _idt_stub_32_();
 extern void _idt_stub_33_();
+extern void _idt_stub_34_();
+extern void _idt_stub_35_();
+extern void _idt_stub_36_();
+extern void _idt_stub_37_();
+extern void _idt_stub_38_();
+extern void _idt_stub_39_();
+extern void _idt_stub_40_();
+extern void _idt_stub_41_();
+extern void _idt_stub_42_();
+extern void _idt_stub_43_();
+extern void _idt_stub_44_();
+extern void _idt_stub_45_();
+extern void _idt_stub_46_();
+extern void _idt_stub_47_();
+extern void _idt_stub_48_();
+extern void _idt_stub_49_();
+extern void _idt_stub_50_();
 
 void init_idt() {
 	install_idt_gate(0, (uintptr_t)&_idt_stub_0_, 0x08, 0x8E);
@@ -282,7 +305,25 @@ void init_idt() {
 	install_idt_gate(30, (uintptr_t)&_idt_stub_30_, 0x08, 0x8E);
 	install_idt_gate(31, (uintptr_t)&_idt_stub_31_, 0x08, 0x8E);
 
+	install_idt_gate(32, (uintptr_t)&_idt_stub_32_, 0x08, 0x8E);
 	install_idt_gate(33, (uintptr_t)&_idt_stub_33_, 0x08, 0x8E);
+	install_idt_gate(34, (uintptr_t)&_idt_stub_34_, 0x08, 0x8E);
+	install_idt_gate(35, (uintptr_t)&_idt_stub_35_, 0x08, 0x8E);
+	install_idt_gate(36, (uintptr_t)&_idt_stub_36_, 0x08, 0x8E);
+	install_idt_gate(37, (uintptr_t)&_idt_stub_37_, 0x08, 0x8E);
+	install_idt_gate(38, (uintptr_t)&_idt_stub_38_, 0x08, 0x8E);
+	install_idt_gate(39, (uintptr_t)&_idt_stub_39_, 0x08, 0x8E);
+	install_idt_gate(40, (uintptr_t)&_idt_stub_40_, 0x08, 0x8E);
+	install_idt_gate(41, (uintptr_t)&_idt_stub_41_, 0x08, 0x8E);
+	install_idt_gate(42, (uintptr_t)&_idt_stub_42_, 0x08, 0x8E);
+	install_idt_gate(43, (uintptr_t)&_idt_stub_43_, 0x08, 0x8E);
+	install_idt_gate(44, (uintptr_t)&_idt_stub_44_, 0x08, 0x8E);
+	install_idt_gate(45, (uintptr_t)&_idt_stub_45_, 0x08, 0x8E);
+	install_idt_gate(46, (uintptr_t)&_idt_stub_46_, 0x08, 0x8E);
+	install_idt_gate(47, (uintptr_t)&_idt_stub_47_, 0x08, 0x8E);
+	install_idt_gate(48, (uintptr_t)&_idt_stub_48_, 0x08, 0x8E);
+	install_idt_gate(49, (uintptr_t)&_idt_stub_49_, 0x08, 0x8E);
+	install_idt_gate(50, (uintptr_t)&_idt_stub_50_, 0x08, 0x8E);
 
 	idtr.limit = sizeof(idt_entries) * 16 - 1;
 	idtr.base = (uintptr_t)&idt_entries;

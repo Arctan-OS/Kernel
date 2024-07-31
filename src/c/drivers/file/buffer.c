@@ -175,6 +175,7 @@ static int buffer_seek(struct ARC_File *file, struct ARC_Resource *res, long off
 			return 0;
 		}
 	}
+
 	return 0;
 }
 

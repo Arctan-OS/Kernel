@@ -54,8 +54,8 @@ struct lapic_reg {
         uint32_t err_stat_reg __attribute__((aligned(16)));
         uint32_t resv6 __attribute__((aligned(16)));
         uint32_t lvt_cmci_reg __attribute__((aligned(16)));
-        uint32_t icr0 __attribute__((aligned(16)));
-        uint32_t icr1 __attribute__((aligned(16)));
+        uint32_t icr0 __attribute__((aligned(16))); // Lower
+        uint32_t icr1 __attribute__((aligned(16))); // Upper
         uint32_t lvt_timer_reg __attribute__((aligned(16)));
         uint32_t lvt_thermal_reg __attribute__((aligned(16)));
         uint32_t lvt_preformance_reg __attribute__((aligned(16)));
@@ -75,6 +75,33 @@ int lapic_eoi() {
 	reg->eoi_reg = 0x0;
 	return 0;
 }
+
+int lapic_ipi(uint8_t vector, uint8_t destination, uint32_t flags) {
+	// Flags (bitwise)
+	//     Offset | Description
+	//     2:0    | Delivery Mode
+	//     3      | Destination Mode
+	//     5:4    | Destination Shorthand
+	//     6      | Trigger Mode
+	// NOTE: See Intel SDM Vol. 3 11.6.1 for information on the
+	//       values of the above bit fields
+
+	uint64_t lapic_msr = _x86_RDMSR(0x1B);
+	struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
+
+	reg->icr0 = vector | ((flags & 0b111) << 8) | (((flags >> 3) & 1) << 11) |
+		    (((flags >> 4) & 0b11) << 18) | (((flags >> 6) & 1) << 15) | (((flags & 0b111) != 0b101) << 14);
+	reg->icr1 = destination << 24;
+
+	return 0;
+}
+
+int lapic_ipi_poll() {
+	// Returns the delivery status
+
+	return 0;
+}
+
 
 int init_lapic() {
         register uint32_t eax;

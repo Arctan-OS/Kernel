@@ -1,5 +1,5 @@
 /**
- * @file apic.h
+ * @file smp.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,8 +24,18 @@
  *
  * @DESCRIPTION
 */
-#include <stdint.h>
+#include <mp/smp.h>
+#include <arch/x86-64/apic/lapic.h>
 
-int apic_map_gsi_irq(uint8_t gsi, uint8_t irq, uint32_t destination, uint32_t flags);
+int init_smp() {
+	// See Intel SDM 10.1.4
+	// Setup first instructions at PHYSICAL address
+	// 0xFFFFFFF0, these instructions should get the
+	// AP processors caught up with the BSP
 
-int init_apic();
+
+	// Send a INIT to APs
+	lapic_ipi(0, 0, 0b1100101);
+
+	return 0;
+}
