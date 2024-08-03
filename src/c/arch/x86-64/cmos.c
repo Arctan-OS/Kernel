@@ -1,5 +1,5 @@
 /**
- * @file smp.h
+ * @file cmos.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,8 +24,18 @@
  *
  * @DESCRIPTION
 */
-#include <stdint.h>
+#include <arch/x86-64/cmos.h>
+#include <arch/x86-64/io/port.h>
 
-int smp_hold();
+uint8_t cmos_read(uint8_t reg) {
+	// Disable NMI
+	outb(0x70, (1 << 7) | reg);
+	return inb(0x71);
+}
 
-int init_smp(uint32_t lapic, uint32_t version);
+int cmos_write(uint8_t reg, uint8_t value) {
+	// Disable NMI
+	outb(0x70, (1 << 7) | reg);
+	outb(0x71, value);
+	return 0;
+}

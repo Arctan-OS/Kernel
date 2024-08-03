@@ -1,5 +1,5 @@
 /**
- * @file smp.h
+ * @file cmos.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -26,6 +26,5 @@
 */
 #include <stdint.h>
 
-int smp_hold();
-
-int init_smp(uint32_t lapic, uint32_t version);
+uint8_t cmos_read(uint8_t reg);
+int cmos_write(uint8_t reg, uint8_t value);

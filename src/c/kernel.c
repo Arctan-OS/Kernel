@@ -61,6 +61,8 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
+int processor_counter = 0;
+
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
 	Arc_BootMeta = boot_meta;
@@ -99,14 +101,14 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_create("/initramfs/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
         vfs_create("/dev/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
 
+	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
+	vfs_mount("/initramfs/", Arc_InitramfsRes);
+
         init_acpi(Arc_BootMeta->rsdp);
         // TODO: Implement properly
         init_apic();
-	init_smp();
 	init_syscall();
 
-	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
-	vfs_mount("/initramfs/", Arc_InitramfsRes);
 	vfs_link("/initramfs/boot/ANTIQUE.F14", "/font.fnt", -1);
 	vfs_rename("/font.fnt", "/fonts/font.fnt");
 	vfs_open("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);

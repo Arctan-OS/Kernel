@@ -35,6 +35,11 @@ void *pmm_contig_alloc(size_t objects);
 void *pmm_free(void *address);
 void *pmm_contig_free(void *address, size_t objects);
 
+void *pmm_low_alloc();
+void *pmm_low_contig_alloc(size_t objects);
+void *pmm_low_free(void *address);
+void *pmm_low_contig_free(void *address, size_t objects);
+
 int init_pmm(struct ARC_MMap *mmap, int entries);
 
 #endif

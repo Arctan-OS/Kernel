@@ -81,6 +81,8 @@
 
 #define ARC_STD_PERM S_IEXEC | S_IREAD | S_IWRITE
 
+#define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+
 
 extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta Arc_MainTerm;

@@ -56,11 +56,13 @@ struct ARC_MMap {
 
 struct ARC_BootMeta {
 	/// The boot protocol used.
-	int boot_proc;
+	uint64_t boot_proc;
 	/// Pointer to the physical address of the bootloader information.
 	uint64_t boot_info;
-	/// Physical pointer to the state of the bootstrapper's PMM (of type struct ARC_FreelsitMeta).
+	/// Physical pointer to the state of the bootstrapper's PMM (of type struct ARC_FreelistMeta).
 	uint64_t pmm_state;
+	/// Physical pointer to the state of the bootstrappers PMM (of type struct ARC_FreelistMeta) located under 1MB.
+	uint64_t pmm_low_state;
 	/// The highest physical address.
 	uint64_t highest_address;
 	/// Pointer to the base of the kernel module.
@@ -68,7 +70,7 @@ struct ARC_BootMeta {
 	/// Pointer to the base of the initramfs module.
 	uint64_t initramfs;
 	/// The size of the initramfs module.
-	uint32_t initramfs_size;
+	uint64_t initramfs_size;
 	/// State of the last kernel.
 	uint64_t state;
 	/// Beginning of the HHDM (vaddr).
@@ -76,11 +78,11 @@ struct ARC_BootMeta {
 	/// Arctan specific memory map (paddr).
 	uint64_t arc_mmap;
 	/// Length of arc_mmap.
-	int arc_mmap_len;
+	uint64_t arc_mmap_len;
 	/// RSDP address.
 	uint64_t rsdp;
 	/// Features of paging
-	uint32_t paging_features;
+	uint64_t paging_features;
 }__attribute__((packed));
 
 #endif

@@ -31,6 +31,7 @@
 #include <stdint.h>
 
 static struct ARC_FreelistMeta *arc_physical_mem = NULL;
+static struct ARC_FreelistMeta *arc_physical_low_mem = NULL;
 
 void *pmm_alloc() {
 	if (arc_physical_mem == NULL) {
@@ -68,6 +69,42 @@ void *pmm_contig_free(void *address, size_t objects) {
 	return freelist_contig_free(arc_physical_mem, address, objects);
 }
 
+void *pmm_low_alloc() {
+	if (arc_physical_low_mem == NULL) {
+		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
+		return NULL;
+	}
+
+	return freelist_alloc(arc_physical_low_mem);
+}
+
+void *pmm_low_contig_alloc(size_t objects) {
+	if (arc_physical_low_mem == NULL) {
+		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
+		return NULL;
+	}
+
+	return freelist_contig_alloc(arc_physical_low_mem, objects);
+}
+
+void *pmm_low_free(void *address) {
+	if (arc_physical_low_mem == NULL) {
+		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
+		return NULL;
+	}
+
+	return freelist_free(arc_physical_low_mem, address);
+}
+
+void *pmm_low_contig_free(void *address, size_t objects) {
+	if (arc_physical_low_mem == NULL) {
+		ARC_DEBUG(ERR, "arc_physical_mem is NULL!\n");
+		return NULL;
+	}
+
+	return freelist_contig_free(arc_physical_low_mem, address, objects);
+}
+
 int init_pmm(struct ARC_MMap *mmap, int entries) {
 	if (mmap == NULL || entries == 0) {
 		ARC_DEBUG(ERR, "Failed to initialize 64-bit PMM (one or more are NULL: %p %d)\n", mmap, entries);
@@ -77,12 +114,31 @@ int init_pmm(struct ARC_MMap *mmap, int entries) {
 	mmap = (struct ARC_MMap *)ARC_PHYS_TO_HHDM(mmap);
 
 	arc_physical_mem = (struct ARC_FreelistMeta *)ARC_PHYS_TO_HHDM(Arc_BootMeta->pmm_state);
+	arc_physical_low_mem = (struct ARC_FreelistMeta *)ARC_PHYS_TO_HHDM(Arc_BootMeta->pmm_low_state);
 
 	ARC_DEBUG(INFO, "Converting bootstrap allocator to use HHDM addresses\n");
 
 	// All addresses in the meta remain physical, need to
 	// convert to HHDM addresses (except for head)
-	struct ARC_FreelistMeta *current = arc_physical_mem;
+	struct ARC_FreelistMeta *current = arc_physical_low_mem;
+	while (current != NULL) {
+		current->base = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(current->base);
+		current->ceil = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(current->ceil);
+		// Head may an HHDM address if the list has been used
+		// therefore ignore the upper 32-bits and convert it to
+		// an HHDM address anyway
+		current->head = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(((uint64_t)current->head) & UINT32_MAX);
+
+		if (current->next != NULL) {
+			current->next = (struct ARC_FreelistMeta *)ARC_PHYS_TO_HHDM(current->next);
+		}
+
+		current = current->next;
+	}
+
+	ARC_DEBUG(INFO, "Converted low: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_low_mem->base, arc_physical_low_mem->ceil, arc_physical_low_mem->head, arc_physical_low_mem->object_size);
+
+	current = arc_physical_mem;
 	struct ARC_FreelistMeta *highest_meta = arc_physical_mem;
 	while (current != NULL) {
 		current->base = (struct ARC_FreelistNode *)ARC_PHYS_TO_HHDM(current->base);
@@ -100,7 +156,7 @@ int init_pmm(struct ARC_MMap *mmap, int entries) {
 		current = current->next;
 	}
 
-	ARC_DEBUG(INFO, "Converted: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ceil, arc_physical_mem->head, arc_physical_mem->object_size);
+	ARC_DEBUG(INFO, "Converted high: { B:%p C:%p H:%p SZ:%lu }\n", arc_physical_mem->base, arc_physical_mem->ceil, arc_physical_mem->head, arc_physical_mem->object_size);
 
 	uint64_t highest_alloc = (uint64_t)highest_meta->ceil;
 
@@ -119,9 +175,13 @@ int init_pmm(struct ARC_MMap *mmap, int entries) {
 
 		ARC_DEBUG(INFO, "\t\tEntry is not in list, adding\n");
 
-		// Found a memory entry that is not yet in the allocator
-		struct ARC_FreelistMeta *list = init_freelist(ARC_PHYS_TO_HHDM(entry.base), ARC_PHYS_TO_HHDM(entry.base + entry.len), 0x1000);
+		// Round up
+		uintptr_t base = ALIGN(entry.base, PAGE_SIZE);
+		// Round down
+		uintptr_t ceil = ((entry.base + entry.len) >> 12) << 12;
 
+		// Found a memory entry that is not yet in the allocator
+		struct ARC_FreelistMeta *list = init_freelist(ARC_PHYS_TO_HHDM(base), ARC_PHYS_TO_HHDM(ceil), PAGE_SIZE);
 
 		int ret = link_freelists(highest_meta, list);
 		if (ret != 0) {

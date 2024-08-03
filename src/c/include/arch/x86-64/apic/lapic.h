@@ -29,8 +29,25 @@
 
 #include <stdint.h>
 
+#define ARC_LAPIC_IPI_FIXED    (0b000 << 8)
+#define ARC_LAPIC_IPI_LWST_PRI (0b001 << 8)
+#define ARC_LAPIC_IPI_SMI      (0b010 << 8)
+#define ARC_LAPIC_IPI_NMI      (0b100 << 8)
+#define ARC_LAPIC_IPI_INIT     (0b101 << 8)
+#define ARC_LAPIC_IPI_START    (0b110 << 8)
+#define ARC_LAPIC_IPI_PHYSICAL (0b0   << 11)
+#define ARC_LAPIC_IPI_LOGICAL  (0b1   << 11)
+#define ARC_LAPIC_IPI_DEASRT   (0b0   << 14)
+#define ARC_LAPIC_IPI_ASSERT   (0b1   << 14)
+#define ARC_LAPIC_IPI_EDGE     (0b0   << 15)
+#define ARC_LAPIC_IPI_LEVEL    (0b1   << 15)
+#define ARC_LAPIC_IPI_SELF     (0b01  << 18)
+#define ARC_LAPIC_IPI_ALLEXC   (0b10  << 18)
+#define ARC_LAPIC_IPI_ALLINC   (0b11  << 18)
+
 int lapic_eoi();
 int lapic_ipi(uint8_t vector, uint8_t destination, uint32_t flags);
+int lapic_ipi_poll();
 
 /*
  * This header contains functions which manage the

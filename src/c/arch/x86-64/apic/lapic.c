@@ -48,11 +48,37 @@ struct lapic_reg {
         uint32_t logical_dest_reg __attribute__((aligned(16)));
         uint32_t dest_form_reg __attribute__((aligned(16)));
         uint32_t spurious_int_vector __attribute__((aligned(16)));
-        uint32_t isr[8] __attribute__((aligned(16)));
-        uint32_t tmr[8] __attribute__((aligned(16)));
-        uint32_t irr[8] __attribute__((aligned(16)));
+        uint32_t isr0 __attribute__((aligned(16)));
+        uint32_t isr1 __attribute__((aligned(16)));
+        uint32_t isr2 __attribute__((aligned(16)));
+        uint32_t isr3 __attribute__((aligned(16)));
+        uint32_t isr4 __attribute__((aligned(16)));
+        uint32_t isr5 __attribute__((aligned(16)));
+        uint32_t isr6 __attribute__((aligned(16)));
+        uint32_t isr7 __attribute__((aligned(16)));
+        uint32_t tmr0 __attribute__((aligned(16)));
+        uint32_t tmr1 __attribute__((aligned(16)));
+        uint32_t tmr2 __attribute__((aligned(16)));
+        uint32_t tmr3 __attribute__((aligned(16)));
+        uint32_t tmr4 __attribute__((aligned(16)));
+        uint32_t tmr5 __attribute__((aligned(16)));
+        uint32_t tmr6 __attribute__((aligned(16)));
+        uint32_t tmr7 __attribute__((aligned(16)));
+        uint32_t irr0 __attribute__((aligned(16)));
+        uint32_t irr1 __attribute__((aligned(16)));
+        uint32_t irr2 __attribute__((aligned(16)));
+        uint32_t irr3 __attribute__((aligned(16)));
+        uint32_t irr4 __attribute__((aligned(16)));
+        uint32_t irr5 __attribute__((aligned(16)));
+        uint32_t irr6 __attribute__((aligned(16)));
+        uint32_t irr7 __attribute__((aligned(16)));
         uint32_t err_stat_reg __attribute__((aligned(16)));
         uint32_t resv6 __attribute__((aligned(16)));
+        uint32_t resv7 __attribute__((aligned(16)));
+        uint32_t resv8 __attribute__((aligned(16)));
+        uint32_t resv9 __attribute__((aligned(16)));
+        uint32_t resv10 __attribute__((aligned(16)));
+	uint32_t resv11 __attribute__((aligned(16)));
         uint32_t lvt_cmci_reg __attribute__((aligned(16)));
         uint32_t icr0 __attribute__((aligned(16))); // Lower
         uint32_t icr1 __attribute__((aligned(16))); // Upper
@@ -64,10 +90,14 @@ struct lapic_reg {
         uint32_t lvt_err_reg __attribute__((aligned(16)));
         uint32_t init_count_reg __attribute__((aligned(16)));
         uint32_t cur_count_reg __attribute__((aligned(16)));
-        uint32_t resv7 __attribute__((aligned(16)));
+        uint32_t resv12 __attribute__((aligned(16)));
+        uint32_t resv13 __attribute__((aligned(16)));
+        uint32_t resv14 __attribute__((aligned(16)));
+        uint32_t resv15 __attribute__((aligned(16)));
         uint32_t div_conf_reg __attribute__((aligned(16)));
-        uint32_t resv8 __attribute__((aligned(16)));
+        uint32_t resv16 __attribute__((aligned(16)));
 }__attribute__((packed));
+STATIC_ASSERT(sizeof(struct lapic_reg) == 0x400, "LAPIC reg wrong size, something may be missing");
 
 int lapic_eoi() {
         uint64_t lapic_msr = _x86_RDMSR(0x1B);
@@ -77,31 +107,28 @@ int lapic_eoi() {
 }
 
 int lapic_ipi(uint8_t vector, uint8_t destination, uint32_t flags) {
-	// Flags (bitwise)
-	//     Offset | Description
-	//     2:0    | Delivery Mode
-	//     3      | Destination Mode
-	//     5:4    | Destination Shorthand
-	//     6      | Trigger Mode
 	// NOTE: See Intel SDM Vol. 3 11.6.1 for information on the
 	//       values of the above bit fields
 
 	uint64_t lapic_msr = _x86_RDMSR(0x1B);
 	struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
 
-	reg->icr0 = vector | ((flags & 0b111) << 8) | (((flags >> 3) & 1) << 11) |
-		    (((flags >> 4) & 0b11) << 18) | (((flags >> 6) & 1) << 15) | (((flags & 0b111) != 0b101) << 14);
 	reg->icr1 = destination << 24;
+	reg->icr0 = vector | flags;
 
 	return 0;
 }
 
 int lapic_ipi_poll() {
 	// Returns the delivery status
+	uint64_t lapic_msr = _x86_RDMSR(0x1B);
+	struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
 
-	return 0;
+	return (reg->icr0 >> 12) & 1;
 }
 
+// TODO: Implement functions for the other registers like
+//       the timer
 
 int init_lapic() {
         register uint32_t eax;
@@ -117,6 +144,8 @@ int init_lapic() {
         }
 
         ARC_DEBUG(INFO, "Initializing LAPIC\n");
+
+	uint8_t id = (ebx >> 24) & 0xFF;
 
         uint64_t lapic_msr = _x86_RDMSR(0x1B);
         struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
@@ -147,5 +176,5 @@ int init_lapic() {
 
         ARC_DEBUG(INFO, "Successfully initialized LAPIC\n");
 
-        return 0;
+        return id;
 }

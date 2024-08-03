@@ -30,6 +30,7 @@
 #include <mm/allocator.h>
 #include <fs/vfs.h>
 #include <global.h>
+#include <mp/smp.h>
 
 #define ENTRY_TYPE_LAPIC               0x00
 #define ENTRY_TYPE_IOAPIC              0x01
@@ -78,7 +79,6 @@ int apic_map_gsi_irq(uint8_t gsi, uint8_t irq, uint32_t destination, uint32_t fl
         //                 to a group of
 	//                 LAPICs
 
-
 	struct ioapic_element *current = ioapic_list;
 	while (current != NULL) {
 		if (gsi >= current->gsi && gsi <= current->gsi + current->mre) {
@@ -103,7 +103,7 @@ int apic_map_gsi_irq(uint8_t gsi, uint8_t irq, uint32_t destination, uint32_t fl
 }
 
 int init_apic() {
-	init_lapic();
+	uint32_t bsp = init_lapic();
 
 	struct ARC_File *apic = NULL;
 	vfs_open("/dev/acpi/apic", 0, 0, 0, (void *)&apic);
@@ -147,6 +147,10 @@ int init_apic() {
 
 				next->next = lapic_list;
 				lapic_list = next;
+
+				if (bsp != id) {
+					init_smp(id, 0xFF);
+				}
 
 				break;
 			}
