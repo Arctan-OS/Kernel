@@ -31,12 +31,10 @@ bits 64
 global _install_idt
 extern idtr
 _install_idt:
-        cli
         push rax
         lea rax, [rel idtr]
         lidt [rax]
         pop rax
-        sti
         ret
 
 %macro PUSH_ALL 0

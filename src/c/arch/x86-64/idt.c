@@ -330,8 +330,5 @@ void init_idt() {
 
 	_install_idt();
 
-	outb(0x21, 0b11111101);
-	outb(0xA1, 0b11111101);
-
 	ARC_DEBUG(INFO, "Ported IDT to 64-bits\n");
 }

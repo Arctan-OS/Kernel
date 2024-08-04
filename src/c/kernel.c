@@ -115,6 +115,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
+	__asm__("sti");
+
 	list("/", 8);
 
 	for (int i = 0; i < 60; i++) {

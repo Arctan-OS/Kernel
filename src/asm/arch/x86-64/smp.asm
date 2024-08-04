@@ -27,14 +27,13 @@
 */
 %endif
 
-AP_INFO_OFF equ (__AP_START_INFO__ - __AP_START_BEGIN__)
-AP_PML4_OFF equ AP_INFO_OFF + 0
-AP_ENTRY_OFF equ AP_INFO_OFF + 8
-AP_FLAGS_OFF equ AP_INFO_OFF + 16
-AP_GDT_SIZE_OFF equ AP_INFO_OFF + 20
-AP_GDT_ADDR_OFF equ AP_INFO_OFF + 22
-AP_GDT_TABLE_OFF equ AP_INFO_OFF + 30
-AP_STACK_OFF equ AP_INFO_OFF + 54
+AP_PML4_OFF equ (__AP_START_INFO__.pml4 - __AP_START_BEGIN__)
+AP_ENTRY_OFF equ (__AP_START_INFO__.entry - __AP_START_BEGIN__)
+AP_FLAGS_OFF equ (__AP_START_INFO__.flags - __AP_START_BEGIN__)
+AP_GDTR_OFF equ (__AP_START_INFO__.gdtr - __AP_START_BEGIN__)
+AP_STACK_OFF equ (__AP_START_INFO__.stack - __AP_START_BEGIN__)
+AP_EDX_OFF equ (__AP_START_INFO__.edx - __AP_START_BEGIN__)
+AP_EAX_OFF equ (__AP_START_INFO__.eax - __AP_START_BEGIN__)
 
 section .rodata
 
@@ -44,32 +43,118 @@ __AP_START_BEGIN__:
         cli
         cld
 
-        mov ax, cs
+        mov bx, cs
+        mov ds, bx
+        mov fs, bx
+        mov gs, bx
+        mov es, bx
+        mov ss, bx
+
+        ;; Respond to BSP
+        mov dword [ds:AP_EAX_OFF], eax
+        mov dword [ds:AP_EDX_OFF], edx
+
+        mov eax, dword [ds:AP_FLAGS_OFF]
+        or eax, 0b10
+        mov dword [ds:AP_FLAGS_OFF], eax
+
+        ;; Setup stack
+        mov ebp, dword [ds:AP_STACK_OFF]
+        mov esp, ebp
+
+        ;; Setup GDT
+        o32 lgdt [ds:AP_GDTR_OFF]
+        ;; Far jump to PM
+        shl ebx, 4
+        mov ecx, ebx
+        add ebx, (pm - __AP_START_BEGIN__)
+
+        ;; Enable protected mode
+        mov eax, 0x11
+        mov cr0, eax
+
+        push 0x8
+        push bx
+        retf
+
+bits 32
+pm:
+        mov ax, 0x10
         mov ds, ax
         mov fs, ax
         mov gs, ax
         mov es, ax
         mov ss, ax
 
-        jmp $
+        ;; Setup long mode
+        mov eax, cr4
+        or eax, 1 << 5
+        mov cr4, eax
 
-bits 32
-pm:
-        jmp $
+        ;; PML4
+        mov eax, dword [ecx + AP_PML4_OFF]
+        mov cr3, eax
+
+        ;; LME
+        push ecx
+        mov ecx, 0xC0000080
+        rdmsr
+        or eax, 1 << 8
+        wrmsr
+        pop ecx
+
+        ;; Set paging
+        mov eax, cr0
+        or eax, 1 << 31
+        mov cr0, eax
+
+        lea eax, [ecx + (lm - __AP_START_BEGIN__)]
+        push 0x18
+        push eax
+        retf
 
 bits 64
 lm:
+        mov ax, 0x10
+        mov ds, ax
+        mov fs, ax
+        mov gs, ax
+        mov es, ax
+        mov ss, ax
+
+        ;; Set booted flag to 1
+        mov eax, dword [rcx + AP_FLAGS_OFF]
+        or eax, 0x1
+        mov dword [rcx + AP_FLAGS_OFF], eax
+
+        mov rax, qword [rcx + AP_ENTRY_OFF]
+        call rax
+
         jmp $
 
 global __AP_START_INFO__
+align 8
 __AP_START_INFO__:
-        .pml4: dq 0x0
-        .entry: dq 0x0
-        .flags: dd 0x0
-        .gdt:
-                .header: dw 0x17
-                         dq 0x0
-                .table: dq 0x0, 0x00CF9A000000FFFF, 0x00CF92000000FFFF
-        .stack: dd 0xFAFA
+        .pml4:
+                dq 0x0
+        .entry:
+                dq 0x0
+        .flags:
+                dd 0x0
+        .gdtr:
+                dw 0x0
+                dq 0x0
+        .gdt_table:
+                dq 0x0000000000000000
+                dq 0x00CF9A000000FFFF
+                dq 0x00CF92000000FFFF
+                dq 0x00AF9A000000FFFF
+        .stack:
+                dq 0x0
+        .edx:
+                dd 0x0
+        .eax:
+                dd 0x0
+
 global __AP_START_END__
 __AP_START_END__:

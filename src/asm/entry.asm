@@ -31,6 +31,7 @@ bits 64
 global _kernel_entry
 extern kernel_main
 _kernel_entry:
+        cli
         mov rbp, __KERNEL_STACK__
         mov rsp, rbp
         call kernel_main

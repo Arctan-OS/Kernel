@@ -1423,12 +1423,16 @@ int vfctprintf(void (*out)(char c, void* extra_arg), void* extra_arg, const char
   return vsnprintf_impl(&gadget, format, arg);
 }
 
+int silly_lock = 0;
 int printf_(const char* format, ...)
 {
+	while (silly_lock) __asm__("pause");
+	silly_lock = 1;
   va_list args;
   va_start(args, format);
   const int ret = vprintf_(format, args);
   va_end(args);
+  silly_lock = 0;
   return ret;
 }
 

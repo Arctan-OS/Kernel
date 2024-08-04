@@ -44,20 +44,21 @@ struct ap_start_info {
 	// Flags
 	//  Bit | Description
 	//  0   | LM reached, core jumping to kernel_entry
+	//  1   | Processor core started
 	uint32_t flags;
 	uint16_t gdt_size;
 	uint64_t gdt_addr;
-	uint64_t gdt_table[3];
-	uint32_t stack;
+	uint64_t gdt_table[4];
+	uint64_t stack;
+	// EDX: Processor information
+	uint32_t edx;
+	// EAX: Return value of BIST
+	uint32_t eax;
 }__attribute__((packed));
 
-int tmp_lock = 0;
 int tmp_counter = 1;
 int smp_hold() {
-	while (tmp_lock) __asm__("pause");
-	tmp_lock = 1;
 	printf("Hello World from processor %d\n", tmp_counter++);
-	tmp_lock = 0;
 	for (;;) ARC_HANG;
 }
 
@@ -72,6 +73,10 @@ int init_smp(uint32_t lapic, uint32_t version) {
 	// detected, logged, and put into smp_hold
 	void *code = pmm_low_alloc();
 	void *stack = pmm_low_alloc();
+
+	pager_map(ARC_HHDM_TO_PHYS(code), ARC_HHDM_TO_PHYS(code), PAGE_SIZE, 1 << ARC_PAGER_4K | 1 << ARC_PAGER_RW);
+	pager_map(ARC_HHDM_TO_PHYS(stack), ARC_HHDM_TO_PHYS(stack), PAGE_SIZE, 1 << ARC_PAGER_4K | 1 << ARC_PAGER_RW);
+
 	memset(code, 0, PAGE_SIZE);
 	memcpy(code, (void *)&__AP_START_BEGIN__, (size_t)((uintptr_t)&__AP_START_END__ - (uintptr_t)&__AP_START_BEGIN__));
 	struct ap_start_info *info = (struct ap_start_info *)((uintptr_t)code + ((uintptr_t)&__AP_START_INFO__ - (uintptr_t)&__AP_START_BEGIN__));
@@ -80,11 +85,10 @@ int init_smp(uint32_t lapic, uint32_t version) {
 	info->pml4 = _x86_CR3;
 	info->entry = (uintptr_t)smp_hold;
 	info->stack = ARC_HHDM_TO_PHYS(stack) + PAGE_SIZE - 0x10;
-	info->gdt_size = 0x17;
-	info->gdt_addr = ((uintptr_t)info->gdt_table) << 16;
+	info->gdt_size = 0x1F;
+	info->gdt_addr = ARC_HHDM_TO_PHYS(&info->gdt_table);
 
-	printf("%x\n", info->stack);
-	printf("%x %x %x\n", ARC_HHDM_TO_PHYS(&info->stack), ARC_HHDM_TO_PHYS(info), (ARC_HHDM_TO_PHYS(&info->stack) - ARC_HHDM_TO_PHYS(info)));
+	__asm__("" ::: "memory");
 
 	// AP start procedure
 	// INIT IPI
@@ -106,10 +110,12 @@ int init_smp(uint32_t lapic, uint32_t version) {
 		while (lapic_ipi_poll()) __asm__("pause");
 	}
 
-	// Verify sync
-	for (;;);
+	while (((info->flags >> 1) & 1) == 0) __asm__("pause");
 
-	pmm_low_free(code);
+	printf("EAX (BIST): %X\n", info->eax);
+	printf("EDX (Model & Stepping Info): %X\n", info->edx);
+
+	while ((info->flags & 1) == 0) __asm__("pause");
 
 	return 0;
 }
