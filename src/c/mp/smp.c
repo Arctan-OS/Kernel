@@ -33,6 +33,7 @@
 #include <arch/x86-64/cmos.h>
 #include <lib/util.h>
 #include <arch/x86-64/ctrl_regs.h>
+#include <mm/allocator.h>
 
 extern uint8_t __AP_START_BEGIN__;
 extern uint8_t __AP_START_END__;
@@ -56,10 +57,29 @@ struct ap_start_info {
 	uint32_t eax;
 }__attribute__((packed));
 
+struct ap_descriptor {
+	uint32_t id;
+	uint32_t bist;
+	uint32_t model_info;
+	struct ap_descriptor *next;
+};
+
+struct ap_descriptor *ap_list = NULL;
+
 int tmp_counter = 1;
 int smp_hold() {
 	printf("Hello World from processor %d\n", tmp_counter++);
 	for (;;) ARC_HANG;
+}
+
+int smp_list_aps() {
+	struct ap_descriptor *desc = ap_list;
+	while (desc != NULL) {
+		printf("AP#%d:\n\tBIST: %"PRIx32"\n\tModel: %"PRIx32"\n", desc->id, desc->bist, desc->model_info);
+		desc = desc->next;
+	}
+
+	return 0;
 }
 
 int init_smp(uint32_t lapic, uint32_t version) {
@@ -116,6 +136,19 @@ int init_smp(uint32_t lapic, uint32_t version) {
 	printf("EDX (Model & Stepping Info): %X\n", info->edx);
 
 	while ((info->flags & 1) == 0) __asm__("pause");
+
+	struct ap_descriptor *desc = (struct ap_descriptor *)alloc(sizeof(struct ap_descriptor));
+
+	if (ap_list != NULL) {
+		desc->id = ap_list->id + 1;
+	} else {
+		desc->id = 1;
+	}
+
+	desc->bist = info->eax;
+	desc->model_info = info->edx;
+	desc->next = ap_list;
+	ap_list = desc;
 
 	return 0;
 }

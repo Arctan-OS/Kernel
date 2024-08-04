@@ -27,5 +27,6 @@
 #include <stdint.h>
 
 int smp_hold();
+int smp_list_aps();
 
 int init_smp(uint32_t lapic, uint32_t version);

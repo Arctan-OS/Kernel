@@ -105,8 +105,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
 
         init_acpi(Arc_BootMeta->rsdp);
-        // TODO: Implement properly
         init_apic();
+	__asm__("sti");
 	init_syscall();
 
 	vfs_link("/initramfs/boot/ANTIQUE.F14", "/font.fnt", -1);
@@ -115,9 +115,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	__asm__("sti");
-
 	list("/", 8);
+
+	smp_list_aps();
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
