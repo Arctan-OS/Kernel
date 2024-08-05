@@ -181,13 +181,12 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 
 	mutex_lock(&node->property_lock);
 
-
 	if (node->is_open == 0 && node->type != ARC_VFS_N_DIR) {
 		if (node->type == ARC_VFS_N_LINK) {
 			node = node->link;
+			mutex_lock(&node->property_lock);
 		}
 
-		mutex_lock(&node->property_lock);
 		struct ARC_Resource *res = node->resource;
 
 		if (res == NULL || res->driver->open(desc, res, info.mountpath, 0, mode) != 0) {
@@ -195,12 +194,15 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 			return -2;
 		}
 
+		if (desc->node->type == ARC_VFS_N_LINK) {
+			mutex_unlock(&node->property_lock);
+		}
+
 		node->is_open = 1;
 		desc->node->is_open = 1;
-		mutex_unlock(&node->property_lock);
-
 		node = desc->node;
 	}
+
 	mutex_unlock(&node->property_lock);
 
 	desc->reference = reference_resource(node->resource);

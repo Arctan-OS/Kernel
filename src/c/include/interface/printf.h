@@ -44,7 +44,6 @@
 //#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 1
 //#define PRINTF_SUPPORT_DECIMAL_SPECIFIERS 0
 
-extern void outb(uint16_t port, uint8_t value);
 /**
  * @author (c) Eyal Rozenberg <eyalroz1@gmx.com>
  *             2021-2022, Haifa, Palestine/Israel

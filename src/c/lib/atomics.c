@@ -223,13 +223,56 @@ int init_static_mutex(ARC_GenericMutex *mutex) {
 }
 
 int mutex_lock(ARC_GenericMutex *mutex) {
-	// Atomically lock and yield if it is locked
-	(void)mutex;
+	if (mutex == NULL) {
+		return 1;
+	}
+
+	// NOTE: In its current status, this functions identical to
+	//       a spinlock
+	while (__atomic_test_and_set(mutex, __ATOMIC_ACQUIRE)) {
+		// TODO: Yield the CPU to another task, wake up
+		//       once the mutex is unlocked
+	}
+
 	return 0;
 }
 
 int mutex_unlock(ARC_GenericMutex *mutex) {
-	// Atomically unlock
-	(void)mutex;
+	if (mutex == NULL) {
+		return 1;
+	}
+
+	__atomic_clear(mutex, __ATOMIC_RELEASE);
+
+	return 0;
+}
+
+int init_static_spinlock(ARC_GenericSpinlock *spinlock) {
+	if (spinlock == NULL) {
+		return 1;
+	}
+
+	memset(spinlock, 0, sizeof(ARC_GenericSpinlock));
+
+	return 0;
+}
+
+int spinlock_lock(ARC_GenericSpinlock *spinlock) {
+	if (spinlock == NULL) {
+		return 1;
+	}
+
+	while (__atomic_test_and_set(spinlock, __ATOMIC_ACQUIRE));
+
+	return 0;
+}
+
+int spinlock_unlock(ARC_GenericSpinlock *spinlock) {
+	if (spinlock == NULL) {
+		return 1;
+	}
+
+	__atomic_clear(spinlock, __ATOMIC_RELEASE);
+
 	return 0;
 }

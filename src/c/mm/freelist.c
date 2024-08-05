@@ -65,14 +65,7 @@ void *freelist_alloc(struct ARC_FreelistMeta *meta) {
 }
 
 void *freelist_contig_alloc(struct ARC_FreelistMeta *meta, uint64_t objects) {
-	mutex_lock(&meta->mutex);
-
 	while (meta->free_objects < objects && meta != NULL) {
-		if (meta->next != NULL) {
-			mutex_lock(&meta->next->mutex);
-		}
-
-		mutex_unlock(&meta->mutex);
 		meta = meta->next;
 	}
 
@@ -134,8 +127,6 @@ void *freelist_contig_alloc(struct ARC_FreelistMeta *meta, uint64_t objects) {
 	meta->free_objects -= objects;
 
 	if (fails == 0) {
-		mutex_unlock(&meta->mutex);
-
 		// FIRST TRY!!!!
 		// Just return, no pages to be freed
 		return min(base, allocation);
@@ -149,8 +140,6 @@ void *freelist_contig_alloc(struct ARC_FreelistMeta *meta, uint64_t objects) {
 		freelist_free(meta, current);
 		current = next;
 	}
-
-	mutex_unlock(&meta->mutex);
 
 	return min(base, allocation);
 }

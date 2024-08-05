@@ -76,6 +76,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_MainTerm.font_height = 14;
 	Arc_MainTerm.cx = 0;
 	Arc_MainTerm.cy = 0;
+	init_static_mutex(&Arc_MainTerm.lock);
 
 	ARC_DEBUG(INFO, "Sucessfully entered long mode\n");
 
@@ -89,6 +90,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
 	}
 
+
         // Initialize memory
 	init_pager();
 	init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len);
@@ -98,11 +100,14 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         // Initialize more complicated things
 	init_vfs();
 
+	// BUG: Dell Optiplex 3020 with 16 GiB fails on vfs_create function and or term_draw
+	//      for an unknown reason
 	vfs_create("/initramfs/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
         vfs_create("/dev/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
 
 	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
+
 
         init_acpi(Arc_BootMeta->rsdp);
         init_apic();

@@ -28,6 +28,7 @@
 #define ARC_INTERFACE_TERMINAL_H
 
 #include <stdint.h>
+#include <lib/atomics.h>
 
 struct ARC_TermMeta {
 	/// Virtual address of framebuffer
@@ -66,6 +67,8 @@ struct ARC_TermMeta {
 	char *tx_buf;
 	/// Pointer to the next character in the TX buffer
 	int tx_buf_idx;
+	/// RW Lock
+	ARC_GenericMutex lock;
 };
 
 void term_putchar(struct ARC_TermMeta *term, char c);

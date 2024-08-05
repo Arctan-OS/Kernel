@@ -175,15 +175,20 @@ struct ARC_Reference *reference_resource(struct ARC_Resource *resource) {
 	// Set properties of resource
 	ref->resource = resource;
 	resource->ref_count++; // TODO: Atomize
-
 	// Insert reference
-	mutex_lock(&resource->references->branch_mutex);
+	if (resource->references != NULL) {
+		mutex_lock(&resource->references->branch_mutex);
+	}
+
 	ref->next = resource->references;
 	if (resource->references != NULL) {
 		resource->references->prev = ref;
 	}
 	resource->references = ref;
-	mutex_unlock(&ref->next->branch_mutex);
+
+	if (ref->next != NULL) {
+		mutex_unlock(&ref->next->branch_mutex);
+	}
 
 	return ref;
 }
