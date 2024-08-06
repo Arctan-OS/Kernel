@@ -27,6 +27,32 @@
 #ifndef ARC_INTERFACE_FRAMEBUFFER_H
 #define ARC_INTERFACE_FRAMEBUFFER_H
 
+#include <stdint.h>
+
+typedef struct {
+	uint32_t data : 24;
+}__attribute__((packed)) uint24_s;
+
+// Convert a given AARRGGBB color to the given ordering
+#define ARC_FB_GET_COLOR(__color, __ordering) \
+	switch (__ordering) { \
+		case 0: break; \
+		case 1: break; \
+	}
+
+#define ARC_FB_DRAW(__addr, __x, __y, __bpp, __color)			\
+	switch (__bpp) {						\
+		case 32:						\
+			*((uint32_t *)__addr + __x + __y) = __color;	\
+			break;						\
+		case 24:						\
+			((uint24_s *)__addr + __x + __y)->data = __color; \
+			break;						\
+		case 16:						\
+			*((uint16_t *)__addr + __x + __y) = __color;	\
+			break;						\
+	}
+
 struct ARC_FramebufferMeta {
 	void *vaddr;
 	void *paddr;
@@ -35,6 +61,7 @@ struct ARC_FramebufferMeta {
 	int bpp;
 	int lock;
 };
+
 
 int init_framebuffer(struct ARC_FramebufferMeta *framebuffer);
 

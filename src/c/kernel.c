@@ -55,6 +55,8 @@
 
 #include <mp/smp.h>
 
+#include <interface/framebuffer.h>
+
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
 struct ARC_Resource *Arc_InitramfsRes = NULL;
@@ -87,9 +89,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	parse_boot_info();
 
 	if (Arc_MainTerm.framebuffer != NULL) {
+		Arc_MainTerm.term_width = (Arc_MainTerm.fb_width / Arc_MainTerm.font_width);
 		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
 	}
-
 
         // Initialize memory
 	init_pager();
@@ -100,8 +102,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         // Initialize more complicated things
 	init_vfs();
 
-	// BUG: Dell Optiplex 3020 with 16 GiB fails on vfs_create function and or term_draw
-	//      for an unknown reason
 	vfs_create("/initramfs/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
         vfs_create("/dev/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
 
@@ -125,16 +125,16 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	smp_list_aps();
 
 	for (int i = 0; i < 60; i++) {
+
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
 			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {
-				*((uint32_t *)Arc_MainTerm.framebuffer + (y * Arc_MainTerm.fb_width) + x) = (x * y * i / 300) & 0x3FFF;
+				ARC_FB_DRAW(Arc_MainTerm.framebuffer, x, (y * Arc_MainTerm.fb_width), Arc_MainTerm.fb_bpp, (x * y * i / 300) & 0x3FFF);
 			}
 		}
 	}
+	term_draw(&Arc_MainTerm);
 
-	for (;;) {
-		term_draw(&Arc_MainTerm);
-	}
+	for (;;) ARC_HANG;
 
 	return 0;
 }
