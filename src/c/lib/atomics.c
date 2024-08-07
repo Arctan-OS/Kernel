@@ -232,6 +232,7 @@ int mutex_lock(ARC_GenericMutex *mutex) {
 	while (__atomic_test_and_set(mutex, __ATOMIC_ACQUIRE)) {
 		// TODO: Yield the CPU to another task, wake up
 		//       once the mutex is unlocked
+		__asm__("pause");
 	}
 
 	return 0;

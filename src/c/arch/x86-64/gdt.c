@@ -27,6 +27,7 @@
  * segments.
 */
 #include <global.h>
+#include <arch/x86-64/gdt.h>
 
 struct gdt_header {
 	uint16_t size;
@@ -55,7 +56,7 @@ void set_gdt_gate(int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t 
 	gdt_entries[i].flags_limit = (flags & 0x0F) << 4 | ((limit >> 16) & 0x0F);
 }
 
-extern void _install_gdt();
+
 void init_gdt() {
 	set_gdt_gate(0, 0, 0, 0, 0);
 	set_gdt_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xA); // Kernel Code 64

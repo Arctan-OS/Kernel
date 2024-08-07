@@ -28,6 +28,9 @@
 #ifndef ARC_ARCH_X86_64_IDT_H
 #define ARC_ARCH_X86_64_IDT_H
 
+#include <stdint.h>
+
+extern void _install_idt();
 void init_idt();
 
 #endif

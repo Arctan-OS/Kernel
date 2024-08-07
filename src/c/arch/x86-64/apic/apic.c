@@ -60,15 +60,6 @@ struct ioapic_element {
 
 struct ioapic_element *ioapic_list = NULL;
 
-struct lapic_element {
-	uint8_t acpi_uid;
-	uint8_t apic_id;
-	uint32_t flags;
-	struct lapic_element *next;
-};
-
-struct lapic_element *lapic_list = NULL;
-
 int apic_map_gsi_irq(uint8_t gsi, uint8_t irq, uint32_t destination, uint32_t flags) {
 	// Flags (bitwise)
 	//     Offset | Description
@@ -134,23 +125,7 @@ int init_apic() {
 
 				ARC_DEBUG(INFO, "LAPIC found (UID: %d, ID: %d, Flags: 0x%x)\n", uid, id, flags);
 
-				struct lapic_element *next = (struct lapic_element *)alloc(sizeof(struct lapic_element));
-
-				if (next == NULL) {
-					ARC_DEBUG(ERR, "\tFailed to allocate LAPIC descriptor\n");
-					break;
-				}
-
-				next->acpi_uid = uid;
-				next->apic_id = id;
-				next->flags = flags;
-
-				next->next = lapic_list;
-				lapic_list = next;
-
-				if (bsp != id) {
-					init_smp(id, 0xFF);
-				}
+				init_smp(id, uid, flags, 0xFF);
 
 				break;
 			}

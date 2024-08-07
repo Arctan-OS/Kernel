@@ -148,7 +148,6 @@ void handle_keyboard() {
 }
 
 void interrupt_junction(struct junction_args *args, int code) {
-
 	if (code >= 32) {
 		switch (code) {
 			case 33: {
@@ -218,7 +217,6 @@ EOI:
 	lapic_eoi();
 }
 
-extern void _install_idt();
 extern void _idt_stub_0_();
 extern void _idt_stub_1_();
 extern void _idt_stub_2_();

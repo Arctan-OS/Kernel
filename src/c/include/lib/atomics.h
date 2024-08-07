@@ -30,6 +30,10 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 
+#define ARC_MEM_BARRIER __asm__("" ::: "memory");
+// TODO: Fences
+
+
 /// Generic spinlock
 typedef _Atomic int ARC_GenericSpinlock;
 

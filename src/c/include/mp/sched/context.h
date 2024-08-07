@@ -1,6 +1,5 @@
-%if 0
 /**
- * @file sse.asm
+ * @file context.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -8,7 +7,7 @@
  * Arctan - Operating System Kernel
  * Copyright (C) 2023-2024 awewsomegamer
  *
- * This file is part of Arctan
+ * This file is part of Arctan.
  *
  * Arctan is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,25 +24,33 @@
  *
  * @DESCRIPTION
 */
-%endif
-bits 64
-%define FXSAVE_SIZE 512
+#ifndef ARC_MP_SCHED_CONTEXT_H
+#define ARC_MP_SCHED_CONTEXT_H
 
-global _osxsave_support
-_osxsave_support:
-        push rcx
-        push rdx
-        push rax
+#include <stdint.h>
 
-        fxsave [rdi]
+struct ARC_Registers {
+	uint64_t rax;
+	uint64_t rbx;
+	uint64_t rcx;
+	uint64_t rdx;
+	uint64_t rsi;
+	uint64_t rdi;
+	uint64_t rsp;
+	uint64_t rbp;
+	uint64_t rip;
+	uint64_t r8;
+	uint64_t r9;
+	uint64_t r10;
+	uint64_t r11;
+	uint64_t r12;
+	uint64_t r13;
+	uint64_t r14;
+	uint64_t r15;
+	uint32_t flags;
+	// Bit | Description
+	// 0   | "Dirty", 1: signals external modification of register state,
+	//                   cleared once changes have been accepted
+}__attribute__((packed));
 
-        mov rcx, 0
-        xgetbv
-        or rax, 0b111
-        xsetbv
-
-        pop rax
-        pop rdx
-        pop rcx
-
-        ret
+#endif

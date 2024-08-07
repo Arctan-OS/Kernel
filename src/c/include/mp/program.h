@@ -1,6 +1,5 @@
-%if 0
 /**
- * @file sse.asm
+ * @file program.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -8,7 +7,7 @@
  * Arctan - Operating System Kernel
  * Copyright (C) 2023-2024 awewsomegamer
  *
- * This file is part of Arctan
+ * This file is part of Arctan.
  *
  * Arctan is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,25 +24,7 @@
  *
  * @DESCRIPTION
 */
-%endif
-bits 64
-%define FXSAVE_SIZE 512
+#ifndef ARC_MP_PROGRAM_H
+#define ARC_MP_PROGRAM_H
 
-global _osxsave_support
-_osxsave_support:
-        push rcx
-        push rdx
-        push rax
-
-        fxsave [rdi]
-
-        mov rcx, 0
-        xgetbv
-        or rax, 0b111
-        xsetbv
-
-        pop rax
-        pop rdx
-        pop rcx
-
-        ret
+#endif

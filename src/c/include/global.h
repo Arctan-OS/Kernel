@@ -34,27 +34,29 @@
 #include <lib/resource.h>
 #include <inttypes.h>
 
-#define ARC_HANG for (;;) __asm__("hlt");
-
-#ifdef ARC_DEBUG_ENABLE
-
 #include <interface/printf.h>
 
-#define ARC_DEBUG_NAME_STR "[KERNEL "__FILE__":%d]"
+#define ARC_HANG for (;;) __asm__("hlt");
+
+#define ARC_DEBUG_STRINGIFY(val) #val
+#define ARC_DEBUG_TOSTRING(val) ARC_DEBUG_STRINGIFY(val)
+#define ARC_DEBUG_NAME_STR "[KERNEL "__FILE__":"ARC_DEBUG_TOSTRING(__LINE__)"]"
 #define ARC_DEBUG_NAME_SEP_STR " : "
 #define ARC_DEBUG_INFO_STR "[INFO]"
 #define ARC_DEBUG_WARN_STR "[WARNING]"
 #define ARC_DEBUG_ERR_STR  "[ERROR]"
 
 #define ARC_DEBUG(__level__, ...) ARC_DEBUG_##__level__(__VA_ARGS__)
-#define ARC_DEBUG_INFO(...) printf(ARC_DEBUG_INFO_STR ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR, __LINE__); printf(__VA_ARGS__);
-#define ARC_DEBUG_WARN(...) printf(ARC_DEBUG_WARN_STR ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR, __LINE__); printf(__VA_ARGS__);
-#define ARC_DEBUG_ERR(...)  printf(ARC_DEBUG_ERR_STR  ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR, __LINE__); printf(__VA_ARGS__);
+#define ARC_DEBUG_ERR(...)  printf(ARC_DEBUG_ERR_STR ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR __VA_ARGS__);
 
+#ifdef ARC_DEBUG_ENABLE
+#define ARC_DEBUG_INFO_STR "[INFO]"
+#define ARC_DEBUG_WARN_STR "[WARNING]"
+#define ARC_DEBUG_INFO(...) printf(ARC_DEBUG_INFO_STR ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR __VA_ARGS__);
+#define ARC_DEBUG_WARN(...) printf(ARC_DEBUG_WARN_STR ARC_DEBUG_NAME_STR ARC_DEBUG_NAME_SEP_STR __VA_ARGS__);
 #else
-
-#define ARC_DEBUG(__level, ...) ;
-
+#define ARC_DEBUG_INFO(...) ;
+#define ARC_DEBUG_WARN(...) ;
 #endif // ARC_DEBUG_ENABLE
 
 #define ASSERT(cond) if (!(cond)) {					\
@@ -82,7 +84,6 @@
 #define ARC_STD_PERM S_IEXEC | S_IREAD | S_IWRITE
 
 #define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
-
 
 extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta Arc_MainTerm;

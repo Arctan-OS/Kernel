@@ -127,10 +127,7 @@ int lapic_ipi_poll() {
 	return (reg->icr0 >> 12) & 1;
 }
 
-// TODO: Implement functions for the other registers like
-//       the timer
-
-int init_lapic() {
+int lapic_get_id() {
         register uint32_t eax;
         register uint32_t ebx;
         register uint32_t ecx;
@@ -143,11 +140,27 @@ int init_lapic() {
                 return -1;
         }
 
+	return (ebx >> 24) & 0xFF;
+}
+
+int lapic_calibrate_timer() {
+	ARC_DEBUG(WARN, "Definitely calibrating LAPIC timer using the HPET\n");
+	return 0;
+}
+
+// TODO: Implement functions for the other registers like
+//       the timer
+
+int init_lapic() {
+	int id = lapic_get_id();
+
+	if (id == -1) {
+		return -1;
+	}
+
         ARC_DEBUG(INFO, "Initializing LAPIC\n");
 
-	uint8_t id = (ebx >> 24) & 0xFF;
-
-        uint64_t lapic_msr = _x86_RDMSR(0x1B);
+	uint64_t lapic_msr = _x86_RDMSR(0x1B);
         struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
 
         if (((lapic_msr >> 8) & 1) == 1) {

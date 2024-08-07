@@ -34,6 +34,7 @@ AP_GDTR_OFF equ (__AP_START_INFO__.gdtr - __AP_START_BEGIN__)
 AP_STACK_OFF equ (__AP_START_INFO__.stack - __AP_START_BEGIN__)
 AP_EDX_OFF equ (__AP_START_INFO__.edx - __AP_START_BEGIN__)
 AP_EAX_OFF equ (__AP_START_INFO__.eax - __AP_START_BEGIN__)
+AP_PAT_OFF equ (__AP_START_INFO__.pat - __AP_START_BEGIN__)
 
 section .rodata
 
@@ -122,12 +123,13 @@ lm:
         mov es, ax
         mov ss, ax
 
-        ;; Set booted flag to 1
-        mov eax, dword [rcx + AP_FLAGS_OFF]
-        or eax, 0x1
-        mov dword [rcx + AP_FLAGS_OFF], eax
-
+        mov rax, cr3
+        mov cr3, rax
+       
         mov rax, qword [rcx + AP_ENTRY_OFF]
+        mov rdi, rcx
+        add rdi, AP_PML4_OFF
+
         call rax
 
         jmp $
@@ -155,6 +157,8 @@ __AP_START_INFO__:
                 dd 0x0
         .eax:
                 dd 0x0
+        .pat:
+                dq 0x0
 
 global __AP_START_END__
 __AP_START_END__:

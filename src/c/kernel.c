@@ -63,8 +63,6 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
-int processor_counter = 0;
-
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
 	Arc_BootMeta = boot_meta;
@@ -85,6 +83,10 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
         // Initialize really basic things
 	init_gdt();
 	init_idt();
+
+	init_pager();
+	init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len);
+
 	init_sse();
 	parse_boot_info();
 
@@ -94,8 +96,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	}
 
         // Initialize memory
-	init_pager();
-	init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len);
 	init_allocator(128);
 	init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000);
 
@@ -108,7 +108,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
 
-
         init_acpi(Arc_BootMeta->rsdp);
         init_apic();
 	__asm__("sti");
@@ -118,6 +117,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_rename("/font.fnt", "/fonts/font.fnt");
 	vfs_open("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
 
+
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	list("/", 8);
@@ -125,7 +125,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	smp_list_aps();
 
 	for (int i = 0; i < 60; i++) {
-
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
 			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {
 				ARC_FB_DRAW(Arc_MainTerm.framebuffer, x, (y * Arc_MainTerm.fb_width), Arc_MainTerm.fb_bpp, (x * y * i / 300) & 0x3FFF);

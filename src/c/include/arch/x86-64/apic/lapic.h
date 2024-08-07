@@ -48,6 +48,8 @@
 int lapic_eoi();
 int lapic_ipi(uint8_t vector, uint8_t destination, uint32_t flags);
 int lapic_ipi_poll();
+int lapic_get_id();
+int lapic_calibrate_timer();
 
 /*
  * This header contains functions which manage the

@@ -30,16 +30,12 @@
 #include <global.h>
 #include <arch/x86-64/sse.h>
 #include <cpuid.h>
+#include <mm/pmm.h>
 
 /**
  * External assembly function to enable SSE.
  * */
-extern void _osxsave_support();
-
-/**
- * Space for CPU to save and restore SIMD state.
- * */
-uint8_t fxsave_space[512] __attribute__((aligned(16), section(".data")));
+extern void _osxsave_support(uintptr_t fxsave_addr);
 
 int init_sse() {
 	register uint32_t eax;
@@ -69,7 +65,15 @@ int init_sse() {
 	if (((ecx >> 27) & 1) == 1) {
 		_x86_CR4 |= (1 << 18); // OSXSAVE support
 		_x86_setCR4();
-		_osxsave_support();
+		void *fxsave_space = pmm_alloc();
+
+		if (fxsave_space == NULL) {
+			ARC_DEBUG(ERR, "Failed to a llocated FXSAVE space\n");
+			// Not sure what to do here, SSE is needed from here on
+			ARC_HANG;
+		}
+
+		_osxsave_support((uintptr_t)fxsave_space);
 	}
 
 	// Set MXCSR Register

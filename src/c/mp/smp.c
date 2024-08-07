@@ -34,6 +34,10 @@
 #include <lib/util.h>
 #include <arch/x86-64/ctrl_regs.h>
 #include <mm/allocator.h>
+#include <cpuid.h>
+#include <arch/x86-64/gdt.h>
+#include <arch/x86-64/idt.h>
+#include <arch/x86-64/sse.h>
 
 extern uint8_t __AP_START_BEGIN__;
 extern uint8_t __AP_START_END__;
@@ -46,6 +50,8 @@ struct ap_start_info {
 	//  Bit | Description
 	//  0   | LM reached, core jumping to kernel_entry
 	//  1   | Processor core started
+	//  2   | Use PAT given
+	//  3   | NX
 	uint32_t flags;
 	uint16_t gdt_size;
 	uint64_t gdt_addr;
@@ -55,34 +61,84 @@ struct ap_start_info {
 	uint32_t edx;
 	// EAX: Return value of BIST
 	uint32_t eax;
+	uint64_t pat;
 }__attribute__((packed));
 
-struct ap_descriptor {
-	uint32_t id;
-	uint32_t bist;
-	uint32_t model_info;
-	struct ap_descriptor *next;
-};
+static struct ARC_ProcessorDescriptor Arc_ProcessorList[256];
 
-struct ap_descriptor *ap_list = NULL;
+int smp_move_ap_high_mem(struct ap_start_info *info) {
+	// NOTE: APs are initialized sequentially, therefore only one AP
+	//       should be executing this code at a time
 
-int tmp_counter = 1;
-int smp_hold() {
-	printf("Hello World from processor %d\n", tmp_counter++);
-	for (;;) ARC_HANG;
+	register uint32_t eax;
+        register uint32_t ebx;
+        register uint32_t ecx;
+        register uint32_t edx;
+
+        __cpuid(0x1, eax, ebx, ecx, edx);
+
+	if (((info->flags >> 2) & 1) == 1) {
+                ARC_DEBUG(INFO, "PATs present, initializing\n");
+                _x86_WRMSR(0x277, info->pat);
+        }
+
+	int id = lapic_get_id();
+
+	if (id == -1) {
+		ARC_DEBUG(ERR, "This is impossible, how can you have LAPIC but no LAPIC?\n");
+		ARC_HANG;
+	}
+
+	__cpuid(0x80000001, eax, ebx, ecx, edx);
+
+ 	if (((info->flags >> 3) & 1) == 1) {
+		ARC_DEBUG(INFO, "NX bit present\n");
+		uint64_t efer = _x86_RDMSR(0xC0000080);
+		efer |= 1 << 11;
+		_x86_WRMSR(0xC0000080, efer);
+	}
+
+	_install_gdt();
+	_install_idt();
+	init_sse();
+	lapic_calibrate_timer();
+
+	void *stack = pmm_contig_alloc(2);
+	// TODO Set RBP and RSP
+
+	info->flags |= 1;
+
+	smp_hold(&Arc_ProcessorList[id]);
+
+	return 0;
+}
+
+int smp_hold(struct ARC_ProcessorDescriptor *processor) {
+	ARC_DEBUG(INFO, "Holding processor %d\n", processor->processor);
+	for (;;);
 }
 
 int smp_list_aps() {
-	struct ap_descriptor *desc = ap_list;
-	while (desc != NULL) {
-		printf("AP#%d:\n\tBIST: %"PRIx32"\n\tModel: %"PRIx32"\n", desc->id, desc->bist, desc->model_info);
-		desc = desc->next;
+	for (uint32_t i = 0; i < Arc_ProcessorCounter; i++) {
+		printf("-------------------------\nProcessor #%d:\n\tLAPIC: %d\n\tBIST:  0x%x\n\tModel: 0x%x\n-------------------------\n", Arc_ProcessorList[i].processor, i, Arc_ProcessorList[i].bist, Arc_ProcessorList[i].model_info);
 	}
 
 	return 0;
 }
 
-int init_smp(uint32_t lapic, uint32_t version) {
+int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t version) {
+	Arc_ProcessorList[lapic].processor = Arc_ProcessorCounter++;
+	Arc_ProcessorList[lapic].acpi_uid = acpi_uid;
+	Arc_ProcessorList[lapic].acpi_flags = acpi_flags;
+	Arc_ProcessorList[lapic].bist = 0;
+	Arc_ProcessorList[lapic].model_info = 0; // TODO: Set this properly
+
+	if (lapic == (uint32_t)lapic_get_id()) {
+		// BSP
+		return 0;
+	}
+
+
 	// Set warm reset in CMOS and warm reset
         // vector in BDA (not sure if this is needed)
         // cmos_write(0xF, 0xA);
@@ -103,12 +159,15 @@ int init_smp(uint32_t lapic, uint32_t version) {
 
 	_x86_getCR3();
 	info->pml4 = _x86_CR3;
-	info->entry = (uintptr_t)smp_hold;
+	info->entry = (uintptr_t)smp_move_ap_high_mem;
 	info->stack = ARC_HHDM_TO_PHYS(stack) + PAGE_SIZE - 0x10;
 	info->gdt_size = 0x1F;
 	info->gdt_addr = ARC_HHDM_TO_PHYS(&info->gdt_table);
+	info->pat = _x86_RDMSR(0x277);
+	info->flags |= (1 << 2);
+	info->flags |= ((Arc_BootMeta->paging_features & 1) << 3);
 
-	__asm__("" ::: "memory");
+	ARC_MEM_BARRIER;
 
 	// AP start procedure
 	// INIT IPI
@@ -132,23 +191,16 @@ int init_smp(uint32_t lapic, uint32_t version) {
 
 	while (((info->flags >> 1) & 1) == 0) __asm__("pause");
 
-	printf("EAX (BIST): %X\n", info->eax);
-	printf("EDX (Model & Stepping Info): %X\n", info->edx);
+	Arc_ProcessorList[lapic].bist = info->eax;
+	Arc_ProcessorList[lapic].model_info = info->edx;
 
 	while ((info->flags & 1) == 0) __asm__("pause");
 
-	struct ap_descriptor *desc = (struct ap_descriptor *)alloc(sizeof(struct ap_descriptor));
+	pager_unmap(ARC_HHDM_TO_PHYS(code), PAGE_SIZE);
+	pager_unmap(ARC_HHDM_TO_PHYS(stack), PAGE_SIZE);
 
-	if (ap_list != NULL) {
-		desc->id = ap_list->id + 1;
-	} else {
-		desc->id = 1;
-	}
-
-	desc->bist = info->eax;
-	desc->model_info = info->edx;
-	desc->next = ap_list;
-	ap_list = desc;
+	pmm_low_free(code);
+	pmm_low_free(stack);
 
 	return 0;
 }
