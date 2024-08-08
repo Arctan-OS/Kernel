@@ -67,6 +67,9 @@ struct ap_start_info {
 
 struct ARC_ProcessorDescriptor Arc_ProcessorList[256] = { 0 };
 uint32_t Arc_ProcessorCounter = 0;
+struct ARC_ProcessorDescriptor *Arc_BootProcessor = NULL;
+
+static uint32_t last_lapic = 0;
 
 int smp_move_ap_high_mem(struct ap_start_info *info) {
 	// NOTE: APs are initialized sequentially, therefore only one AP
@@ -81,48 +84,114 @@ int smp_move_ap_high_mem(struct ap_start_info *info) {
 	_install_gdt();
 	_install_idt();
 	init_sse();
+	init_lapic();
 	lapic_calibrate_timer();
 
-	Arc_ProcessorList[id].processor |= 1 << 31;
+	Arc_ProcessorList[id].status |= 1;
 
 	__asm__("sti");
 
 	info->flags |= 1;
 
-	smp_hold(id);
+	smp_hold(&Arc_ProcessorList[id]);
 
 	return 0;
 }
 
-int smp_hold(uint32_t processor) {
-	ARC_DEBUG(INFO, "Holding processor %d\n", processor);
+int smp_hold(struct ARC_ProcessorDescriptor *processor) {
+	processor->status |= 1 << 1;
+	ARC_DEBUG(INFO, "Holding processor %d\n", processor->processor);
 	ARC_HANG;
+}
+
+int smp_context_write(struct ARC_ProcessorDescriptor *processor, struct ARC_Registers *regs) {
+	if (processor == NULL || regs == NULL) {
+		return 1;
+	}
+
+	processor->registers.rax = regs->rax;
+	processor->registers.rbx = regs->rbx;
+	processor->registers.rcx = regs->rcx;
+	processor->registers.rdx = regs->rdx;
+	processor->registers.rsi = regs->rsi;
+	processor->registers.rdi = regs->rdi;
+	processor->registers.rsp = regs->rsp;
+	processor->registers.rbp = regs->rbp;
+	processor->registers.r8 = regs->r8;
+	processor->registers.r9 = regs->r9;
+	processor->registers.r10 = regs->r10;
+	processor->registers.r11 = regs->r11;
+	processor->registers.r12 = regs->r12;
+	processor->registers.r13 = regs->r13;
+	processor->registers.r14 = regs->r14;
+	processor->registers.r15 = regs->r15;
+	processor->registers.cs = regs->cs;
+	processor->registers.rip = regs->rip;
+	processor->registers.rflags = regs->rflags;
+	processor->registers.ss = regs->ss;
+
+	processor->flags |= 1;
+
+	return 0;
+}
+
+int smp_context_save(struct ARC_ProcessorDescriptor *processor, struct ARC_Registers *regs) {
+	if (processor == NULL || regs == NULL) {
+		return 1;
+	}
+
+	regs->rax = processor->registers.rax;
+	regs->rbx = processor->registers.rbx;
+	regs->rcx = processor->registers.rcx;
+	regs->rdx = processor->registers.rdx;
+	regs->rsi = processor->registers.rsi;
+	regs->rdi = processor->registers.rdi;
+	regs->rsp = processor->registers.rsp;
+	regs->rbp = processor->registers.rbp;
+	regs->rip = processor->registers.rip;
+	regs->r8 = processor->registers.r8;
+	regs->r9 = processor->registers.r9;
+	regs->r10 = processor->registers.r10;
+	regs->r11 = processor->registers.r11;
+	regs->r12 = processor->registers.r12;
+	regs->r13 = processor->registers.r13;
+	regs->r14 = processor->registers.r14;
+	regs->r15 = processor->registers.r15;
+	regs->cs = processor->registers.cs;
+	regs->rip = processor->registers.rip;
+	regs->rflags = processor->registers.rflags;
+	regs->ss = processor->registers.ss;
+
+	return 0;
 }
 
 int smp_list_aps() {
 	printf("-- %d Processors --\n", Arc_ProcessorCounter);
+	struct ARC_ProcessorDescriptor *current = Arc_BootProcessor;
 
-	for (uint32_t lapic = 0, processor = 0; processor < Arc_ProcessorCounter && lapic < 256; lapic++) {
-		if (((Arc_ProcessorList[lapic].processor >> 31) & 1) == 0) {
-			continue;
-		}
-
-		printf("-------------------------\nProcessor #%d:\n\tLAPIC: %d\n\tBIST:  0x%x\n\tModel: 0x%x\n-------------------------\n", processor, lapic, Arc_ProcessorList[lapic].bist, Arc_ProcessorList[lapic].model_info);
-
-		processor++;
+	while (current != NULL) {
+		printf("-------------------------\nProcessor #%d:\n\tSTATUS: 0x%x\n\tBIST:  0x%x\n\tModel: 0x%x\n-------------------------\n", current->processor, current->status, current->bist, current->model_info);
+		current = current->next;
 	}
 
 	return 0;
 }
 
 int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t version) {
-	Arc_ProcessorList[lapic].processor = Arc_ProcessorCounter++ | 1 << 31;
+	// NOTE: This function is only called from the BSP
+	Arc_ProcessorList[lapic].processor = Arc_ProcessorCounter++;
 	Arc_ProcessorList[lapic].acpi_uid = acpi_uid;
 	Arc_ProcessorList[lapic].acpi_flags = acpi_flags;
 	Arc_ProcessorList[lapic].bist = 0x0;
 	Arc_ProcessorList[lapic].model_info = 0x0; // TODO: Set this properly
+	Arc_ProcessorList[last_lapic].next = &Arc_ProcessorList[lapic];
+	last_lapic = lapic;
 
 	if (lapic == (uint32_t)lapic_get_id()) {
+		// BSP
+		Arc_BootProcessor = &Arc_ProcessorList[lapic];
+		Arc_BootProcessor->status |= 1;
+	
 		return 0;
 	}
 

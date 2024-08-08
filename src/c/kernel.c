@@ -63,6 +63,11 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
+int proc_test(int number) {
+	printf("Processor %d arrived\n", number);
+	ARC_HANG;
+}
+
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
 	Arc_BootMeta = boot_meta;
@@ -123,6 +128,21 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	smp_list_aps();
 
+	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->next;
+	// Ask processor to report registers
+	desc->flags |= 1 << 1;
+	// Wait for processor to report registers
+	while (((desc->flags >> 1) & 1) == 1) __asm__("pause");
+	// Set processor's context
+	mutex_lock(&desc->register_lock);
+
+	desc->registers.rip = (uintptr_t)&proc_test;
+	desc->registers.rdi = 1;
+
+	mutex_unlock(&desc->register_lock);
+	// Tell processor to switch context
+	desc->flags |= 1;
+
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
 			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {
@@ -130,6 +150,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
+
+
+
 	term_draw(&Arc_MainTerm);
 
 	for (;;) ARC_HANG;

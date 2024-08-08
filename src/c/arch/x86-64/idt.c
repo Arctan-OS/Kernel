@@ -31,6 +31,7 @@
 #include <interface/printf.h>
 #include <lib/util.h>
 #include <arch/x86-64/apic/lapic.h>
+#include <mp/smp.h>
 
 struct idt_desc {
 	uint16_t limit;
@@ -49,16 +50,15 @@ struct idt_entry {
 }__attribute__((packed));
 static struct idt_entry idt_entries[256];
 
-struct junction_args {
-	uint64_t rax;
-	uint64_t rbx;
-	uint64_t rcx;
-	uint64_t rdx;
-	uint64_t rsi;
-	uint64_t rdi;
-	uint64_t rbp;
+struct interrupt_frame {
+	uint64_t rip;
+	uint64_t cs;
+	uint64_t rflags;
 	uint64_t rsp;
+	uint64_t ss;
 }__attribute__((packed));
+
+STATIC_ASSERT(sizeof(struct interrupt_frame) == 40 , "Interrupt frame wrong size");
 
 static const char *exception_names[] = {
 	"Division Error (#DE)",
@@ -147,10 +147,117 @@ void handle_keyboard() {
 	}
 }
 
-void interrupt_junction(struct junction_args *args, int code) {
+void interrupt_junction(struct ARC_Registers *regs, int code) {
+	uint64_t error_code = 0x0;
+
+	switch (code) {
+		case 8:
+		case 10:
+		case 11:
+		case 12:
+		case 13:
+		case 14:
+		case 17:
+		case 21:
+			error_code = *(uint64_t *)regs->rsp;
+			regs->rsp += 0x8;
+			// RSP is now on RIP
+			break;
+	}
+
+	struct interrupt_frame *frame = (struct interrupt_frame *)regs->rsp;
+
 	if (code >= 32) {
 		switch (code) {
 			case 32: {
+				int id = lapic_get_id();
+
+				if (id == -1) {
+					break;
+				}
+
+				struct ARC_ProcessorDescriptor *processor = &Arc_ProcessorList[id];
+
+				if ((processor->flags & 1) == 1) {
+					// Context switch
+					struct ARC_Registers current = { 0 };
+
+					current.rax = regs->rax;
+					current.rbx = regs->rbx;
+					current.rcx = regs->rcx;
+					current.rdx = regs->rdx;
+					current.rsi = regs->rsi;
+					current.rdi = regs->rdi;
+					current.rsp = regs->rsp;
+					current.rbp = regs->rbp;
+					current.rip = regs->rip;
+					current.r8 = regs->r8;
+					current.r9 = regs->r9;
+					current.r10 = regs->r10;
+					current.r11 = regs->r11;
+					current.r12 = regs->r12;
+					current.r13 = regs->r13;
+					current.r14 = regs->r14;
+					current.r15 = regs->r15;
+					current.cs = frame->cs;
+					current.rip = frame->rip;
+					current.rflags = frame->rflags;
+					current.ss = frame->ss;
+
+					regs->rax = processor->registers.rax;
+					regs->rbx = processor->registers.rbx;
+					regs->rcx = processor->registers.rcx;
+					regs->rdx = processor->registers.rdx;
+					regs->rsi = processor->registers.rsi;
+					regs->rdi = processor->registers.rdi;
+					regs->rsp = processor->registers.rsp;
+					regs->rbp = processor->registers.rbp;
+					regs->rip = processor->registers.rip;
+					regs->r8 = processor->registers.r8;
+					regs->r9 = processor->registers.r9;
+					regs->r10 = processor->registers.r10;
+					regs->r11 = processor->registers.r11;
+					regs->r12 = processor->registers.r12;
+					regs->r13 = processor->registers.r13;
+					regs->r14 = processor->registers.r14;
+					regs->r15 = processor->registers.r15;
+					frame->cs = processor->registers.cs;
+					frame->rip = processor->registers.rip;
+					frame->rflags = processor->registers.rflags;
+					frame->ss = processor->registers.ss;
+
+					smp_context_write(processor, &current);
+					processor->flags &= ~1;
+				}
+
+				if (((processor->flags >> 1) & 1) == 1) {
+					processor->registers.rax = regs->rax;
+					processor->registers.rbx = regs->rbx;
+					processor->registers.rcx = regs->rcx;
+					processor->registers.rdx = regs->rdx;
+					processor->registers.rsi = regs->rsi;
+					processor->registers.rdi = regs->rdi;
+					processor->registers.rsp = regs->rsp;
+					processor->registers.rbp = regs->rbp;
+					processor->registers.rip = regs->rip;
+					processor->registers.r8 = regs->r8;
+					processor->registers.r9 = regs->r9;
+					processor->registers.r10 = regs->r10;
+					processor->registers.r11 = regs->r11;
+					processor->registers.r12 = regs->r12;
+					processor->registers.r13 = regs->r13;
+					processor->registers.r14 = regs->r14;
+					processor->registers.r15 = regs->r15;
+					processor->registers.cs = frame->cs;
+					processor->registers.rip = frame->rip;
+					processor->registers.rflags = frame->rflags;
+					processor->registers.ss = frame->ss;
+
+					processor->flags &= ~(1 << 1);
+				}
+
+				mutex_unlock(&processor->register_lock);
+
 				break;
 			}
 			case 33: {
@@ -164,18 +271,23 @@ void interrupt_junction(struct junction_args *args, int code) {
 
 	// Dump registers
 	printf("Received Interrupt %d, %s\n", code, exception_names[code]);
-	printf("RAX: 0x%"PRIX64"\n", args->rax);
-	printf("RBX: 0x%"PRIX64"\n", args->rbx);
-	printf("RCX: 0x%"PRIX64"\n", args->rcx);
-	printf("RDX: 0x%"PRIX64"\n", args->rdx);
-	printf("RSI: 0x%"PRIX64"\n", args->rsi);
-	printf("RDI: 0x%"PRIX64"\n", args->rdi);
-	printf("RSP: 0x%"PRIX64"\n", args->rsp);
-	printf("RBP: 0x%"PRIX64"\n", args->rbp);
-
-	// If we enter none of the following conditions,
-	// this is the return address
-	uint64_t stack_elem = *(uint64_t *)args->rsp;
+	printf("RAX: 0x%016"PRIx64"\n", regs->rax);
+	printf("RBX: 0x%016"PRIx64"\n", regs->rbx);
+	printf("RCX: 0x%016"PRIx64"\n", regs->rcx);
+	printf("RDX: 0x%016"PRIx64"\n", regs->rdx);
+	printf("RSI: 0x%016"PRIx64"\n", regs->rsi);
+	printf("RDI: 0x%016"PRIx64"\n", regs->rdi);
+	printf("RSP: 0x%016"PRIx64"\tSS: %"PRIx64"\n", regs->rsp, frame->ss);
+	printf("RBP: 0x%016"PRIx64"\n", regs->rbp);
+	printf("R8 : 0x%016"PRIx64"\n", regs->r8);
+	printf("R9 : 0x%016"PRIx64"\n", regs->r9);
+	printf("R10: 0x%016"PRIx64"\n", regs->r10);
+	printf("R11: 0x%016"PRIx64"\n", regs->r11);
+	printf("R12: 0x%016"PRIx64"\n", regs->r12);
+	printf("R13: 0x%016"PRIx64"\n", regs->r13);
+	printf("R14: 0x%016"PRIx64"\n", regs->r14);
+	printf("R15: 0x%016"PRIx64"\n", regs->r15);
+	printf("RFLAGS: 0x016%"PRIx64"\n", frame->rflags);
 
 	// Handle error code if present
 	switch (code) {
@@ -185,33 +297,26 @@ void interrupt_junction(struct junction_args *args, int code) {
 			goto fall_through;
 		case 14:
 			_x86_getCR2();
-			printf("CR2: 0x%"PRIX64"\n", _x86_CR2);
+			printf("CR2: 0x%016"PRIx64"\n", _x86_CR2);
 			_x86_getCR3();
-			printf("CR3: 0x%"PRIX64"\n", _x86_CR3);
+			printf("CR3: 0x%016"PRIx64"\n", _x86_CR3);
 			goto fall_through;
 		case 13:
-			handle_gp(stack_elem);
+			handle_gp(error_code);
 			goto fall_through;
 		case 12:
-		case 11:
 			goto fall_through;
+		case 11:
 			goto fall_through;
 		case 10:
 			goto fall_through;
-		case 8: {
-			// There is nothing we can do
-
-			fall_through:;
-			// Pop the error code off the stack
-			args->rsp += 8;
-			// This should now be the return address
-			stack_elem = *(uint64_t *)args->rsp;
-
+		case 8:
+			fall_through:
 			break;
-		}
+
 	}
 
-	printf("Return address: 0x%"PRIX64"\n", stack_elem);
+	printf("Return address: 0x%x:0x%016"PRIx64"\n", frame->cs, frame->rip);
 
 	memset(Arc_MainTerm.framebuffer, 0, Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8));
 	term_draw(&Arc_MainTerm);

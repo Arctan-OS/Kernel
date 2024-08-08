@@ -175,15 +175,13 @@ int init_apic() {
 
 				ARC_DEBUG(INFO, "Interrupt Source Override found (IRQ: %d, GSI: %d, %s, %s)\n", irq, gsi, polarity ? "Active Low" : "Active High", trigger ? "Level Sensitive" : "Edge Sensitive");
 
-				apic_map_gsi_irq(gsi, irq, 0, (trigger | (polarity << 1)));
+				apic_map_gsi_irq(gsi, irq, 1, (trigger | (polarity << 1)));
 
 				break;
 			}
 
 			case ENTRY_TYPE_LAPIC_NMI: {
-				ARC_DEBUG(INFO, "LAPIC NMI found\n");
-
-
+				ARC_DEBUG(WARN, "LAPIC NMI found\n");
 
 				break;
 			}

@@ -37,9 +37,6 @@ struct ARC_Registers {
 	uint64_t rdx;
 	uint64_t rsi;
 	uint64_t rdi;
-	uint64_t rsp;
-	uint64_t rbp;
-	uint64_t rip;
 	uint64_t r8;
 	uint64_t r9;
 	uint64_t r10;
@@ -48,11 +45,12 @@ struct ARC_Registers {
 	uint64_t r13;
 	uint64_t r14;
 	uint64_t r15;
-	uint32_t flags;
-	// Bit | Description
-	// 0   | "Dirty", 1: signals external modification of register state,
-	//                   cleared once changes have been accepted
-	ARC_GenericMutex lock;
+	uint64_t rbp;
+	uint64_t rsp;
+	uint64_t cs;
+	uint64_t rip;
+	uint64_t ss;
+	uint64_t rflags;
 }__attribute__((packed));
 
 #endif

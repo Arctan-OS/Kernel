@@ -172,17 +172,14 @@ int init_lapic() {
 
 	if (pager_map((uint64_t)reg, (uint64_t)reg, PAGE_SIZE, 1 << ARC_PAGER_RW | ARC_PAGER_PAT_UC) != 0) {
 		ARC_DEBUG(ERR, "Failed to map LAPIC register\n");
-		return -1;
 	}
 
         ARC_DEBUG(INFO, "LAPIC register at %p\n", reg);
         // NOTE: Ignore bits 31:27 of reg->lapic_id on P6 and Pentium processors
         uint8_t ver = reg->lapic_ver & 0xFF;
-        ARC_DEBUG(INFO, "LAPIC ID: 0x%X (%s)\n", reg->lapic_id >> 28, ((reg->spurious_int_vector >> 8) & 1) ? "disabled, enabling" : "enabled");
-        if ((reg->spurious_int_vector >> 8) & 1) {
-                // Enable LAPIC
-                reg->spurious_int_vector |= 1 << 8;
-        }
+        ARC_DEBUG(INFO, "LAPIC ID: 0x%X (0x%X) (%s)\n", reg->lapic_id >> 28, id, ((reg->spurious_int_vector >> 8) & 1) ? "disabled, enabling" : "enabled");
+	// Enable LAPIC
+	reg->spurious_int_vector |= 1 << 8;
         ARC_DEBUG(INFO, "\tVersion: %d (%s)\n", ver, ver < 0xA ? "82489DX discrete APIC" : "Integrated APIC");
         ARC_DEBUG(INFO, "\tMax LVT: %d+1\n", ((reg->lapic_ver >> 16) & 0xFF));
         ARC_DEBUG(INFO, "\tEOI-broadcast supression: %s\n", (reg->lapic_ver >> 24) & 1 ? "yes" : "no");
