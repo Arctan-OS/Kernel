@@ -25,6 +25,7 @@
  * @DESCRIPTION
 */
 #include <stdint.h>
+#include <mp/sched/context.h>
 
 struct ARC_ProcessorDescriptor {
 	uint32_t processor;
@@ -32,14 +33,15 @@ struct ARC_ProcessorDescriptor {
 	uint32_t acpi_flags;
 	uint32_t bist;
 	uint32_t model_info;
+	struct ARC_Registers registers;
 };
 
 // NOTE: The index in Arc_ProcessorList corresponds to the LAPIC ID
 //       acquired from CPUID 0x1, ebx >> 24
-static struct ARC_ProcessorDescriptor Arc_ProcessorList[256];
-static uint32_t Arc_ProcessorCounter;
+extern struct ARC_ProcessorDescriptor Arc_ProcessorList[256];
+extern uint32_t Arc_ProcessorCounter;
 
-int smp_hold(struct ARC_ProcessorDescriptor *processor);
+int smp_hold(uint32_t processor);
 int smp_list_aps();
 
 int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t version);

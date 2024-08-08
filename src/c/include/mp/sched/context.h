@@ -28,6 +28,7 @@
 #define ARC_MP_SCHED_CONTEXT_H
 
 #include <stdint.h>
+#include <lib/atomics.h>
 
 struct ARC_Registers {
 	uint64_t rax;
@@ -51,6 +52,7 @@ struct ARC_Registers {
 	// Bit | Description
 	// 0   | "Dirty", 1: signals external modification of register state,
 	//                   cleared once changes have been accepted
+	ARC_GenericMutex lock;
 }__attribute__((packed));
 
 #endif

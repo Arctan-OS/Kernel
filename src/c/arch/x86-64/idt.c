@@ -150,6 +150,9 @@ void handle_keyboard() {
 void interrupt_junction(struct junction_args *args, int code) {
 	if (code >= 32) {
 		switch (code) {
+			case 32: {
+				break;
+			}
 			case 33: {
 				handle_keyboard();
 				break;

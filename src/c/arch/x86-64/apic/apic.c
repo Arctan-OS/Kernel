@@ -31,6 +31,7 @@
 #include <fs/vfs.h>
 #include <global.h>
 #include <mp/smp.h>
+#include <lib/util.h>
 
 #define ENTRY_TYPE_LAPIC               0x00
 #define ENTRY_TYPE_IOAPIC              0x01

@@ -117,7 +117,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_rename("/font.fnt", "/fonts/font.fnt");
 	vfs_open("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
 
-
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	list("/", 8);

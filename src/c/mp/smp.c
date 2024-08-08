@@ -62,26 +62,15 @@ struct ap_start_info {
 	// EAX: Return value of BIST
 	uint32_t eax;
 	uint64_t pat;
+	uint64_t stack_high;
 }__attribute__((packed));
 
-static struct ARC_ProcessorDescriptor Arc_ProcessorList[256];
+struct ARC_ProcessorDescriptor Arc_ProcessorList[256] = { 0 };
+uint32_t Arc_ProcessorCounter = 0;
 
 int smp_move_ap_high_mem(struct ap_start_info *info) {
 	// NOTE: APs are initialized sequentially, therefore only one AP
 	//       should be executing this code at a time
-
-	register uint32_t eax;
-        register uint32_t ebx;
-        register uint32_t ecx;
-        register uint32_t edx;
-
-        __cpuid(0x1, eax, ebx, ecx, edx);
-
-	if (((info->flags >> 2) & 1) == 1) {
-                ARC_DEBUG(INFO, "PATs present, initializing\n");
-                _x86_WRMSR(0x277, info->pat);
-        }
-
 	int id = lapic_get_id();
 
 	if (id == -1) {
@@ -89,55 +78,53 @@ int smp_move_ap_high_mem(struct ap_start_info *info) {
 		ARC_HANG;
 	}
 
-	__cpuid(0x80000001, eax, ebx, ecx, edx);
-
- 	if (((info->flags >> 3) & 1) == 1) {
-		ARC_DEBUG(INFO, "NX bit present\n");
-		uint64_t efer = _x86_RDMSR(0xC0000080);
-		efer |= 1 << 11;
-		_x86_WRMSR(0xC0000080, efer);
-	}
-
 	_install_gdt();
 	_install_idt();
 	init_sse();
 	lapic_calibrate_timer();
 
-	void *stack = pmm_contig_alloc(2);
-	// TODO Set RBP and RSP
+	Arc_ProcessorList[id].processor |= 1 << 31;
+
+	__asm__("sti");
 
 	info->flags |= 1;
 
-	smp_hold(&Arc_ProcessorList[id]);
+	smp_hold(id);
 
 	return 0;
 }
 
-int smp_hold(struct ARC_ProcessorDescriptor *processor) {
-	ARC_DEBUG(INFO, "Holding processor %d\n", processor->processor);
-	for (;;);
+int smp_hold(uint32_t processor) {
+	ARC_DEBUG(INFO, "Holding processor %d\n", processor);
+	ARC_HANG;
 }
 
 int smp_list_aps() {
-	for (uint32_t i = 0; i < Arc_ProcessorCounter; i++) {
-		printf("-------------------------\nProcessor #%d:\n\tLAPIC: %d\n\tBIST:  0x%x\n\tModel: 0x%x\n-------------------------\n", Arc_ProcessorList[i].processor, i, Arc_ProcessorList[i].bist, Arc_ProcessorList[i].model_info);
+	printf("-- %d Processors --\n", Arc_ProcessorCounter);
+
+	for (uint32_t lapic = 0, processor = 0; processor < Arc_ProcessorCounter && lapic < 256; lapic++) {
+		if (((Arc_ProcessorList[lapic].processor >> 31) & 1) == 0) {
+			continue;
+		}
+
+		printf("-------------------------\nProcessor #%d:\n\tLAPIC: %d\n\tBIST:  0x%x\n\tModel: 0x%x\n-------------------------\n", processor, lapic, Arc_ProcessorList[lapic].bist, Arc_ProcessorList[lapic].model_info);
+
+		processor++;
 	}
 
 	return 0;
 }
 
 int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t version) {
-	Arc_ProcessorList[lapic].processor = Arc_ProcessorCounter++;
+	Arc_ProcessorList[lapic].processor = Arc_ProcessorCounter++ | 1 << 31;
 	Arc_ProcessorList[lapic].acpi_uid = acpi_uid;
 	Arc_ProcessorList[lapic].acpi_flags = acpi_flags;
-	Arc_ProcessorList[lapic].bist = 0;
-	Arc_ProcessorList[lapic].model_info = 0; // TODO: Set this properly
+	Arc_ProcessorList[lapic].bist = 0x0;
+	Arc_ProcessorList[lapic].model_info = 0x0; // TODO: Set this properly
 
 	if (lapic == (uint32_t)lapic_get_id()) {
-		// BSP
 		return 0;
 	}
-
 
 	// Set warm reset in CMOS and warm reset
         // vector in BDA (not sure if this is needed)
@@ -149,6 +136,7 @@ int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t ve
 	// detected, logged, and put into smp_hold
 	void *code = pmm_low_alloc();
 	void *stack = pmm_low_alloc();
+	void *stack_high = pmm_contig_alloc(2) + PAGE_SIZE * 2 - 0x8;
 
 	pager_map(ARC_HHDM_TO_PHYS(code), ARC_HHDM_TO_PHYS(code), PAGE_SIZE, 1 << ARC_PAGER_4K | 1 << ARC_PAGER_RW);
 	pager_map(ARC_HHDM_TO_PHYS(stack), ARC_HHDM_TO_PHYS(stack), PAGE_SIZE, 1 << ARC_PAGER_4K | 1 << ARC_PAGER_RW);
@@ -161,6 +149,7 @@ int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t ve
 	info->pml4 = _x86_CR3;
 	info->entry = (uintptr_t)smp_move_ap_high_mem;
 	info->stack = ARC_HHDM_TO_PHYS(stack) + PAGE_SIZE - 0x10;
+	info->stack_high = (uintptr_t)stack_high;
 	info->gdt_size = 0x1F;
 	info->gdt_addr = ARC_HHDM_TO_PHYS(&info->gdt_table);
 	info->pat = _x86_RDMSR(0x277);

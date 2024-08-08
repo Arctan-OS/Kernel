@@ -35,6 +35,7 @@ AP_STACK_OFF equ (__AP_START_INFO__.stack - __AP_START_BEGIN__)
 AP_EDX_OFF equ (__AP_START_INFO__.edx - __AP_START_BEGIN__)
 AP_EAX_OFF equ (__AP_START_INFO__.eax - __AP_START_BEGIN__)
 AP_PAT_OFF equ (__AP_START_INFO__.pat - __AP_START_BEGIN__)
+AP_STACK_HIGH_OFF equ (__AP_START_INFO__.stack_high - __AP_START_BEGIN__)
 
 section .rodata
 
@@ -123,15 +124,42 @@ lm:
         mov es, ax
         mov ss, ax
 
-        mov rax, cr3
-        mov cr3, rax
+        mov eax, dword [rcx + AP_FLAGS_OFF]
+        push rax
+        and eax, 0b1000
+        jz .no_nx
+
+        push rcx
+        mov ecx, 0xC0000080
+        rdmsr
+        or eax, 1 << 11
+        wrmsr
+        pop rcx
+
+.no_nx:
+        pop rax
+        and eax, 0b0100
+        jz .no_pat
+
+        push rcx
+
+        mov eax, dword [rcx + AP_PAT_OFF]
+        mov edx, dword [rcx + AP_PAT_OFF + 4]
+        mov ecx, 0x277
+        wrmsr
        
+        pop rcx
+
+.no_pat:
+
+        mov rbp, qword [rcx + AP_STACK_HIGH_OFF]
+        mov rsp, rbp
+
         mov rax, qword [rcx + AP_ENTRY_OFF]
         mov rdi, rcx
         add rdi, AP_PML4_OFF
 
         call rax
-
         jmp $
 
 global __AP_START_INFO__
@@ -158,6 +186,8 @@ __AP_START_INFO__:
         .eax:
                 dd 0x0
         .pat:
+                dq 0x0
+        .stack_high:
                 dq 0x0
 
 global __AP_START_END__
