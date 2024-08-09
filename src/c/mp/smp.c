@@ -84,7 +84,12 @@ int smp_move_ap_high_mem(struct ap_start_info *info) {
 	_install_gdt();
 	_install_idt();
 	init_sse();
+
 	init_lapic();
+	lapic_setup_timer(32, ARC_LAPIC_TIMER_PERIODIC);
+	Arc_ProcessorList[id].timer_ticks = 1000;
+	Arc_ProcessorList[id].timer_mode = ARC_LAPIC_TIMER_PERIODIC;
+	lapic_refresh_timer(1000);
 	lapic_calibrate_timer();
 
 	Arc_ProcessorList[id].status |= 1;
@@ -179,7 +184,7 @@ int smp_list_aps() {
 
 int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t version) {
 	// NOTE: This function is only called from the BSP
-	Arc_ProcessorList[lapic].processor = Arc_ProcessorCounter++;
+	Arc_ProcessorList[lapic].processor = Arc_ProcessorCounter;
 	Arc_ProcessorList[lapic].acpi_uid = acpi_uid;
 	Arc_ProcessorList[lapic].acpi_flags = acpi_flags;
 	Arc_ProcessorList[lapic].bist = 0x0;
@@ -191,7 +196,9 @@ int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t ve
 		// BSP
 		Arc_BootProcessor = &Arc_ProcessorList[lapic];
 		Arc_BootProcessor->status |= 1;
-	
+
+		Arc_ProcessorCounter++;
+
 		return 0;
 	}
 
@@ -259,6 +266,8 @@ int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t ve
 
 	pmm_low_free(code);
 	pmm_low_free(stack);
+
+	Arc_ProcessorCounter++;
 
 	return 0;
 }

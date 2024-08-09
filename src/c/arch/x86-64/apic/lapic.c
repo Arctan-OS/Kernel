@@ -30,6 +30,7 @@
 #include <cpuid.h>
 #include <arch/x86-64/pager.h>
 #include <mm/allocator.h>
+#include <mp/smp.h>
 
 struct lapic_reg {
         uint32_t resv0 __attribute__((aligned(16)));
@@ -148,8 +149,45 @@ int lapic_calibrate_timer() {
 	return 0;
 }
 
-// TODO: Implement functions for the other registers like
-//       the timer
+int lapic_setup_timer(uint8_t vector, uint8_t mode) {
+	uint64_t lapic_msr = _x86_RDMSR(0x1B);
+	struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
+
+	reg->lvt_timer_reg = vector | ((mode & 0b11) << 17);
+
+	return 0;
+}
+
+int lapic_timer_mask(uint8_t mask) {
+	uint64_t lapic_msr = _x86_RDMSR(0x1B);
+	struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
+
+	if (mask) {
+		reg->lvt_timer_reg |= 1 << 16;
+	} else {
+		reg->lvt_timer_reg &= ~(1 << 16);
+	}
+
+	return 0;
+}
+
+int lapic_refresh_timer(uint32_t count) {
+	uint64_t lapic_msr = _x86_RDMSR(0x1B);
+	struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
+
+	reg->init_count_reg = count;
+
+	return 0;
+}
+
+int lapic_divide_timer(uint8_t division) {
+	uint64_t lapic_msr = _x86_RDMSR(0x1B);
+	struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
+
+	reg->div_conf_reg = (division & 0b11) | ((division >> 2) & 1) << 3;
+
+	return 0;
+}
 
 int init_lapic() {
 	int id = lapic_get_id();
@@ -161,6 +199,7 @@ int init_lapic() {
         ARC_DEBUG(INFO, "Initializing LAPIC\n");
 
 	uint64_t lapic_msr = _x86_RDMSR(0x1B);
+
         struct lapic_reg *reg = (struct lapic_reg *)(((lapic_msr >> 12) & 0x0000FFFFFFFFFFFF) << 12);
 
         if (((lapic_msr >> 8) & 1) == 1) {
@@ -177,6 +216,7 @@ int init_lapic() {
         ARC_DEBUG(INFO, "LAPIC register at %p\n", reg);
         // NOTE: Ignore bits 31:27 of reg->lapic_id on P6 and Pentium processors
         uint8_t ver = reg->lapic_ver & 0xFF;
+
         ARC_DEBUG(INFO, "LAPIC ID: 0x%X (0x%X) (%s)\n", reg->lapic_id >> 28, id, ((reg->spurious_int_vector >> 8) & 1) ? "disabled, enabling" : "enabled");
 	// Enable LAPIC
 	reg->spurious_int_vector |= 1 << 8;

@@ -41,10 +41,15 @@ struct ARC_ProcessorDescriptor {
 	ARC_GenericMutex register_lock;
 	uint32_t flags;
 	// Bit | Description
-	// 0   | "Dirty", 1: signals external modification of register state,
-	//                   cleared once changes have been accepted
+	// 0   | 1: Signals external modification of register state, cleared once
+	//          changes have been accepted
 	// 1   | 1: Write all registers to the registers member of this structure
+	// 2   | 1: Timer values have been changed, cleared once changes have
+	//          been accepted
 	struct ARC_ProcessorDescriptor *next;
+	uint32_t timer_ticks;
+	uint32_t timer_mode;
+	ARC_GenericMutex timer_lock;
 };
 
 // NOTE: The index in Arc_ProcessorList corresponds to the LAPIC ID

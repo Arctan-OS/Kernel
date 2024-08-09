@@ -96,6 +96,10 @@ int apic_map_gsi_irq(uint8_t gsi, uint8_t irq, uint32_t destination, uint32_t fl
 
 int init_apic() {
 	uint32_t bsp = init_lapic();
+	lapic_setup_timer(32, ARC_LAPIC_TIMER_PERIODIC);
+	Arc_ProcessorList[bsp].timer_ticks = 1000;
+	Arc_ProcessorList[bsp].timer_mode = ARC_LAPIC_TIMER_PERIODIC;
+	lapic_refresh_timer(1000);
 
 	struct ARC_File *apic = NULL;
 	vfs_open("/dev/acpi/apic", 0, 0, 0, (void *)&apic);
@@ -175,7 +179,10 @@ int init_apic() {
 
 				ARC_DEBUG(INFO, "Interrupt Source Override found (IRQ: %d, GSI: %d, %s, %s)\n", irq, gsi, polarity ? "Active Low" : "Active High", trigger ? "Level Sensitive" : "Edge Sensitive");
 
-				apic_map_gsi_irq(gsi, irq, 1, (trigger | (polarity << 1)));
+				if (irq != 0) {
+					// The LAPIC timer will be used
+					apic_map_gsi_irq(gsi, irq, bsp, (trigger | (polarity << 1)));
+				}
 
 				break;
 			}

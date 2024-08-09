@@ -65,6 +65,9 @@ static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
 int proc_test(int number) {
 	printf("Processor %d arrived\n", number);
+
+	// TODO: Test VFS
+
 	ARC_HANG;
 }
 
@@ -129,19 +132,24 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	smp_list_aps();
 
 	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->next;
-	// Ask processor to report registers
-	desc->flags |= 1 << 1;
-	// Wait for processor to report registers
-	while (((desc->flags >> 1) & 1) == 1) __asm__("pause");
-	// Set processor's context
-	mutex_lock(&desc->register_lock);
 
-	desc->registers.rip = (uintptr_t)&proc_test;
-	desc->registers.rdi = 1;
+	while (desc != NULL) {
+		// Ask processor to report registers
+		desc->flags |= 1 << 1;
+		// Wait for processor to report registers
+		while (((desc->flags >> 1) & 1) == 1) __asm__("pause");
+		// Set processor's context
+		mutex_lock(&desc->register_lock);
 
-	mutex_unlock(&desc->register_lock);
-	// Tell processor to switch context
-	desc->flags |= 1;
+		desc->registers.rip = (uintptr_t)&proc_test;
+		desc->registers.rdi = desc->acpi_uid;
+
+		mutex_unlock(&desc->register_lock);
+		// Tell processor to switch context
+		desc->flags |= 1;
+
+		desc = desc->next;
+	}
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
@@ -150,8 +158,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
-
-
 
 	term_draw(&Arc_MainTerm);
 

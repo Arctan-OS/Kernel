@@ -258,6 +258,21 @@ void interrupt_junction(struct ARC_Registers *regs, int code) {
 
 				mutex_unlock(&processor->register_lock);
 
+				mutex_lock(&processor->timer_lock);
+
+				if (processor->timer_mode == ARC_LAPIC_TIMER_ONESHOT) {
+					lapic_refresh_timer(processor->timer_ticks);
+				}
+
+				if (((processor->flags >> 2) & 1) == 1) {
+					lapic_setup_timer(32, processor->timer_mode);
+					lapic_refresh_timer(processor->timer_ticks);
+
+					processor->flags &= ~(1 << 2);
+				}
+
+				mutex_unlock(&processor->timer_lock);
+
 				break;
 			}
 			case 33: {
