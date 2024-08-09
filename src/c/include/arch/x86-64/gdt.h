@@ -30,6 +30,8 @@
 #define ARC_ARCH_X86_64_GDT_H
 
 extern void _install_gdt();
+
+int create_tss(void *ist, void *rsp);
 void init_gdt();
 
 #endif

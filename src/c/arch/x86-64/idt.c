@@ -33,6 +33,8 @@
 #include <arch/x86-64/apic/lapic.h>
 #include <mp/smp.h>
 
+static ARC_GenericSpinlock panic_lock;
+
 struct idt_desc {
 	uint16_t limit;
 	uint64_t base;
@@ -101,6 +103,7 @@ void install_idt_gate(int i, uint64_t offset, uint16_t segment, uint8_t attrs) {
 	idt_entries[i].offset3 = (offset >> 32) & 0xFFFFFFFF;
 	idt_entries[i].segment = segment;
 	idt_entries[i].attrs = attrs;
+	idt_entries[i].ist = 1;
 	idt_entries[i].reserved = 0;
 }
 
@@ -188,7 +191,7 @@ void interrupt_junction(struct ARC_Registers *regs, int code) {
 					current.rdx = regs->rdx;
 					current.rsi = regs->rsi;
 					current.rdi = regs->rdi;
-					current.rsp = regs->rsp;
+					current.rsp = frame->rsp;
 					current.rbp = regs->rbp;
 					current.rip = regs->rip;
 					current.r8 = regs->r8;
@@ -210,7 +213,7 @@ void interrupt_junction(struct ARC_Registers *regs, int code) {
 					regs->rdx = processor->registers.rdx;
 					regs->rsi = processor->registers.rsi;
 					regs->rdi = processor->registers.rdi;
-					regs->rsp = processor->registers.rsp;
+					frame->rsp = processor->registers.rsp;
 					regs->rbp = processor->registers.rbp;
 					regs->rip = processor->registers.rip;
 					regs->r8 = processor->registers.r8;
@@ -237,7 +240,7 @@ void interrupt_junction(struct ARC_Registers *regs, int code) {
 					processor->registers.rdx = regs->rdx;
 					processor->registers.rsi = regs->rsi;
 					processor->registers.rdi = regs->rdi;
-					processor->registers.rsp = regs->rsp;
+					processor->registers.rsp = frame->rsp;
 					processor->registers.rbp = regs->rbp;
 					processor->registers.rip = regs->rip;
 					processor->registers.r8 = regs->r8;
@@ -284,8 +287,12 @@ void interrupt_junction(struct ARC_Registers *regs, int code) {
 		goto EOI;
 	}
 
+	spinlock_lock(&panic_lock);
+
+	int id = lapic_get_id();
+
 	// Dump registers
-	printf("Received Interrupt %d, %s\n", code, exception_names[code]);
+	printf("Received Interrupt %d (%s) from LAPIC %d\n", code, exception_names[code], id);
 	printf("RAX: 0x%016"PRIx64"\n", regs->rax);
 	printf("RBX: 0x%016"PRIx64"\n", regs->rbx);
 	printf("RCX: 0x%016"PRIx64"\n", regs->rcx);
@@ -335,6 +342,9 @@ void interrupt_junction(struct ARC_Registers *regs, int code) {
 
 	memset(Arc_MainTerm.framebuffer, 0, Arc_MainTerm.fb_width * Arc_MainTerm.fb_height * (Arc_MainTerm.fb_bpp / 8));
 	term_draw(&Arc_MainTerm);
+
+	spinlock_unlock(&panic_lock);
+
 	ARC_HANG;
 EOI:
 	lapic_eoi();
@@ -450,6 +460,8 @@ void init_idt() {
 	idtr.base = (uintptr_t)&idt_entries;
 
 	_install_idt();
+
+	init_static_spinlock(&panic_lock);
 
 	ARC_DEBUG(INFO, "Ported IDT to 64-bits\n");
 }

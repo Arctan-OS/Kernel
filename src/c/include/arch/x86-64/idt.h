@@ -30,6 +30,13 @@
 
 #include <stdint.h>
 
+/**
+ * Creates a new TSS
+ *
+ * The
+ * */
+int create_tss(void *ist, void *rsp);
+
 extern void _install_idt();
 void init_idt();
 

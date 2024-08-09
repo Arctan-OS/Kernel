@@ -82,6 +82,7 @@ int smp_move_ap_high_mem(struct ap_start_info *info) {
 	}
 
 	_install_gdt();
+	create_tss(pmm_alloc() + PAGE_SIZE - 0x10, (void *)info->stack_high);
 	_install_idt();
 	init_sse();
 
@@ -166,6 +167,80 @@ int smp_context_save(struct ARC_ProcessorDescriptor *processor, struct ARC_Regis
 	regs->rip = processor->registers.rip;
 	regs->rflags = processor->registers.rflags;
 	regs->ss = processor->registers.ss;
+
+	return 0;
+}
+
+/**
+ *
+ *
+ * NOTE: It is expected for processor->register_lock to be held.
+ * */
+int smp_sysv_set_args(struct ARC_ProcessorDescriptor *processor, va_list list, int argc) {
+	int i = 0;
+
+	for (; i < min(argc, 6); i++) {
+		uint64_t value = va_arg(list, uint64_t);
+
+		switch (i) {
+			case 0: { processor->registers.rdi = value; break; }
+			case 1: { processor->registers.rsi = value; break; }
+			case 2: { processor->registers.rdx = value; break; }
+			case 3: { processor->registers.rcx = value; break; }
+			case 4: { processor->registers.r8  = value; break; }
+			case 5: { processor->registers.r9  = value; break; }
+		}
+	}
+
+	if (argc <= 6) {
+		return 0;
+	}
+
+	int delta = argc - i;
+
+	for (i = delta - 1; i >= 0; i--) {
+		uint64_t value = va_arg(list, uint64_t);
+		*(uint64_t *)(processor->registers.rsp - (i * 8)) = value;
+	}
+
+	processor->registers.rsp -= delta * 8;
+
+	return 0;
+}
+
+int smp_jmp(struct ARC_ProcessorDescriptor *processor, void *function, uint32_t argc, ...) {
+	mutex_lock(&processor->register_lock);
+
+	va_list args;
+	va_start(args, argc);
+	smp_sysv_set_args(processor, args, argc);
+	va_end(args);
+
+	processor->registers.rip = (uintptr_t)function;
+
+	mutex_unlock(&processor->register_lock);
+
+	processor->status &= ~(1 << 1);
+	processor->flags |= 1;
+
+	return 0;
+}
+
+int smp_far_jmp(struct ARC_ProcessorDescriptor *processor, uint32_t cs, void *function, uint32_t argc, ...) {
+	mutex_lock(&processor->register_lock);
+
+	va_list args;
+	va_start(args, argc);
+	smp_sysv_set_args(processor, args, argc);
+	va_end(args);
+
+	processor->registers.cs = cs;
+	processor->registers.rip = (uintptr_t)function;
+
+	mutex_unlock(&processor->register_lock);
+
+	processor->status &= ~(1 << 1);
+	processor->flags |= 1;
 
 	return 0;
 }

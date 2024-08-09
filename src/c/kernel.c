@@ -62,12 +62,15 @@ struct ARC_TermMeta Arc_MainTerm = { 0 };
 struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
+static uint8_t Arc_IST1[PAGE_SIZE] = { 0 };
+extern uint8_t __KERNEL_STACK__;
 
-int proc_test(int number) {
-	printf("Processor %d arrived\n", number);
+int proc_test(int number, uint32_t test, uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t abab, uint32_t cafe2, uint32_t cafe3) {
+	printf("Processor %d arrived %x\n", number, test);
+
+	printf("%x %x %x %x %x %x %x\n", a, b, c, d, abab, cafe2, cafe3);
 
 	// TODO: Test VFS
-
 	ARC_HANG;
 }
 
@@ -90,6 +93,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
         // Initialize really basic things
 	init_gdt();
+	create_tss((void *)Arc_IST1 + PAGE_SIZE - 0x10, (void *)&__KERNEL_STACK__);
 	init_idt();
 
 	init_pager();
@@ -129,27 +133,21 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	list("/", 8);
 
-	smp_list_aps();
-
 	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->next;
+	uint32_t test = 0xCAFE;
 
 	while (desc != NULL) {
 		// Ask processor to report registers
 		desc->flags |= 1 << 1;
 		// Wait for processor to report registers
 		while (((desc->flags >> 1) & 1) == 1) __asm__("pause");
-		// Set processor's context
-		mutex_lock(&desc->register_lock);
 
-		desc->registers.rip = (uintptr_t)&proc_test;
-		desc->registers.rdi = desc->acpi_uid;
-
-		mutex_unlock(&desc->register_lock);
-		// Tell processor to switch context
-		desc->flags |= 1;
+		smp_jmp(desc, proc_test, 9, desc->acpi_uid, test, 0xA, 0xB, 0xC, 0xD, 0xABAB, 0xCAFE2, 0xCAFE3);
 
 		desc = desc->next;
 	}
+
+	smp_list_aps();
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {

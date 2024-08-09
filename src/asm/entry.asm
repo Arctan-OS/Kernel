@@ -43,5 +43,5 @@ section .bss
         ;; can use the stack without a #GP
 align 16
         resb 0x4000
-global __KERKENL_STACK__
+global __KERNEL_STACK__
 __KERNEL_STACK__:

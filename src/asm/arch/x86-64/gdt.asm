@@ -50,3 +50,8 @@ _gdt_set_cs:
         mov es, ax
         pop rax
         ret
+
+global _install_tss
+_install_tss:
+        ltr di
+        ret

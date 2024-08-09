@@ -26,6 +26,7 @@
 */
 #include <stdint.h>
 #include <mp/sched/context.h>
+#include <stdarg.h>
 
 struct ARC_ProcessorDescriptor {
 	uint32_t processor;
@@ -76,6 +77,11 @@ int smp_context_write(struct ARC_ProcessorDescriptor *processor, struct ARC_Regi
  * NOTE: processor->register_lock is expected to be held.
  * */
 int smp_context_save(struct ARC_ProcessorDescriptor *processor, struct ARC_Registers *regs);
+
+int smp_jmp(struct ARC_ProcessorDescriptor *processor, void *function, uint32_t argc, ...);
+
+int smp_far_jmp(struct ARC_ProcessorDescriptor *processor, uint32_t cs, void *function, uint32_t argc, ...);
+
 
 int smp_list_aps();
 

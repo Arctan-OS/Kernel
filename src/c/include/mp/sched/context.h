@@ -51,7 +51,6 @@ struct ARC_Registers {
 	uint64_t rip;
 	uint64_t ss;
 	uint64_t rflags;
-	uint32_t ticks;
 }__attribute__((packed));
 
 #endif
