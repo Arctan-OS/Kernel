@@ -31,13 +31,30 @@
 #include <stdint.h>
 
 /**
- * Creates a new TSS
- *
- * The
+ * Load the IDTR.
  * */
-int create_tss(void *ist, void *rsp);
-
 extern void _install_idt();
+
+/**
+ * Set a gate in the IDT
+ *
+ * The following function sets interrupt number i to be handled by the function located
+ * in segment:offset, and sets the given attributes.
+ * NOTE: All interrupts use IST1.
+ *
+ * @param int i - The interrupt's vector.
+ * @param uint64_t offset - The offset of the handler function.
+ * @parma uint16_t segment - The segment in which the handler function is located.
+ * @param uint8_t attrs - The attributes of the interrupt.
+ * */
+void install_idt_gate(int i, uint64_t offset, uint16_t segment, uint8_t attrs);
+
+
+/**
+ * Initialize the IDT.
+ *
+ * Create the IDT with handlers for all exceptions and a few IRQs.
+ * */
 void init_idt();
 
 #endif

@@ -82,9 +82,10 @@ int smp_move_ap_high_mem(struct ap_start_info *info) {
 	}
 
 	_install_gdt();
-	create_tss(pmm_alloc() + PAGE_SIZE - 0x10, (void *)info->stack_high);
 	_install_idt();
 	init_sse();
+
+	create_tss(pmm_alloc() + PAGE_SIZE - 0x10, (void *)info->stack_high);
 
 	init_lapic();
 	lapic_setup_timer(32, ARC_LAPIC_TIMER_PERIODIC);

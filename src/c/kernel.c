@@ -62,7 +62,6 @@ struct ARC_TermMeta Arc_MainTerm = { 0 };
 struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
-static uint8_t Arc_IST1[PAGE_SIZE] = { 0 };
 extern uint8_t __KERNEL_STACK__;
 
 int proc_test(int number, uint32_t test, uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t abab, uint32_t cafe2, uint32_t cafe3) {
@@ -93,7 +92,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
         // Initialize really basic things
 	init_gdt();
-	create_tss((void *)Arc_IST1 + PAGE_SIZE - 0x10, (void *)&__KERNEL_STACK__);
 	init_idt();
 
 	init_pager();
@@ -109,6 +107,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
         // Initialize memory
 	init_allocator(128);
+	create_tss(pmm_alloc() + PAGE_SIZE - 0x10, (void *)&__KERNEL_STACK__);
+
 	init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000);
 
         // Initialize more complicated things
@@ -119,6 +119,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
+
 
         init_acpi(Arc_BootMeta->rsdp);
         init_apic();

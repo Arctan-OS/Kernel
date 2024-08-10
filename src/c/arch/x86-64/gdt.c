@@ -28,6 +28,7 @@
 */
 #include <global.h>
 #include <arch/x86-64/gdt.h>
+#include <mm/allocator.h>
 
 struct gdt_header {
 	uint16_t size;
@@ -55,7 +56,7 @@ struct tss_entry {
 	uint32_t resv;
 }__attribute__((packed));
 
-struct tss {
+struct tss_descriptor {
 	uint32_t resv0;
 	uint32_t rsp0_low;
 	uint32_t rsp0_high;
@@ -84,8 +85,6 @@ struct tss {
 	uint16_t resv5;
 	uint16_t io_port_bmp_off;
 }__attribute__((packed));
-
-struct tss task_state_segments[ARC_MAX_PROCESSORS];
 
 struct gdt_entry_container {
 	struct gdt_entry gdt[8];
@@ -122,12 +121,18 @@ extern void _install_tss(uint32_t index);
 int create_tss(void *ist, void *rsp) {
 	int index = gdt_entries.next_tss++;
 
-	set_tss_gate(index, (uint64_t)&task_state_segments[index], sizeof(struct tss) - 1, 0x89, 0x0);
+	struct tss_descriptor *tss = (struct tss_descriptor *)alloc(sizeof(*tss));
 
-	task_state_segments[index].ist1_low = (((uintptr_t)ist) & UINT32_MAX);
-	task_state_segments[index].ist1_high = (((uintptr_t)ist) >> 32) & UINT32_MAX;
-	task_state_segments[index].rsp0_low = (((uintptr_t)rsp) & UINT32_MAX);
-	task_state_segments[index].rsp0_high = (((uintptr_t)rsp) >> 32) & UINT32_MAX;
+	if (tss == NULL) {
+		return -1;
+	}
+
+	set_tss_gate(index, (uint64_t)tss, sizeof(*tss) - 1, 0x89, 0x0);
+
+	tss->ist1_low = (((uintptr_t)ist) & UINT32_MAX);
+	tss->ist1_high = (((uintptr_t)ist) >> 32) & UINT32_MAX;
+	tss->rsp0_low = (((uintptr_t)rsp) & UINT32_MAX);
+	tss->rsp0_high = (((uintptr_t)rsp) >> 32) & UINT32_MAX;
 
 	_install_tss(sizeof(gdt_entries.gdt) + (index * sizeof(struct tss_entry)));
 

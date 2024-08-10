@@ -77,12 +77,12 @@ _install_idt:
 
 extern interrupt_junction
 %macro common_idt_stub 1
-global _idt_stub_%1_
-_idt_stub_%1_:
+global _idt_stub_%1
+extern generic_interrupt_handler_%1
+_idt_stub_%1:
         PUSH_ALL
         mov rdi, rsp
-        mov rsi, %1
-        call interrupt_junction
+        call generic_interrupt_handler_%1
         POP_ALL
         iretq
 %endmacro
@@ -120,21 +120,3 @@ common_idt_stub 29
 common_idt_stub 30
 common_idt_stub 31
 common_idt_stub 32
-common_idt_stub 33
-common_idt_stub 34
-common_idt_stub 35
-common_idt_stub 36
-common_idt_stub 37
-common_idt_stub 38
-common_idt_stub 39
-common_idt_stub 40
-common_idt_stub 41
-common_idt_stub 42
-common_idt_stub 43
-common_idt_stub 44
-common_idt_stub 45
-common_idt_stub 46
-common_idt_stub 47
-common_idt_stub 48
-common_idt_stub 49
-common_idt_stub 50
