@@ -439,6 +439,7 @@ GENERIC_HANDLER(32) {
 		// Context switch
 		struct ARC_Registers current = { 0 };
 
+		// Save current state
 		current.rax = regs->rax;
 		current.rbx = regs->rbx;
 		current.rcx = regs->rcx;
@@ -461,6 +462,7 @@ GENERIC_HANDLER(32) {
 		current.rflags = interrupt_frame->rflags;
 		current.ss = interrupt_frame->ss;
 
+		// Accept changes
 		regs->rax = processor->registers.rax;
 		regs->rbx = processor->registers.rbx;
 		regs->rcx = processor->registers.rcx;
@@ -483,11 +485,13 @@ GENERIC_HANDLER(32) {
 		interrupt_frame->rflags = processor->registers.rflags;
 		interrupt_frame->ss = processor->registers.ss;
 
+		// Write back current state
 		smp_context_write(processor, &current);
 		processor->flags &= ~1;
 	}
 
 	if (((processor->flags >> 1) & 1) == 1) {
+		// Write back current state
 		processor->registers.rax = regs->rax;
 		processor->registers.rbx = regs->rbx;
 		processor->registers.rcx = regs->rcx;

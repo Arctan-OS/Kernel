@@ -23,6 +23,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * This file implements functions for initializing and managing application processors
+ * for symmetric multi-processing.
 */
 #include <mp/smp.h>
 #include <arch/x86-64/apic/lapic.h>
@@ -71,6 +73,13 @@ struct ARC_ProcessorDescriptor *Arc_BootProcessor = NULL;
 
 static uint32_t last_lapic = 0;
 
+/**
+ * Further initialize the application processor to synchronize with the BSP.
+ *
+ * NOTE: This function is only meant to be called by application processors.
+ *
+ * @param struct ap_start_info *info - The boot information given by the BSP.
+ * */
 int smp_move_ap_high_mem(struct ap_start_info *info) {
 	// NOTE: APs are initialized sequentially, therefore only one AP
 	//       should be executing this code at a time
@@ -173,7 +182,9 @@ int smp_context_save(struct ARC_ProcessorDescriptor *processor, struct ARC_Regis
 }
 
 /**
+ * Pass given arguments to given processor.
  *
+ * Set registers and stack according to SYS-V calling convention.
  *
  * NOTE: It is expected for processor->register_lock to be held.
  * */

@@ -120,7 +120,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
 
-
         init_acpi(Arc_BootMeta->rsdp);
         init_apic();
 	__asm__("sti");

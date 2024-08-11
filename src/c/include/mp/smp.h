@@ -23,6 +23,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * A header file contianing functions for managing and initializing application processors
+ * for symmetric multi-processing.
 */
 #include <stdint.h>
 #include <mp/sched/context.h>
@@ -63,6 +65,9 @@ extern struct ARC_ProcessorDescriptor Arc_ProcessorList[256];
 extern struct ARC_ProcessorDescriptor *Arc_BootProcessor;
 extern uint32_t Arc_ProcessorCounter;
 
+/**
+ * Hold the given processor.
+ * */
 int smp_hold(struct ARC_ProcessorDescriptor *processor);
 
 /**
@@ -78,15 +83,44 @@ int smp_context_write(struct ARC_ProcessorDescriptor *processor, struct ARC_Regi
  * */
 int smp_context_save(struct ARC_ProcessorDescriptor *processor, struct ARC_Registers *regs);
 
-int smp_jmp(struct ARC_ProcessorDescriptor *processor, void *function, uint32_t argc, ...);
+/**
+ * Tell the processor to execute the given function with the given arguments.
+ *
+ * NOTE: When a processor accepts the changes, it will write its current register
+ *       (prior to accepting the changes) to processor->registers. The caller should
+ *       save this if it wishes to return to this state.
+ *
+ * @param struct ARC_ProcessorDescriptor *processor - The processor to execute the jump on.
+ * @param void *function - The function to jump to.
+ * @param int argc - The number of arguments given to the function.
+ * @param ... - The arguments to pass to the function.
+ * @return zero on success.
+ * */
+int smp_jmp(struct ARC_ProcessorDescriptor *processor, void *function, int argc, ...);
 
-int smp_far_jmp(struct ARC_ProcessorDescriptor *processor, uint32_t cs, void *function, uint32_t argc, ...);
+/**
+ * Tell the processor to execute a far jump to the given function with the given arguments.
+ *
+ * NOTE: When a processor accepts the changes, it will write its current register
+ *       (prior to accepting the changes) to processor->registers. The caller should
+ *       save this if it wishes to return to this state.
+ *
+ * @param struct ARC_ProcessorDescriptor *processor - The processor to execute the jump on.
+ * @parma uint32_t cs - The code segment to jump to.
+ * @param void *function - The function to jump to.
+ * @param int argc - The number of arguments given to the function.
+ * @param ... - The arguments to pass to the function.
+ * @return zero on success.
+ * */
+int smp_far_jmp(struct ARC_ProcessorDescriptor *processor, uint32_t cs, void *function, int argc, ...);
 
-
+/**
+ * List application processors.
+ * */
 int smp_list_aps();
 
 /**
- * Initialize an AP into an SMP system
+ * Initialize an AP into an SMP system.
  *
  * Initializes the given AP into an SMP system by creating the
  * relevant processor descriptors and sending INIT and START IPIs.
