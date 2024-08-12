@@ -25,7 +25,7 @@
  * @DESCRIPTION
 */
 #include "arctan.h"
-#include <arch/x86-64/acpi/acpi.h>
+#include <arch/acpi/acpi.h>
 #include <fs/vfs.h>
 #include <global.h>
 #include <drivers/dri_defs.h>

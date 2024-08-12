@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <interface/printf.h>
 #include <arch/x86-64/ctrl_regs.h>
-#include <arch/x86-64/acpi/acpi.h>
+#include <arch/acpi/acpi.h>
 #include <arch/x86-64/apic/apic.h>
 #include <boot/parse.h>
 
@@ -53,8 +53,6 @@
 
 #include <drivers/dri_defs.h>
 
-#include <mp/smp.h>
-
 #include <interface/framebuffer.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
@@ -63,15 +61,6 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 extern uint8_t __KERNEL_STACK__;
-
-int proc_test(int number, uint32_t test, uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t abab, uint32_t cafe2, uint32_t cafe3) {
-	printf("Processor %d arrived %x\n", number, test);
-
-	printf("%x %x %x %x %x %x %x\n", a, b, c, d, abab, cafe2, cafe3);
-
-	// TODO: Test VFS
-	ARC_HANG;
-}
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
@@ -132,22 +121,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
 	list("/", 8);
-
-	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->next;
-	uint32_t test = 0xCAFE;
-
-	while (desc != NULL) {
-		// Ask processor to report registers
-		desc->flags |= 1 << 1;
-		// Wait for processor to report registers
-		while (((desc->flags >> 1) & 1) == 1) __asm__("pause");
-
-		smp_jmp(desc, proc_test, 9, desc->acpi_uid, test, 0xA, 0xB, 0xC, 0xD, 0xABAB, 0xCAFE2, 0xCAFE3);
-
-		desc = desc->next;
-	}
-
-	smp_list_aps();
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {

@@ -30,7 +30,6 @@
 #include <cpuid.h>
 #include <arch/x86-64/pager.h>
 #include <mm/allocator.h>
-#include <mp/smp.h>
 
 struct lapic_reg {
         uint32_t resv0 __attribute__((aligned(16)));

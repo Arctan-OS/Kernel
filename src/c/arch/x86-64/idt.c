@@ -31,7 +31,8 @@
 #include <interface/printf.h>
 #include <lib/util.h>
 #include <arch/x86-64/apic/lapic.h>
-#include <mp/smp.h>
+#include <arch/x86-64/context.h>
+#include <arch/x86-64/smp.h>
 
 #define GENERIC_HANDLER(__vector)					\
 	extern void _idt_stub_##__vector();				\

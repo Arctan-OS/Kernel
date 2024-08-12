@@ -26,7 +26,7 @@
  * This file implements functions for initializing and managing application processors
  * for symmetric multi-processing.
 */
-#include <mp/smp.h>
+#include <arch/x86-64/smp.h>
 #include <arch/x86-64/apic/lapic.h>
 #include <interface/printf.h>
 #include <global.h>
@@ -220,7 +220,7 @@ int smp_sysv_set_args(struct ARC_ProcessorDescriptor *processor, va_list list, i
 	return 0;
 }
 
-int smp_jmp(struct ARC_ProcessorDescriptor *processor, void *function, uint32_t argc, ...) {
+int smp_jmp(struct ARC_ProcessorDescriptor *processor, void *function, int argc, ...) {
 	mutex_lock(&processor->register_lock);
 
 	va_list args;
@@ -238,7 +238,7 @@ int smp_jmp(struct ARC_ProcessorDescriptor *processor, void *function, uint32_t 
 	return 0;
 }
 
-int smp_far_jmp(struct ARC_ProcessorDescriptor *processor, uint32_t cs, void *function, uint32_t argc, ...) {
+int smp_far_jmp(struct ARC_ProcessorDescriptor *processor, uint32_t cs, void *function, int argc, ...) {
 	mutex_lock(&processor->register_lock);
 
 	va_list args;

@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <global.h>
 #include <lib/util.h>
-#include <arch/x86-64/acpi/acpi.h>
+#include <arch/acpi/acpi.h>
 #include <fs/vfs.h>
 #include <drivers/dri_defs.h>
 

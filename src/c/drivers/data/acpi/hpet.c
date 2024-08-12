@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
 */
-#include <arch/x86-64/acpi/acpi.h>
+#include <arch/acpi/acpi.h>
 #include <lib/resource.h>
 #include <drivers/dri_defs.h>
 

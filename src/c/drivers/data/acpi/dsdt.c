@@ -25,8 +25,8 @@
  * @DESCRIPTION
 */
 #include <lib/resource.h>
-#include <arch/x86-64/acpi/acpi.h>
-#include <arch/x86-64/acpi/caml/parse.h>
+#include <arch/acpi/acpi.h>
+#include <arch/acpi/caml/parse.h>
 #include <global.h>
 #include <drivers/dri_defs.h>
 

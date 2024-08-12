@@ -24,8 +24,8 @@
  *
  * @DESCRIPTION
 */
-#include <arch/x86-64/acpi/caml/parse.h>
-#include <arch/x86-64/acpi/caml/ops.h>
+#include <arch/acpi/caml/parse.h>
+#include <arch/acpi/caml/ops.h>
 #include <fs/vfs.h>
 #include <global.h>
 #include <mm/allocator.h>

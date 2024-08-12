@@ -30,7 +30,7 @@
 #include <mm/allocator.h>
 #include <fs/vfs.h>
 #include <global.h>
-#include <mp/smp.h>
+#include <arch/x86-64/smp.h>
 #include <lib/util.h>
 
 #define ENTRY_TYPE_LAPIC               0x00

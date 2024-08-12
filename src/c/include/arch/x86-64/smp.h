@@ -26,8 +26,12 @@
  * A header file contianing functions for managing and initializing application processors
  * for symmetric multi-processing.
 */
+#ifndef ARC_ARCH_X86_64_SMP_H
+#define ARC_ARCH_X86_64_SMP_H
+
 #include <stdint.h>
-#include <mp/sched/context.h>
+#include <arch/x86-64//context.h>
+#include <lib/atomics.h>
 #include <stdarg.h>
 
 struct ARC_ProcessorDescriptor {
@@ -135,3 +139,5 @@ int smp_list_aps();
  * @return zero upon success.
  * */
 int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t version);
+
+#endif

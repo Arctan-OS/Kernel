@@ -26,9 +26,11 @@
 */
 #include <mp/sched/abstract.h>
 #include <global.h>
+#include <arch/x86-64/apic/lapic.h>
 
-int64_t get_current_tid() {
-	return 1;
+uint64_t get_current_tid() {
+
+	return ((uint64_t)lapic_get_id() << 56) | 1;
 }
 
 int yield_cpu(int64_t tid) {

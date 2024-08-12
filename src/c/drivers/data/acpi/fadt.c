@@ -26,7 +26,7 @@
 */
 #include <global.h>
 #include <fs/vfs.h>
-#include <arch/x86-64/acpi/acpi.h>
+#include <arch/acpi/acpi.h>
 #include <drivers/dri_defs.h>
 
 struct fadt {

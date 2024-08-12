@@ -32,7 +32,7 @@
 /**
  * Get the currently running thread ID.
  * */
-int64_t get_current_tid();
+uint64_t get_current_tid();
 
 /**
  * Yield CPU to desired thread.
