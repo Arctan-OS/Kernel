@@ -24,35 +24,9 @@
  *
  * @DESCRIPTION
 */
-#include <lib/resource.h>
-#include <mm/allocator.h>
-#include <mm/freelist.h>
-#include <mm/pmm.h>
-#include <mm/vmm.h>
-#include <arctan.h>
 #include <global.h>
-#include <arch/x86-64/io/port.h>
-#include <stdint.h>
-#include <interface/printf.h>
-#include <arch/x86-64/ctrl_regs.h>
-#include <arch/acpi/acpi.h>
-#include <arch/x86-64/apic/apic.h>
-#include <boot/parse.h>
-
-#include <arch/x86-64/idt.h>
-#include <arch/x86-64/gdt.h>
-#include <arch/x86-64/sse.h>
-#include <arch/x86-64/pager.h>
-
-#include <interface/terminal.h>
-#include <mm/pmm.h>
-#include <mm/allocator.h>
+#include <arch/start.h>
 #include <fs/vfs.h>
-
-#include <arch/x86-64/syscall.h>
-
-#include <drivers/dri_defs.h>
-
 #include <interface/framebuffer.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
@@ -60,7 +34,7 @@ struct ARC_TermMeta Arc_MainTerm = { 0 };
 struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
-extern uint8_t __KERNEL_STACK__;
+
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
@@ -77,46 +51,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_MainTerm.cy = 0;
 	init_static_mutex(&Arc_MainTerm.lock);
 
-	ARC_DEBUG(INFO, "Sucessfully entered long mode\n");
-
-        // Initialize really basic things
-	init_gdt();
-	init_idt();
-
-	init_pager();
-	init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len);
-
-	init_sse();
-	parse_boot_info();
-
-	if (Arc_MainTerm.framebuffer != NULL) {
-		Arc_MainTerm.term_width = (Arc_MainTerm.fb_width / Arc_MainTerm.font_width);
-		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
-	}
-
-        // Initialize memory
-	init_allocator(128);
-	create_tss(pmm_alloc() + PAGE_SIZE - 0x10, (void *)&__KERNEL_STACK__);
-
-	init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000);
-
-        // Initialize more complicated things
-	init_vfs();
-
-	vfs_create("/initramfs/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
-        vfs_create("/dev/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
-
-	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
-	vfs_mount("/initramfs/", Arc_InitramfsRes);
-
-        init_acpi(Arc_BootMeta->rsdp);
-        init_apic();
-	__asm__("sti");
-	init_syscall();
-
-	vfs_link("/initramfs/boot/ANTIQUE.F14", "/font.fnt", -1);
-	vfs_rename("/font.fnt", "/fonts/font.fnt");
-	vfs_open("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
+	init_arch();
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 

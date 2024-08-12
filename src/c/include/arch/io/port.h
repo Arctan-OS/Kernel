@@ -1,5 +1,5 @@
 /**
- * @file vmm.c
+ * @file port.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -23,39 +23,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Abstract IO port reads and writes on different architectures.
 */
-#include <mm/vmm.h>
-#include <mm/buddy.h>
-#include <arch/pager.h>
+#ifndef ARC_ARCH_IO_PORT_H
+#define ARC_ARCH_IO_PORT_H
 
-static struct ARC_BuddyMeta vmm_meta = { 0 };
+#ifdef ARC_TARGET_ARCH_X86_64
+#include <arch/x86-64/io/port.h>
+#endif
 
-void *vmm_alloc(size_t size) {
-	void *virtual = buddy_alloc(&vmm_meta, size);
-
-	if (pager_fly_map((uintptr_t)virtual, size, 0) != 0) {
-		buddy_free(&vmm_meta, virtual);
-
-		return NULL;
-	}
-
-	return virtual;
-}
-
-void *vmm_free(void *address) {
-	size_t freed = buddy_free(&vmm_meta, address);
-
-	if (freed == 0) {
-		return NULL;
-	}
-
-	if (pager_fly_unmap((uintptr_t)address, freed) != 0) {
-		return NULL;
-	}
-
-	return address;
-}
-
-int init_vmm(void *addr, size_t size) {
-	return init_buddy(&vmm_meta, addr, size, 12);
-}
+#endif
