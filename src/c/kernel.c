@@ -26,6 +26,7 @@
 */
 #include <global.h>
 #include <arch/start.h>
+#include <arch/smp.h>
 #include <fs/vfs.h>
 #include <interface/framebuffer.h>
 
@@ -35,6 +36,11 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
+int proc_test(int processor) {
+	printf("Processor %d has arrived\n", processor);
+
+	ARC_HANG;
+}
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
@@ -52,6 +58,17 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	init_static_mutex(&Arc_MainTerm.lock);
 
 	init_arch();
+
+	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->generic.next;
+	while (desc != NULL) {
+		desc->generic.flags |= 1 << 1;
+		while ((desc->generic.flags >> 1) & 1) __asm__("pause");
+
+		smp_jmp(desc, proc_test, 1, desc->generic.acpi_uid);
+
+		desc = desc->generic.next;
+	}
+
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 

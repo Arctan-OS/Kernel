@@ -30,44 +30,16 @@
 #define ARC_ARCH_X86_64_SMP_H
 
 #include <stdint.h>
-#include <arch/x86-64//context.h>
+#include <arch/x86-64/context.h>
 #include <lib/atomics.h>
 #include <stdarg.h>
+#include <arch/smp_generic.h>
 
 struct ARC_ProcessorDescriptor {
-	uint32_t processor;
-	uint32_t acpi_uid;
-	uint32_t acpi_flags;
 	uint32_t bist;
 	uint32_t model_info;
-	uint32_t status;
-	// Bit | Description
-	// 0   | Initialized
-	// 1   | Holding
-	struct ARC_Registers registers;
-	ARC_GenericMutex register_lock;
-	uint32_t flags;
-	// Bit | Description
-	// 0   | 1: Signals external modification of register state, cleared once
-	//          changes have been accepted
-	// 1   | 1: Write all registers to the registers member of this structure
-	// 2   | 1: Timer values have been changed, cleared once changes have
-	//          been accepted
-	struct ARC_ProcessorDescriptor *next;
-	uint32_t timer_ticks;
-	uint32_t timer_mode;
-	ARC_GenericMutex timer_lock;
+	struct ARC_GenericProcessorDescriptor generic;
 };
-
-// NOTE: The index in Arc_ProcessorList corresponds to the LAPIC ID
-//       acquired from CPUID 0x1, ebx >> 24
-extern struct ARC_ProcessorDescriptor Arc_ProcessorList[256];
-// NOTE: Since the processor structure includes a next pointer,
-//       this allows us to also traverse the list by processor,
-//       while still being able to address the list by LAPIC ID
-//       in O(1) time
-extern struct ARC_ProcessorDescriptor *Arc_BootProcessor;
-extern uint32_t Arc_ProcessorCounter;
 
 /**
  * Hold the given processor.

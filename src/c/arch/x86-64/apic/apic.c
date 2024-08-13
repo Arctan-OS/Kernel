@@ -30,7 +30,7 @@
 #include <mm/allocator.h>
 #include <fs/vfs.h>
 #include <global.h>
-#include <arch/x86-64/smp.h>
+#include <arch/smp.h>
 #include <lib/util.h>
 
 #define ENTRY_TYPE_LAPIC               0x00
@@ -97,8 +97,8 @@ int apic_map_gsi_irq(uint8_t gsi, uint8_t irq, uint32_t destination, uint32_t fl
 int init_apic() {
 	uint32_t bsp = init_lapic();
 	lapic_setup_timer(32, ARC_LAPIC_TIMER_PERIODIC);
-	Arc_ProcessorList[bsp].timer_ticks = 1000;
-	Arc_ProcessorList[bsp].timer_mode = ARC_LAPIC_TIMER_PERIODIC;
+	Arc_ProcessorList[bsp].generic.timer_ticks = 1000;
+	Arc_ProcessorList[bsp].generic.timer_mode = ARC_LAPIC_TIMER_PERIODIC;
 	lapic_refresh_timer(1000);
 
 	struct ARC_File *apic = NULL;

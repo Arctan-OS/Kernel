@@ -1,5 +1,5 @@
 /**
- * @file smp.h
+ * @file smp.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -23,30 +23,16 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
- * Abstract the initialization and management of symmetric multi-processing on different
- * architectures.
 */
-#ifndef ARC_ARCH_SMP_H
-#define ARC_ARCH_SMP_H
+#include <arch/smp.h>
+#include <stddef.h>
 
-#include <stdint.h>
-#include <lib/atomics.h>
+struct ARC_ProcessorDescriptor Arc_ProcessorList[256] = { 0 };
+uint32_t Arc_ProcessorCounter = 0;
+struct ARC_ProcessorDescriptor *Arc_BootProcessor = NULL;
 
+uint32_t get_processor_id() {
 #ifdef ARC_TARGET_ARCH_X86_64
-#include <arch/x86-64/apic/lapic.h>
-#include <arch/x86-64/smp.h>
+	return lapic_get_id();
 #endif
-
-// NOTE: The index in Arc_ProcessorList corresponds to the ID
-//       acquired from get_processor_id();
-extern struct ARC_ProcessorDescriptor Arc_ProcessorList[256];
-// NOTE: Since the processor structure includes a next pointer,
-//       this allows us to also traverse the list by processor,
-//       while still being able to address the list by processor ID
-//       in O(1) time
-extern struct ARC_ProcessorDescriptor *Arc_BootProcessor;
-extern uint32_t Arc_ProcessorCounter;
-
-uint32_t get_processor_id();
-
-#endif
+}
