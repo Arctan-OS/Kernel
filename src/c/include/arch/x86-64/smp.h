@@ -24,7 +24,7 @@
  *
  * @DESCRIPTION
  * A header file contianing functions for managing and initializing application processors
- * for symmetric multi-processing.
+ * for symmetric multi-processing specifically on x86-64.
 */
 #ifndef ARC_ARCH_X86_64_SMP_H
 #define ARC_ARCH_X86_64_SMP_H
@@ -33,7 +33,7 @@
 #include <arch/x86-64/context.h>
 #include <lib/atomics.h>
 #include <stdarg.h>
-#include <arch/smp_generic.h>
+#include <arch/generic/smp.h>
 
 struct ARC_ProcessorDescriptor {
 	uint32_t bist;

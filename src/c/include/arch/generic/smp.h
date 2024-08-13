@@ -23,11 +23,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
- * Abstract the initialization and management of symmetric multi-processing on different
- * architectures.
+ * The generic definitions for symmetric multi-processing. This is not meant to be
+ * directly included by external callers, but by SMP implementations like arch/x86-64.
+ * This is meant to serve is an outline for the absolute minimum that a processor descriptor
+ * structure must have.
 */
-#ifndef ARC_ARCH_SMP_GENERIC_H
-#define ARC_ARCH_SMP_GENERIC_H
+#ifndef ARC_ARCH_GENERIC_SMP_H
+#define ARC_ARCH_GENERIC_SMP_H
 
 #include <stdint.h>
 #include <lib/atomics.h>
@@ -58,7 +60,5 @@ struct ARC_GenericProcessorDescriptor {
 	uint32_t timer_mode;
 	ARC_GenericMutex timer_lock;
 };
-
-
 
 #endif

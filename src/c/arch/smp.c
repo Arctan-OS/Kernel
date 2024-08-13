@@ -23,6 +23,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Definitions of functions and variables declared in arch/smp.h.
 */
 #include <arch/smp.h>
 #include <stddef.h>
