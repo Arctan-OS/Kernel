@@ -52,7 +52,7 @@ struct arc_vfs_traverse_info {
 	uint32_t mode;
 	/// Type of node to create.
 	int type;
-	/// Creation level
+	/// Creation level.
 #define ARC_VFS_NO_CREAT 0x1 // Don't create anything, just traverse.
 #define ARC_VFS_GR_CREAT 0x2 // Create node graph from physical file system.
 #define ARC_VFS_FS_CREAT 0x4 // Create node graph and physical file system from path.
@@ -62,6 +62,8 @@ struct arc_vfs_traverse_info {
 	// TODO: This is fairly hacky, try to come up with a better way
 	// to do this
 	void *overwrite_arg;
+	// Ticket for the node->branch_lock.
+	void *ticket;
 };
 
 /**
@@ -70,6 +72,9 @@ struct arc_vfs_traverse_info {
  * General function for deleting nodes. Parent
  * node's children are updated to remove the link
  * to this node.
+ *
+ * NOTE: It is expected that the branch and property locks are
+ *       held by the caller and the branch lock is frozen.
  *
  * @param struct ARC_VFSNode *node - The node which to destroy.
  * @param bool recurse - Whether to recurse or not.
@@ -84,6 +89,9 @@ int vfs_delete_node(struct ARC_VFSNode *node, bool recurse);
  * starts a chain of destruction upward of unused nodes.
  * This frees up memory, at the cost of some caching.
  *
+ * NOTE: It is expected for the branch lock of the top node to be held by
+ *       the caller prior to calling this function.
+ *
  * @param struct ARC_VFSNode *bottom - Bottom-most node to start from.
  * @param struct ARC_VFSNode *top - Topmost node to end on.
  * @return positive integer indicating the number of nodes freed.
@@ -97,12 +105,30 @@ int vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top);
  * any unused nodes to save on some memory. It takes
  * quite a big lock (the top node is locked).
  *
+ * NOTE: It is expected for the branch lock of the top node to be held by
+ *       the caller prior to calling this function.
+ *
  * @param struct ARC_VFSNode *top - The starting node.
  * @param int depth - How far down the function can traverse.
  * @return poisitive integer indicating the number of nodes freed.
  * */
 int vfs_top_down_prune(struct ARC_VFSNode *top, int depth);
 
-int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_depth);
+/**
+ * Traverse the given filepath in the VFS.
+ *
+ * Traverse the nodes of the VFS to reach the final node in the given
+ * filepath using the given information structure.
+ *
+ * @param char *filepath - The filepath to traverse.
+ * @param struct arc_vfs_traverse_info *info - The information structure.
+ * @param bool resolve_links - 1: Resolve links encountered while traversing.
+ * @return zero upon success. When a filepath has been sucessfully traversed, the
+ * found node's (info->node) branch_lock is returned held (node->ticket) and the node's reference
+ * count is left incremented. The caller will need to decrement these values once
+ * finished using the node. Unsuccessful traversals, on whatever node they've ended up
+ * on, will automatically decrement the reference counter and release the branch_lock.
+ * */
+int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolve_links);
 
 #endif

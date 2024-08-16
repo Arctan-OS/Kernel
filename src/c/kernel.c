@@ -29,6 +29,8 @@
 #include <arch/smp.h>
 #include <fs/vfs.h>
 #include <interface/framebuffer.h>
+#include <mp/sched/abstract.h>
+#include <mm/allocator.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
@@ -36,8 +38,16 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
+struct ARC_TicketLock test_lock = { 0 };
+
 int proc_test(int processor) {
-	printf("Processor %d has arrived\n", processor);
+	(void)processor;
+	struct ARC_File *file = NULL;
+	int i = vfs_open("/initramfs/boot/credit.txt", 0, ARC_STD_PERM, 0, (void *)&file);
+	char data[24];
+	vfs_read(&data, 1, 24, file);
+	printf("Processor %d has arrived %"PRIx64" %d %s\n", get_processor_id(), get_current_tid(), i, data);
+	vfs_close(file);
 
 	ARC_HANG;
 }
@@ -57,7 +67,15 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_MainTerm.cy = 0;
 	init_static_mutex(&Arc_MainTerm.lock);
 
+	init_static_ticket_lock(&test_lock);
+
 	init_arch();
+
+	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
+
+	list("/", 8);
+
+	printf("-----------------------------------------\n");
 
 	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->generic.next;
 	while (desc != NULL) {
@@ -68,11 +86,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 		desc = desc->generic.next;
 	}
-
-
-	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
-
-	list("/", 8);
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {

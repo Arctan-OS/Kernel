@@ -51,7 +51,7 @@ int init_vfs() {
 	vfs_root.resource = (struct ARC_Resource *)&root_res;
 	vfs_root.type = ARC_VFS_N_ROOT;
 
-	init_static_qlock(&vfs_root.branch_lock);
+	init_static_ticket_lock(&vfs_root.branch_lock);
 	init_static_mutex(&vfs_root.property_lock);
 
 	ARC_DEBUG(INFO, "Created VFS root (%p)\n", &vfs_root);
@@ -85,7 +85,9 @@ int vfs_mount(char *mountpoint, struct ARC_Resource *resource) {
 
 	if (mount->type != ARC_VFS_N_DIR) {
 		ARC_DEBUG(ERR, "%s is not a directory (or already mounted)\n", mountpoint);
-		return -1;
+		mount->ref_count--; // TODO: Atomize
+		ticket_unlock(info.ticket);
+		return -2;
 	}
 
 	mutex_lock(&mount->property_lock);
@@ -95,7 +97,10 @@ int vfs_mount(char *mountpoint, struct ARC_Resource *resource) {
 
 	mutex_unlock(&mount->property_lock);
 
-	qunlock(&mount->branch_lock);
+	// NOTE: ref_count is not decremented so that prune
+	//       functions in graph.c have no chance of freeing
+	//       a mountpoint
+	ticket_unlock(info.ticket);
 
 	ARC_DEBUG(INFO, "Successfully mounted resource %p at %s (%p)\n", resource, mountpoint, mount);
 
@@ -115,15 +120,14 @@ int vfs_unmount(struct ARC_VFSNode *mount) {
 		return -1;
 	}
 
-	// Mark node for unmounting
-
-	if (qlock(&mount->branch_lock) != 0) {
+	void *ticket = ticket_lock(&mount->branch_lock);
+	if (ticket == NULL) {
 		ARC_DEBUG(ERR, "Lock error!\n");
 		return -1;
 	}
-	qlock_yield(&mount->branch_lock);
+	ticket_lock_yield(ticket);
 
-	if (qlock_freeze(&mount->branch_lock) != 0) {
+	if (ticket_lock_freeze(&mount->branch_lock) != 0) {
 		ARC_DEBUG(ERR, "Could not freeze lock!\n");
 		return -1;
 	}
@@ -131,7 +135,7 @@ int vfs_unmount(struct ARC_VFSNode *mount) {
 	// TODO: Synchronize
 	// TODO: Destroy nodes
 
-	qunlock(&mount->branch_lock);
+	ticket_unlock(ticket);
 
 	ARC_DEBUG(INFO, "Successfully unmount %p\n", mount);
 
@@ -161,17 +165,20 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 
 	if (node == NULL) {
 		ARC_DEBUG(ERR, "Discovered node is NULL\n");
+		return -1;
 	}
 
 	ARC_DEBUG(INFO, "Found node %p\n", node);
 
 	// Create file descriptor
-	struct ARC_File *desc = (struct ARC_File *)alloc(sizeof(struct ARC_File));
+	struct ARC_File *desc = (struct ARC_File *)alloc(sizeof(*desc));
 	if (desc == NULL) {
+		node->ref_count--; // TODO: Atomize
+		ticket_unlock(info.ticket);
 		return ENOMEM;
 	}
 
-	memset(desc, 0, sizeof(struct ARC_File));
+	memset(desc, 0, sizeof(*desc));
 	*ret = desc;
 
 	desc->mode = mode;
@@ -184,6 +191,7 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 	if (node->is_open == 0 && node->type != ARC_VFS_N_DIR) {
 		if (node->type == ARC_VFS_N_LINK) {
 			node = node->link;
+			printf("locking2\n");
 			mutex_lock(&node->property_lock);
 		}
 
@@ -195,6 +203,7 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 		}
 
 		if (desc->node->type == ARC_VFS_N_LINK) {
+			printf("unlocking2\n");
 			mutex_unlock(&node->property_lock);
 		}
 
@@ -207,7 +216,7 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 
 	desc->reference = reference_resource(node->resource);
 
-	qunlock(&node->branch_lock);
+	ticket_unlock(info.ticket);
 
 	ARC_DEBUG(INFO, "Opened file successfully\n");
 
@@ -295,12 +304,6 @@ int vfs_close(struct ARC_File *file) {
 
 	struct ARC_VFSNode *node = file->node;
 
-	if (qlock(&node->branch_lock) != 0) {
-		ARC_DEBUG(ERR, "Lock error\n");
-		return -1;
-	}
-	qlock_yield(&node->branch_lock);
-
 	mutex_lock(&node->property_lock);
 
 	// TODO: Account if node->type == ARC_VFS_N_LINK
@@ -315,6 +318,18 @@ int vfs_close(struct ARC_File *file) {
 		mutex_unlock(&node->property_lock);
 
 		return 0;
+	}
+
+	void *ticket = ticket_lock(&node->branch_lock);
+
+	if (ticket == NULL) {
+		ARC_DEBUG(ERR, "Lock error\n");
+		return -1;
+	}
+	ticket_lock_yield(ticket);
+
+	if (ticket_lock_freeze(&node->branch_lock) != 0) {
+		ARC_DEBUG(ERR, "Failed to freeze lock while closing fully\n");
 	}
 
 	struct ARC_Resource *res = node->resource;
@@ -354,7 +369,7 @@ int vfs_create(char *path, uint32_t mode, int type, void *arg) {
 	int ret = vfs_traverse(path, &info, 0);
 
 	if (ret == 0) {
-		qunlock(&info.node->branch_lock);
+		ticket_unlock(info.ticket);
 		info.node->ref_count--; // TODO: Atomize
 	}
 
@@ -385,16 +400,20 @@ int vfs_remove(char *filepath, bool physical, bool recurse) {
 	}
 
 	mutex_lock(&info.node->property_lock);
+
+	info.node->ref_count--; // TODO: Atomize
+
 	if (info.node->ref_count > 0 || info.node->is_open == 0) {
 		ARC_DEBUG(ERR, "Node %p is still in use\n", info.node);
 		mutex_unlock(&info.node->property_lock);
+		ticket_unlock(info.ticket);
 		return -1;
 	}
 
-	if (qlock(&info.node->branch_lock) != 0) {
-		ARC_DEBUG(ERR, "Lock error\n");
+	if (ticket_lock_freeze(&info.node->branch_lock) != 0) {
+		ARC_DEBUG(ERR, "Failed to freeze the lock\n");
+		return -2;
 	}
-	qlock_yield(&info.node->branch_lock);
 
 	// We now have the node completely under control
 
@@ -406,7 +425,7 @@ int vfs_remove(char *filepath, bool physical, bool recurse) {
 		if (res == NULL) {
 			ARC_DEBUG(ERR, "Cannot physically remove path, mount resource is NULL\n");
 			mutex_unlock(&info.node->property_lock);
-			qunlock(&info.node->branch_lock);
+			ticket_unlock(info.ticket);
 			return -1;
 		}
 
@@ -459,8 +478,8 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 	struct ARC_VFSNode *src = info_a.node;
 	struct ARC_VFSNode *lnk = info_b.node;
 
-	qunlock(&src->branch_lock);
-	qunlock(&lnk->branch_lock);
+	ticket_unlock(info_a.ticket);
+	ticket_unlock(info_b.ticket);
 
 	// Resolve link if src is a link
 	if (src->type == ARC_VFS_N_LINK) {
@@ -471,7 +490,7 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 	mutex_lock(&lnk->property_lock);
 	src->stat.st_nlink++;
 	// src->ref_count is already incremented from the traverse
-	lnk->ref_count--;
+	lnk->ref_count--; // TODO: Atomize
 	lnk->link = src;
 	lnk->is_open = src->is_open;
 	mutex_unlock(&src->property_lock);
@@ -506,12 +525,6 @@ int vfs_rename(char *a, char *b) {
 	}
 	struct ARC_VFSNode *node_a = info_a.node;
 
-	// Lock parent ASAP ensuring node_a is not modified
-	if (qlock(&node_a->parent->branch_lock) != 0) {
-		ARC_DEBUG(ERR, "Lock error\n");
-	}
-	qlock_yield(&node_a->parent->branch_lock);
-
 	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT | ARC_VFS_NOLCMP, .mode = node_a->stat.st_mode };
 	ARC_VFS_DETERMINE_START(info_b, b);
 
@@ -519,21 +532,27 @@ int vfs_rename(char *a, char *b) {
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find or create %s in node graph / on disk\n", b);
-		qunlock(&info_a.node->parent->branch_lock);
+		ticket_unlock(info_a.ticket);
 		return -1;
 	}
 
 	struct ARC_VFSNode *node_b = info_b.node;
 
-
 	if (node_b == node_a->parent) {
 		// Node A is already under B, just rename A.
-		qunlock(&node_b->branch_lock);
+		ticket_unlock(info_b.ticket);
 		goto rename;
 	}
 
 	// Remove node_a from parent node in preparation for patching
 	struct ARC_VFSNode *parent = node_a->parent;
+
+	void *parent_ticket = ticket_lock(&parent->branch_lock);
+	if (parent_ticket == NULL) {
+		ARC_DEBUG(ERR, "Lock error\n");
+	}
+	ticket_lock_yield(parent_ticket);
+
 	if (node_a->next != NULL) {
 		node_a->next->prev = node_a->prev;
 	}
@@ -542,6 +561,8 @@ int vfs_rename(char *a, char *b) {
 	} else {
 		parent->children = node_a->next;
 	}
+
+	ticket_unlock(parent_ticket);
 
 	// Patch node_a onto node_b
 	// node_b->branch_lock is locked by vfs_traverse
@@ -556,7 +577,7 @@ int vfs_rename(char *a, char *b) {
 	node_a->prev = NULL;
 	node_b->children = node_a;
 
-	qunlock(&node_b->branch_lock);
+	ticket_unlock(info_b.ticket);
 
 	rename:;
 	// Rename the node
@@ -586,7 +607,7 @@ int vfs_rename(char *a, char *b) {
 
 	node_a->name = strndup(end, cnt);
 
-	qunlock(&node_a->branch_lock);
+	ticket_unlock(info_a.ticket);
 
 	node_a->ref_count--; // TODO: Atomize
 	node_b->ref_count--; // TODO: Atomize
@@ -663,7 +684,7 @@ int list(char *path, int recurse) {
 	printf("Listing of %s\n", path);
 	vfs_list(&vfs_root, recurse, recurse);
 
-	qunlock(&info.node->branch_lock);
+	ticket_unlock(info.ticket);
 
 	return 0;
 }
@@ -681,8 +702,8 @@ struct ARC_VFSNode *vfs_create_rel(char *relative_path, struct ARC_VFSNode *star
 	int ret = vfs_traverse(relative_path, &info, 0);
 
 	if (ret == 0) {
-		qunlock(&info.node->branch_lock);
 		info.node->ref_count--; // TODO: Atomize
+		ticket_unlock(info.ticket);
 	} else {
 		return NULL;
 	}

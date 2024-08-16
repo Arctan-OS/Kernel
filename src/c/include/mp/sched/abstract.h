@@ -37,6 +37,6 @@ uint64_t get_current_tid();
 /**
  * Yield CPU to desired thread.
  * */
-int yield_cpu(int64_t tid);
+int yield_cpu(uint64_t tid);
 
 #endif

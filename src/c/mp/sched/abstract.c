@@ -26,19 +26,18 @@
 */
 #include <mp/sched/abstract.h>
 #include <global.h>
-#include <arch/x86-64/apic/lapic.h>
+#include <arch/smp.h>
 
 uint64_t get_current_tid() {
-
-	return ((uint64_t)lapic_get_id() << 56) | 1;
+	return ((uint64_t)get_processor_id() << 56) | 1;
 }
 
-int yield_cpu(int64_t tid) {
+int yield_cpu(uint64_t tid) {
 	if (get_current_tid() == tid) {
 		return 0;
 	}
 
-	ARC_DEBUG(INFO, "Yielding CPU\n");
+//	ARC_DEBUG(INFO, "Yielding CPU\n");
 
 	return 0;
 }

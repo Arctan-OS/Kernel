@@ -29,127 +29,132 @@
 #include <lib/util.h>
 #include <mp/sched/abstract.h>
 #include <global.h>
-struct internal_qlock_node {
-	int64_t tid;
-	struct internal_qlock_node *next;
+
+struct internal_ticket_lock_node {
+	uint64_t tid;
+	uint64_t ticket;
+	struct internal_ticket_lock_node *next;
+	struct ARC_TicketLock *parent;
 };
 
-int init_qlock(struct ARC_QLock **lock) {
-	*lock = alloc(sizeof(struct ARC_QLock));
+int init_ticket_lock(struct ARC_TicketLock **lock) {
+	*lock = alloc(sizeof(struct ARC_TicketLock));
 
 	if (*lock == NULL) {
 		return 1;
 	}
 
-	memset(*lock, 0, sizeof(struct ARC_QLock));
-
-	// Queue lock header is now created, Arc_QLock
-	// Arc_QUnlock, and Arc_QYield can now be called
-
-	return 0;
-}
-
-int init_static_qlock(struct ARC_QLock *head) {
-	memset(head, 0, sizeof(struct ARC_QLock));
+	// NOTE: This memset initializes the static mutex
+	//       as well, therefore an explicit call to
+	//       init_static_mutex is not needed
+	memset(*lock, 0, sizeof(struct ARC_TicketLock));
 
 	return 0;
 }
 
-int qlock(struct ARC_QLock *head) {
+int uninit_ticket_lock(struct ARC_TicketLock *lock) {
+	if (lock == NULL) {
+		return 1;
+	}
+
+	free(lock);
+
+	return 0;
+}
+
+int init_static_ticket_lock(struct ARC_TicketLock *head) {
+	memset(head, 0, sizeof(struct ARC_TicketLock));
+
+	return 0;
+}
+
+void *ticket_lock(struct ARC_TicketLock *head) {
 	if (head == NULL) {
-		ARC_DEBUG(ERR, "Head is NULL\n");
-		return -4;
+		return NULL;
 	}
 
 	if (head->is_frozen) {
-		ARC_DEBUG(ERR, "Head %p is frozen!\n", head);
-		return -3;
+		return NULL;
 	}
 
-	int64_t tid = get_current_tid();
+	struct internal_ticket_lock_node *ticket = (struct internal_ticket_lock_node *)alloc(sizeof(*ticket));
 
-	if (head->next != NULL && ((struct internal_qlock_node *)head->next)->tid == tid) {
-		return 0;
+	if (ticket == NULL) {
+		return NULL;
 	}
 
-	register struct internal_qlock_node *next = (struct internal_qlock_node *)alloc(sizeof(struct internal_qlock_node));
+	memset(ticket, 0, sizeof(*ticket));
 
-	if (next == NULL) {
-		ARC_DEBUG(ERR, "Failed to allocate next link\n");
-		return -2;
-	}
+	mutex_lock(&head->lock);
 
-	memset(next, 0, sizeof(struct internal_qlock_node));
+	struct internal_ticket_lock_node *last = (struct internal_ticket_lock_node *)head->last;
 
-	next->tid = tid;
+	ticket->ticket = head->next_ticket++;
+	ticket->parent = head;
+	ticket->tid = get_current_tid();
+	ticket->next = NULL;
 
-	mutex_unlock(&head->lock);
-
-	if (head->last == NULL) {
-		head->next = next;
+	if (last != NULL) {
+		last->next = ticket;
 	} else {
-		((struct internal_qlock_node *)head->last)->next = next;
+		head->next = ticket;
 	}
 
-	head->last = next;
+	head->last = ticket;
 
 	mutex_unlock(&head->lock);
 
-	return 0;
+	return (void *)ticket;
 }
 
-void qlock_yield(struct ARC_QLock *head) {
-	if (head == NULL) {
+void ticket_lock_yield(void *ticket) {
+	if (ticket == NULL) {
 		ARC_DEBUG(ERR, "Head is NULL\n");
 		// TODO: What to do?
 	}
-	int64_t current_tid = ((struct internal_qlock_node *)head->next)->tid;
 
-	if (current_tid == get_current_tid()) {
+	struct internal_ticket_lock_node *wait_for = (struct internal_ticket_lock_node *)ticket;
+	struct internal_ticket_lock_node *current = (struct internal_ticket_lock_node *)wait_for->parent->next;
+
+	if (current->ticket == wait_for->ticket) {
 		return;
 	}
 
-	while (current_tid != get_current_tid()) {
-		yield_cpu(current_tid);
+	while (current->ticket != wait_for->ticket) {
+		yield_cpu(current->tid);
+		current = (struct internal_ticket_lock_node *)wait_for->parent->next;
 	}
 }
 
-int qunlock(struct ARC_QLock *head) {
-	if (head == NULL) {
-		ARC_DEBUG(ERR, "Head is NULL\n");
-		return -4;
+void *ticket_unlock(void *ticket) {
+	if (ticket == NULL) {
+		return NULL;
 	}
 
-	struct internal_qlock_node *current = (struct internal_qlock_node *)head->next;
+	struct internal_ticket_lock_node *lock = (struct internal_ticket_lock_node *)ticket;
+	struct ARC_TicketLock *head = lock->parent;
 
-	if (current == NULL) {
-		ARC_DEBUG(ERR, "No-one owns the lock\n");
-		return -2;
-	}
-
-	struct internal_qlock_node *next = current->next;
-
-	if (current->tid != get_current_tid()) {
-		ARC_DEBUG(ERR, "Lock is not owned by 0x%"PRIx64" (!= 0x%"PRIx64")\n", get_current_tid(), current->tid);
-		return -1;
+	if (head->next != lock) {
+		return NULL;
 	}
 
 	mutex_lock(&head->lock);
 
-	free(head->next);
+	head->next = lock->next;
 
-	head->next = next;
-
-	if (next == NULL) {
+	if (head->next == NULL) {
+		head->next_ticket = 0;
 		head->last = NULL;
 	}
 
+	free(lock);
+
 	mutex_unlock(&head->lock);
 
-	return 0;
+	return ticket;
 }
 
-int qlock_freeze(struct ARC_QLock *head) {
+int ticket_lock_freeze(struct ARC_TicketLock *head) {
 	// Freeze the lock, let no new owners in,
 	// but advance through all of the other owners
 	// already in the queue.
@@ -175,13 +180,14 @@ int qlock_freeze(struct ARC_QLock *head) {
 
 	return 0;
 }
-int qlock_thaw(struct ARC_QLock *head) {
+
+int ticket_lock_thaw(struct ARC_TicketLock *head) {
 	// Thaw a frozen lock
 	if (head->is_frozen == 0) {
 		return 0;
 	}
 
-	if (((struct internal_qlock_node *)head->next)->tid != get_current_tid()) {
+	if (((struct internal_ticket_lock_node *)head->next)->tid != get_current_tid()) {
 		return -1;
 	}
 

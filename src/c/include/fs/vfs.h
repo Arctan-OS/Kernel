@@ -56,7 +56,7 @@
  * */
 struct ARC_VFSNode {
 	/// Lock on branching of this node (link, parent, children, next, prev, name)
-	struct ARC_QLock branch_lock;
+	struct ARC_TicketLock branch_lock;
 	/// Lock on the properties of this node (type, mount, stat, is_open)
 	ARC_GenericMutex property_lock;
 	/// Pointer to the device. References can be found through consulting resource.

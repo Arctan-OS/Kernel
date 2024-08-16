@@ -158,18 +158,9 @@ int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 	return err;
 }
 
-// TODO: This prune function is called when closing or removing a file.
-//       First, it needs testing like the remove and close functions.
-//       Second, this may become costly in terms of speed, as quite a
-//       big lock is grabbed (locking the topmost node).
 int vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
 	struct ARC_VFSNode *current = bottom;
 	int freed = 0;
-
-	if (qlock(&top->branch_lock) != 0) {
-		return -1;
-	}
-	qlock_yield(&top->branch_lock);
 
 	// We have the topmost node held
 	// Delete unused directories
@@ -183,8 +174,6 @@ int vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
 
 		current = tmp;
 	} while (current != top && current != NULL && current->type != ARC_VFS_N_MOUNT);
-
-	qunlock(&top->branch_lock);
 
 	return freed;
 }
@@ -232,11 +221,6 @@ int vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
 		return 0;
 	}
 
-	if (qlock(&top->branch_lock) != 0) {
-		return -2;
-	}
-	qlock_yield(&top->branch_lock);
-
 	struct ARC_VFSNode *node = top->children;
 	int count = 0;
 
@@ -271,8 +255,8 @@ int vfs_open_vfs_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int li
 	return 0;
 }
 
-int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_depth) {
-	(void)link_depth;
+int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolve_links) {
+	(void)resolve_links;
 
 	if (filepath == NULL || info == NULL) {
 		return -1;
@@ -289,7 +273,9 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_de
 	struct ARC_VFSNode *node = info->start;
 	node->ref_count++; // TODO: Atomize
 
-	if (qlock(&node->branch_lock) != 0) {
+	void *ticket = ticket_lock(&node->branch_lock);
+
+	if (ticket == NULL) {
 		ARC_DEBUG(ERR, "Lock error\n");
 		return -1;
 	}
@@ -342,7 +328,7 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_de
 		}
 
 		// Wait to acquire lock on current node
-		qlock_yield(&node->branch_lock);
+		ticket_lock_yield(ticket);
 
 		struct ARC_VFSNode *next = NULL;
 
@@ -375,6 +361,10 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_de
 				// The node does not exist, but the ARC_VFS_NO_CREAT
 				// is set, therefore just return
 				ARC_DEBUG(ERR, "ARC_VFS_NO_CREAT specified\n");
+
+				node->ref_count--;
+				ticket_unlock(ticket);
+
 				return i;
 			}
 
@@ -384,6 +374,10 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_de
 
 			if (next == NULL) {
 				ARC_DEBUG(ERR, "Failed to allocate new node\n");
+
+				node->ref_count--;
+				ticket_unlock(ticket);
+
 				return i;
 			}
 
@@ -400,7 +394,7 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_de
 			// Set properties
 			next->name = strndup(component, component_size);
 			next->type = is_last ? info->type : ARC_VFS_N_DIR;
-			init_static_qlock(&next->branch_lock);
+			init_static_ticket_lock(&next->branch_lock);
 			init_static_mutex(&next->property_lock);
 
 			next->stat.st_mode = (info->mode & 0777) | vfs_type2mode(next->type);
@@ -464,20 +458,22 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_de
 
 			if (info->mount != NULL) {
 				mutex_unlock(&info->mount->resource->dri_state_mutex);
-
 			}
+
 			skip_resource:;
 		}
 
 		resolve:;
 
 		// Next node should not be NULL
-		if (qlock(&next->branch_lock) != 0) {
+		void *next_ticket = ticket_lock(&next->branch_lock);
+		if (next_ticket == NULL) {
 			ARC_DEBUG(ERR, "Lock error!\n");
 			// TODO: Do something
 		}
-		qunlock(&node->branch_lock);
-
+		ticket_unlock(ticket);
+		ticket = next_ticket;
+	
 		node->ref_count--; // TODO: Atomize
 		node = next;
 		node->ref_count++; // TODO: Atomize
@@ -493,6 +489,7 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, int link_de
 	// wth the node
 
 	info->node = node;
+	info->ticket = ticket;
 
 	return 0;
 }
