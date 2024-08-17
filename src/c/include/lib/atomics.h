@@ -107,8 +107,8 @@ void ticket_lock_yield(void *ticket);
  * */
 void *ticket_unlock(void *ticket);
 
-int ticket_lock_freeze(struct ARC_TicketLock *head);
-int ticket_lock_thaw(struct ARC_TicketLock *head);
+int ticket_lock_freeze(void *ticket);
+int ticket_lock_thaw(void *ticket);
 
 int init_mutex(ARC_GenericMutex **mutex);
 int uninit_mutex(ARC_GenericMutex *mutex);

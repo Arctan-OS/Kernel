@@ -29,6 +29,7 @@
 #include <lib/util.h>
 #include <mp/sched/abstract.h>
 #include <global.h>
+#include <arch/smp.h>
 
 struct internal_ticket_lock_node {
 	uint64_t tid;
@@ -154,20 +155,13 @@ void *ticket_unlock(void *ticket) {
 	return ticket;
 }
 
-int ticket_lock_freeze(struct ARC_TicketLock *head) {
-	// Freeze the lock, let no new owners in,
-	// but advance through all of the other owners
-	// already in the queue.
-	//
-	// If the owner we are currently getting through
-	// calls this function, return an error, as it is
-	// already frozen.
-	//
-	// Once all other owners have been removed from the
-	// queue, call original owner who invoked this function.
-	//
-	// Note: The calling thread must own the lock to freeze
-	// it.
+int ticket_lock_freeze(void *ticket) {
+	if (ticket == NULL) {
+		return -1;
+	}
+
+	struct internal_ticket_lock_node *lock = (struct internal_ticket_lock_node *)ticket;
+	struct ARC_TicketLock *head = lock->parent;
 
 	if (head->is_frozen == 1) {
 		ARC_DEBUG(ERR, "Lock is already frozen!\n");
@@ -176,18 +170,29 @@ int ticket_lock_freeze(struct ARC_TicketLock *head) {
 
 	head->is_frozen = 1;
 
-	// TODO: Implement yielding
+	ticket_unlock(lock);
+
+	while (head->next != NULL) {
+		__asm__("pause");
+	}
 
 	return 0;
 }
 
-int ticket_lock_thaw(struct ARC_TicketLock *head) {
+int ticket_lock_thaw(void *ticket) {
+	if (ticket == NULL ) {
+		return -1;
+	}
+
+	struct internal_ticket_lock_node *lock = (struct internal_ticket_lock_node *)ticket;
+	struct ARC_TicketLock *head = lock->parent;
+
 	// Thaw a frozen lock
 	if (head->is_frozen == 0) {
 		return 0;
 	}
 
-	if (((struct internal_ticket_lock_node *)head->next)->tid != get_current_tid()) {
+	if (lock->parent->next != lock) {
 		return -1;
 	}
 

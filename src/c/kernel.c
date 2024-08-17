@@ -44,10 +44,12 @@ int proc_test(int processor) {
 	(void)processor;
 	struct ARC_File *file = NULL;
 	int i = vfs_open("/initramfs/boot/credit.txt", 0, ARC_STD_PERM, 0, (void *)&file);
-	char data[24];
+	char data[26] = { 0 };
 	vfs_read(&data, 1, 24, file);
-	printf("Processor %d has arrived %"PRIx64" %d %s\n", get_processor_id(), get_current_tid(), i, data);
+	printf("Processor %d has arrived %"PRIx64" %d %s\n", processor, get_current_tid(), i, data);
 	vfs_close(file);
+	printf("Processor did not deadlock %d\n", processor);
+
 
 	ARC_HANG;
 }

@@ -36,6 +36,7 @@
 #include <interface/printf.h>
 #include <fs/graph.h>
 #include <drivers/dri_defs.h>
+#include <arch/smp.h>
 
 // TODO: Implement error cases for all functions.
 // TODO: Correct permissions, currently the inference
@@ -191,7 +192,6 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 	if (node->is_open == 0 && node->type != ARC_VFS_N_DIR) {
 		if (node->type == ARC_VFS_N_LINK) {
 			node = node->link;
-			printf("locking2\n");
 			mutex_lock(&node->property_lock);
 		}
 
@@ -203,7 +203,6 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 		}
 
 		if (desc->node->type == ARC_VFS_N_LINK) {
-			printf("unlocking2\n");
 			mutex_unlock(&node->property_lock);
 		}
 
@@ -307,7 +306,6 @@ int vfs_close(struct ARC_File *file) {
 	mutex_lock(&node->property_lock);
 
 	// TODO: Account if node->type == ARC_VFS_N_LINK
-
 	if (node->ref_count > 1 || (node->type != ARC_VFS_N_FILE && node->type != ARC_VFS_N_LINK)) {
 		ARC_DEBUG(INFO, "ref_count (%lu) > 1, closing file descriptor\n", node->ref_count);
 
@@ -321,15 +319,20 @@ int vfs_close(struct ARC_File *file) {
 	}
 
 	void *ticket = ticket_lock(&node->branch_lock);
-
 	if (ticket == NULL) {
 		ARC_DEBUG(ERR, "Lock error\n");
 		return -1;
 	}
 	ticket_lock_yield(ticket);
 
-	if (ticket_lock_freeze(&node->branch_lock) != 0) {
+	if (ticket_lock_freeze(ticket) != 0) {
 		ARC_DEBUG(ERR, "Failed to freeze lock while closing fully\n");
+	}
+
+	if (node->ref_count > 1) {
+		mutex_unlock(&node->property_lock);
+		ticket_lock_thaw(ticket);
+		return 0;
 	}
 
 	struct ARC_Resource *res = node->resource;

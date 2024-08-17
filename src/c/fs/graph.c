@@ -491,5 +491,7 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 	info->node = node;
 	info->ticket = ticket;
 
+	ticket_lock_yield(ticket);
+
 	return 0;
 }
