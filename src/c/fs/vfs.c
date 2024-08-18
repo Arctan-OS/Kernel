@@ -307,7 +307,7 @@ int vfs_close(struct ARC_File *file) {
 
 	// TODO: Account if node->type == ARC_VFS_N_LINK
 	if (node->ref_count > 1 || (node->type != ARC_VFS_N_FILE && node->type != ARC_VFS_N_LINK)) {
-		ARC_DEBUG(INFO, "ref_count (%lu) > 1, closing file descriptor\n", node->ref_count);
+		ARC_DEBUG(INFO, "ref_count (%lu) > 1 or is non-file, closing file descriptor\n", node->ref_count);
 
 		unrefrence_resource(file->reference);
 		free(file);

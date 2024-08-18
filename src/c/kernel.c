@@ -38,18 +38,23 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
-struct ARC_TicketLock test_lock = { 0 };
-
 int proc_test(int processor) {
-	(void)processor;
 	struct ARC_File *file = NULL;
 	int i = vfs_open("/initramfs/boot/credit.txt", 0, ARC_STD_PERM, 0, (void *)&file);
 	char data[26] = { 0 };
 	vfs_read(&data, 1, 24, file);
 	printf("Processor %d has arrived %"PRIx64" %d %s\n", processor, get_current_tid(), i, data);
 	vfs_close(file);
-	printf("Processor did not deadlock %d\n", processor);
 
+	size_t size = 26;
+	vfs_create("/write_test.txt", ARC_STD_PERM, ARC_VFS_N_BUFF, &size);
+	vfs_open("/write_test.txt", 0, ARC_STD_PERM, 0, (void *)&file);
+	vfs_seek(file, 3 * (processor - 1), ARC_VFS_SEEK_SET);
+	sprintf_(data, "C%d ", processor);
+	vfs_write(data, 1, 3, file);
+	vfs_close(file);
+
+	printf("Processor did not deadlock %d\n", processor);
 
 	ARC_HANG;
 }
@@ -96,6 +101,13 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
+
+	struct ARC_File *file = NULL;
+	vfs_open("/write_test.txt", 0, ARC_STD_PERM, 0, (void *)&file);
+	char buffer[26] = { 0 };
+	vfs_read(buffer, 1, 24, file);
+	printf("Processors wrote: %s\n", buffer);
+	vfs_close(file);
 
 	term_draw(&Arc_MainTerm);
 
