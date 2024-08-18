@@ -74,13 +74,11 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_MainTerm.cy = 0;
 	init_static_mutex(&Arc_MainTerm.lock);
 
-	init_static_ticket_lock(&test_lock);
-
 	init_arch();
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	list("/", 8);
+	vfs_list("/", 8);
 
 	printf("-----------------------------------------\n");
 

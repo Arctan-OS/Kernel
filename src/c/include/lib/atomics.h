@@ -34,6 +34,8 @@
 #define ARC_MEM_BARRIER __asm__("" ::: "memory");
 // TODO: Fences
 
+#define ARC_ATOMIC_INC(__val) __atomic_add_fetch(&__val, 1, __ATOMIC_ACQUIRE);
+#define ARC_ATOMIC_DEC(__val) __atomic_sub_fetch(&__val, 1, __ATOMIC_ACQUIRE);
 
 /// Generic spinlock
 typedef _Atomic int ARC_GenericSpinlock;

@@ -43,7 +43,7 @@ struct ARC_Resource {
 
 	struct ARC_Reference *references;
 
-	uint64_t ref_count; // TODO: Atomize
+	uint64_t ref_count;
 
 	/// State managed by driver, owned by resource.
 	ARC_GenericMutex dri_state_mutex;

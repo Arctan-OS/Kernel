@@ -99,7 +99,7 @@ struct ARC_Resource *init_resource(int dri_group, uint64_t dri_index, void *args
 	ARC_DEBUG(INFO, "Initializing resource %lu (%d, %lu)\n", current_id, dri_group, dri_index);
 
 	// Initialize resource properties
-	resource->id = current_id++; // TODO: Atomize
+	resource->id = ARC_ATOMIC_INC(current_id);
 	resource->dri_group = dri_group;
 	resource->dri_index = dri_index;
 	init_static_mutex(&resource->dri_state_mutex);
@@ -143,7 +143,7 @@ int uninit_resource(struct ARC_Resource *resource) {
 
 		// TODO: What if we fail to close?
 		if (current_ref->signal(ARC_SIGREF_CLOSE, NULL) == 0) {
-			resource->ref_count -= 1; // TODO: Atomize
+			ARC_ATOMIC_DEC(resource->ref_count);
 			free(current_ref);
 		}
 
@@ -174,7 +174,7 @@ struct ARC_Reference *reference_resource(struct ARC_Resource *resource) {
 
 	// Set properties of resource
 	ref->resource = resource;
-	resource->ref_count++; // TODO: Atomize
+	ARC_ATOMIC_INC(resource->ref_count);
 	// Insert reference
 	if (resource->references != NULL) {
 		mutex_lock(&resource->references->branch_mutex);
@@ -212,7 +212,7 @@ int unrefrence_resource(struct ARC_Reference *reference) {
 		mutex_lock(&next->branch_mutex);
 	}
 
-	res->ref_count--; // TODO: Atomize
+	ARC_ATOMIC_DEC(res->ref_count);
 
 	// Update links
 	if (prev == NULL) {

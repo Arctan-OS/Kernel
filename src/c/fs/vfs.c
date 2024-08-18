@@ -33,10 +33,8 @@
 #include <fs/vfs.h>
 #include <global.h>
 #include <lib/util.h>
-#include <interface/printf.h>
 #include <fs/graph.h>
 #include <drivers/dri_defs.h>
-#include <arch/smp.h>
 
 // TODO: Implement error cases for all functions.
 // TODO: Correct permissions, currently the inference
@@ -86,7 +84,7 @@ int vfs_mount(char *mountpoint, struct ARC_Resource *resource) {
 
 	if (mount->type != ARC_VFS_N_DIR) {
 		ARC_DEBUG(ERR, "%s is not a directory (or already mounted)\n", mountpoint);
-		mount->ref_count--; // TODO: Atomize
+		ARC_ATOMIC_DEC(mount->ref_count);
 		ticket_unlock(info.ticket);
 		return -2;
 	}
@@ -143,7 +141,7 @@ int vfs_unmount(struct ARC_VFSNode *mount) {
 	return 0;
 }
 
-int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
+int vfs_open(char *path, int flags, uint32_t mode, int link_depth, struct ARC_File **ret) {
 	(void)flags;
 
 	if (path == NULL) {
@@ -174,7 +172,7 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret) {
 	// Create file descriptor
 	struct ARC_File *desc = (struct ARC_File *)alloc(sizeof(*desc));
 	if (desc == NULL) {
-		node->ref_count--; // TODO: Atomize
+		ARC_ATOMIC_DEC(node->ref_count);
 		ticket_unlock(info.ticket);
 		return ENOMEM;
 	}
@@ -311,7 +309,7 @@ int vfs_close(struct ARC_File *file) {
 
 		unrefrence_resource(file->reference);
 		free(file);
-		node->ref_count--; // TODO: Atomize
+		ARC_ATOMIC_DEC(node->ref_count);
 
 		mutex_unlock(&node->property_lock);
 
@@ -373,7 +371,7 @@ int vfs_create(char *path, uint32_t mode, int type, void *arg) {
 
 	if (ret == 0) {
 		ticket_unlock(info.ticket);
-		info.node->ref_count--; // TODO: Atomize
+		ARC_ATOMIC_DEC(info.node->ref_count);
 	}
 
 	return ret;
@@ -404,7 +402,7 @@ int vfs_remove(char *filepath, bool physical, bool recurse) {
 
 	mutex_lock(&info.node->property_lock);
 
-	info.node->ref_count--; // TODO: Atomize
+	ARC_ATOMIC_DEC(info.node->ref_count);
 
 	if (info.node->ref_count > 0 || info.node->is_open == 0) {
 		ARC_DEBUG(ERR, "Node %p is still in use\n", info.node);
@@ -493,7 +491,7 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 	mutex_lock(&lnk->property_lock);
 	src->stat.st_nlink++;
 	// src->ref_count is already incremented from the traverse
-	lnk->ref_count--; // TODO: Atomize
+	ARC_ATOMIC_DEC(lnk->ref_count);
 	lnk->link = src;
 	lnk->is_open = src->is_open;
 	mutex_unlock(&src->property_lock);
@@ -612,8 +610,8 @@ int vfs_rename(char *a, char *b) {
 
 	ticket_unlock(info_a.ticket);
 
-	node_a->ref_count--; // TODO: Atomize
-	node_b->ref_count--; // TODO: Atomize
+	ARC_ATOMIC_DEC(node_a->ref_count);
+	ARC_ATOMIC_DEC(node_b->ref_count);
 
 	if (info_a.mount == NULL) {
 		// Virtually renamed the files, nothing else
@@ -635,7 +633,7 @@ int vfs_rename(char *a, char *b) {
 	return 0;
 }
 
-int vfs_list(struct ARC_VFSNode *node, int recurse, int org) {
+static int list(struct ARC_VFSNode *node, int recurse, int org) {
 	if (node == NULL) {
 		return -1;
 	}
@@ -660,7 +658,7 @@ int vfs_list(struct ARC_VFSNode *node, int recurse, int org) {
 		printf("%s (%s, %o, 0x%"PRIx64" B)\n", child->name, names[child->type], child->stat.st_mode, child->stat.st_size);
 
 		if (recurse > 0) {
-			vfs_list(child, recurse - 1, org);
+			list(child, recurse - 1, org);
 		}
 
 		child = child->next;
@@ -669,7 +667,7 @@ int vfs_list(struct ARC_VFSNode *node, int recurse, int org) {
 	return 0;
 }
 
-int list(char *path, int recurse) {
+int vfs_list(char *path, int recurse) {
 	if (path == NULL) {
 		return -1;
 	}
@@ -682,10 +680,10 @@ int list(char *path, int recurse) {
 		return -1;
 	}
 
-	info.node->ref_count--; // TODO: Atomize
+	ARC_ATOMIC_DEC(info.node->ref_count);
 
 	printf("Listing of %s\n", path);
-	vfs_list(&vfs_root, recurse, recurse);
+	list(&vfs_root, recurse, recurse);
 
 	ticket_unlock(info.ticket);
 
@@ -705,7 +703,7 @@ struct ARC_VFSNode *vfs_create_rel(char *relative_path, struct ARC_VFSNode *star
 	int ret = vfs_traverse(relative_path, &info, 0);
 
 	if (ret == 0) {
-		info.node->ref_count--; // TODO: Atomize
+		ARC_ATOMIC_DEC(info.node->ref_count);
 		ticket_unlock(info.ticket);
 	} else {
 		return NULL;

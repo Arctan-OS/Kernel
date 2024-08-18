@@ -123,7 +123,7 @@ int vfs_unmount(struct ARC_VFSNode *mount);
  * @param struct ARC_Reference **reference - A reference to the resource.
  * @return A non-NULL pointer on success.
  * */
-int vfs_open(char *path, int flags, uint32_t mode, int link_depth, void **ret);
+int vfs_open(char *path, int flags, uint32_t mode, int link_depth, struct ARC_File **ret);
 
 /**
  * Read the given file.
@@ -189,7 +189,7 @@ int vfs_create(char *path, uint32_t mode, int type, void *arg);
 int vfs_remove(char *filepath, bool physical, bool recurse);
 int vfs_link(char *a, char *b, uint32_t mode);
 int vfs_rename(char *a, char *b);
-int list(char *path, int recurse);
+int vfs_list(char *path, int recurse);
 struct ARC_VFSNode *vfs_create_rel(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type, void *arg);
 
 #endif

@@ -271,7 +271,7 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 	ARC_DEBUG(INFO, "Traversing %s\n", filepath);
 
 	struct ARC_VFSNode *node = info->start;
-	node->ref_count++; // TODO: Atomize
+	ARC_ATOMIC_INC(node->ref_count);
 
 	void *ticket = ticket_lock(&node->branch_lock);
 
@@ -474,9 +474,9 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 		ticket_unlock(ticket);
 		ticket = next_ticket;
 	
-		node->ref_count--; // TODO: Atomize
+		ARC_ATOMIC_DEC(node->ref_count);
 		node = next;
-		node->ref_count++; // TODO: Atomize
+		ARC_ATOMIC_INC(node->ref_count);
 	}
 
 	ARC_DEBUG(INFO, "Successfully traversed %s\n", filepath);
