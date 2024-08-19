@@ -35,11 +35,8 @@
 #include <drivers/dri_defs.h>
 #include <lib/resource.h>
 
-/**
- * Convert stat.st_type to node->type.
- * */
-int vfs_stat2type(struct stat stat) {
-	switch (stat.st_mode & S_IFMT) {
+int vfs_stat2type(mode_t mode) {
+	switch (mode & S_IFMT) {
 		case S_IFDIR: {
 			return ARC_VFS_N_DIR;
 		}
@@ -58,7 +55,7 @@ int vfs_stat2type(struct stat stat) {
 	}
 }
 
-int vfs_type2mode(int type) {
+mode_t vfs_type2mode(int type) {
 	switch (type) {
 		case ARC_VFS_N_DIR: {
 			return S_IFDIR;
@@ -428,7 +425,7 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 			if (def->stat(res, phys_path, &next->stat) == 0) {
 				// Stat succeeded, file exists on filesystem,
 				// set type
-				next->type = vfs_stat2type(next->stat);
+				next->type = vfs_stat2type(next->stat.st_mode);
 			} else if ((info->create_level & ARC_VFS_FS_CREAT) != 0){
 				// ARC_VFS_FS_CREAT is specified and the stat failed,
 				// create the node in the physical filesystem

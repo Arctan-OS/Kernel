@@ -36,12 +36,14 @@
 
 #define ARC_ATOMIC_INC(__val) __atomic_add_fetch(&__val, 1, __ATOMIC_ACQUIRE);
 #define ARC_ATOMIC_DEC(__val) __atomic_sub_fetch(&__val, 1, __ATOMIC_ACQUIRE);
+#define ARC_ATOMIC_LOAD(__val) __atomic_load_n(&__val, __ATOMIC_ACQUIRE);
+#define ARC_ATOMIC_STORE(__dest, __val) __atomic_store_n(&__dest, __val, __ATOMIC_ACQUIRE);
 
 /// Generic spinlock
-typedef _Atomic int ARC_GenericSpinlock;
+typedef int ARC_GenericSpinlock;
 
 /// Generic mutex
-typedef _Atomic int ARC_GenericMutex;
+typedef int ARC_GenericMutex;
 
 /**
  * Queue lock structure

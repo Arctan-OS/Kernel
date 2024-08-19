@@ -39,6 +39,7 @@
 #endif
 
 #define printf printf_
+#define sprintf sprintf_
 
 // Configuration for printf.h
 //#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 1

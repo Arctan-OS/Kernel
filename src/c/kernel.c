@@ -49,7 +49,7 @@ int proc_test(int processor) {
 	size_t size = 26;
 	vfs_create("/write_test.txt", ARC_STD_PERM, ARC_VFS_N_BUFF, &size);
 	vfs_open("/write_test.txt", 0, ARC_STD_PERM, 0, (void *)&file);
-	vfs_seek(file, 3 * (processor - 1), ARC_VFS_SEEK_SET);
+	vfs_seek(file, 3 * (processor - 1), SEEK_SET);
 	sprintf_(data, "C%d ", processor);
 	vfs_write(data, 1, 3, file);
 	vfs_close(file);

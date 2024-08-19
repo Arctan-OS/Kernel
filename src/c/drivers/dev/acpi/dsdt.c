@@ -83,6 +83,8 @@ int uninit_dsdt() {
 
 ARC_REGISTER_DRIVER(3, dsdt) = {
         .index = ARC_DRI_DSDT,
+	.instance_counter = 0,
+	.name_format = "dsdt%d",
 	.init = init_dsdt,
 	.uninit = uninit_dsdt,
 	.read = empty_dsdt,

@@ -110,7 +110,7 @@ void term_draw(struct ARC_TermMeta *term) {
                         
 			if (Arc_FontFile != NULL) {
 				char_base = base;
-				vfs_seek(Arc_FontFile, c * (cwidth * cheight / 8), ARC_VFS_SEEK_SET);
+				vfs_seek(Arc_FontFile, c * (cwidth * cheight / 8), SEEK_SET);
 				vfs_read(char_base, 1, cwidth * cheight / 8, Arc_FontFile);
 			} else {
 				char_base = (uint8_t *)(base + (c * cheight));

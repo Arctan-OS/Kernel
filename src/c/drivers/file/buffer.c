@@ -29,6 +29,7 @@
 #include <global.h>
 #include <mm/allocator.h>
 #include <lib/util.h>
+#include <abi-bits/seek-whence.h>
 
 struct buffer_dri_state {
 	size_t size;
@@ -147,7 +148,7 @@ static int buffer_seek(struct ARC_File *file, struct ARC_Resource *res, long off
 	long size = file->node->stat.st_size;
 
 	switch (whence) {
-		case ARC_VFS_SEEK_SET: {
+		case SEEK_SET: {
 			if (offset < size) {
 				file->offset = offset;
 			}
@@ -155,7 +156,7 @@ static int buffer_seek(struct ARC_File *file, struct ARC_Resource *res, long off
 			return 0;
 		}
 
-		case ARC_VFS_SEEK_CUR: {
+		case SEEK_CUR: {
 			file->offset += offset;
 
 			if (file->offset >= size) {
@@ -165,7 +166,7 @@ static int buffer_seek(struct ARC_File *file, struct ARC_Resource *res, long off
 			return 0;
 		}
 
-		case ARC_VFS_SEEK_END: {
+		case SEEK_END: {
 			file->offset = size - offset - 1;
 
 			if (file->offset < 0) {
@@ -181,6 +182,8 @@ static int buffer_seek(struct ARC_File *file, struct ARC_Resource *res, long off
 
 ARC_REGISTER_DRIVER(0, buffer) = {
         .index = 5,
+	.instance_counter = 0,
+	.name_format = "buff%d",
 	.init = buffer_init,
 	.uninit = buffer_uninit,
 	.open = buffer_open,

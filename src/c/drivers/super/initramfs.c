@@ -149,6 +149,8 @@ struct ARC_SuperDriverDef initramfs_super_spec = {
 
 ARC_REGISTER_DRIVER(0, initramfs_super) = {
 	.index = 0,
+	.instance_counter = 0,
+	.name_format = "cpiofs%d",
 	.init = initramfs_init,
 	.uninit = initramfs_uninit,
 	.open = initramfs_empty,

@@ -25,3 +25,4 @@
  * @DESCRIPTION
  * Driver for RAM files which are FIFO queues.
 */
+#include <abi-bits/seek-whence.h>

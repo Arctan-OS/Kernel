@@ -200,7 +200,7 @@ int init_apic() {
 		}
 
 		offset += data[1];
-		vfs_seek(apic, offset, ARC_VFS_SEEK_SET);
+		vfs_seek(apic, offset, SEEK_SET);
 	}
 
 	vfs_close(apic);

@@ -51,6 +51,8 @@ struct ARC_Resource {
 
 	/// Resource id.
 	uint64_t id;
+	/// Instance.
+	uint64_t instance;
 	/// Driver function group (supplied on init by caller).
 	int dri_group;
 	/// Specific driver function set (supplied on init by caller).
@@ -90,6 +92,8 @@ struct ARC_File {
 struct ARC_DriverDef {
 	// The index of this driver
 	uint64_t index;
+	uint64_t instance_counter;
+	char *name_format;
 	// Specific
 	uint64_t identifer;
 	void *driver;
@@ -103,7 +107,7 @@ struct ARC_DriverDef {
 	int (*seek)(struct ARC_File *file, struct ARC_Resource *res, long offset, int whence);
 	/// Rename the resource.
 	int (*rename)(char *newname, struct ARC_Resource *res);
-}__attribute__((packed));
+};
 
 struct ARC_SuperDriverDef {
 	int (*create)(char *path, uint32_t mode, int type);
@@ -112,10 +116,11 @@ struct ARC_SuperDriverDef {
 	/// Rename the file.
 	int (*rename)(char *a, char *b);
 	int (*stat)(struct ARC_Resource *res, char *filename, struct stat *stat);
-}__attribute__((packed));
+};
 // /Driver definitions
 
 struct ARC_Resource *init_resource(int dri_group, uint64_t dri_index, void *args);
+int init_resource_at(char *base_path, int dri_group, uint64_t dri_index, void *args);
 int uninit_resource(struct ARC_Resource *resource);
 struct ARC_Reference *reference_resource(struct ARC_Resource *resource);
 int unrefrence_resource(struct ARC_Reference *reference);

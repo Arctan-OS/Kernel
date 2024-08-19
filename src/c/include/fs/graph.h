@@ -67,6 +67,21 @@ struct arc_vfs_traverse_info {
 };
 
 /**
+ * Convert stat.st_type to node->type.
+ * */
+int vfs_stat2type(mode_t mode);
+
+/**
+ * Convert node->type to stat.st_type.
+ * */
+mode_t vfs_type2mode(int type);
+
+/**
+ * Convert node->type nad node->mount to a group 3 driver index.
+ * */
+uint64_t vfs_type2idx(int type, struct ARC_VFSNode *mount);
+
+/**
  * Delete a node from the node graph.
  *
  * General function for deleting nodes. Parent

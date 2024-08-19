@@ -31,6 +31,15 @@
 #include <lib/util.h>
 #include <lib/atomics.h>
 
+/*
+** Driver Groups:
+**  Group Number | Description
+**  0            | Base filesystem drivers.
+**  1            | User filesystem drivers.
+**  2            | User device drivers.
+**  3            | Base device drivers.
+*/
+
 extern struct ARC_DriverDef __DRIVERS0_START[];
 extern struct ARC_DriverDef __DRIVERS1_START[];
 extern struct ARC_DriverDef __DRIVERS2_START[];
@@ -99,7 +108,9 @@ struct ARC_Resource *init_resource(int dri_group, uint64_t dri_index, void *args
 	ARC_DEBUG(INFO, "Initializing resource %lu (%d, %lu)\n", current_id, dri_group, dri_index);
 
 	// Initialize resource properties
-	resource->id = ARC_ATOMIC_INC(current_id);
+	resource->id = ARC_ATOMIC_LOAD(current_id);
+	ARC_ATOMIC_INC(current_id);
+
 	resource->dri_group = dri_group;
 	resource->dri_index = dri_index;
 	init_static_mutex(&resource->dri_state_mutex);
@@ -107,6 +118,9 @@ struct ARC_Resource *init_resource(int dri_group, uint64_t dri_index, void *args
 	// Fetch and set the appropriate definition
 	struct ARC_DriverDef *def = get_dri_def(dri_group, dri_index);
 	resource->driver = def;
+
+	resource->instance = ARC_ATOMIC_LOAD(def->instance_counter);
+	ARC_ATOMIC_INC(def->instance_counter);
 
 	if (def == NULL) {
 		free(resource);
@@ -121,6 +135,35 @@ struct ARC_Resource *init_resource(int dri_group, uint64_t dri_index, void *args
 	}
 
 	return resource;
+}
+
+int init_resource_at(char *base_path, int dri_group, uint64_t dri_index, void *args) {
+	if (base_path == NULL) {
+		return -1;
+	}
+
+	struct ARC_Resource *res = init_resource(dri_group, dri_index, args);
+
+	if (res == NULL) {
+		return -1;
+	}
+
+	char name[128] = { 0 };
+	sprintf(name, res->driver->name_format, res->instance);
+	char *filepath = (char *)alloc(strlen(base_path) + strlen(name));
+	sprintf(filepath, "%s/%s", base_path, name);
+
+	printf("Initialziing at: %s\n", filepath);
+
+	if (vfs_create(filepath, ARC_STD_PERM | 1, ARC_VFS_N_DIR, NULL) != 0) {
+		return -2;
+	}
+
+	if (vfs_mount(filepath, res) != 0) {
+		return -3;
+	}
+
+	return 0;
 }
 
 int uninit_resource(struct ARC_Resource *resource) {

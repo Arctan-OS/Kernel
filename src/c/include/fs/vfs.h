@@ -40,16 +40,13 @@
 #define ARC_VFS_N_FIFO  7
 #define ARC_VFS_N_DEV   8
 
-#define ARC_VFS_SEEK_SET 1
-#define ARC_VFS_SEEK_CUR 2
-#define ARC_VFS_SEEK_END 3
-
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/stat.h>
 #include <lib/resource.h>
 #include <lib/atomics.h>
 #include <stdbool.h>
+#include <abi-bits/seek-whence.h>
 
 /**
  * A single node in a VFS tree.

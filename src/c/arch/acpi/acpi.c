@@ -54,10 +54,7 @@ int init_acpi(uint64_t rsdp_ptr) {
         }
 
 	rsdp_ptr = ARC_PHYS_TO_HHDM(rsdp_ptr);
-
-        vfs_create("/dev/acpi", 0, ARC_VFS_N_DIR, NULL);
-        struct ARC_Resource *rsdt = init_resource(ARC_DRI_DEV, ARC_DRI_RSDT, (void *)rsdp_ptr);
-        vfs_mount("/dev/acpi", rsdt);
+	init_resource_at("/dev/", ARC_DRI_DEV, ARC_DRI_RSDT, (void *)rsdp_ptr);
 
         return 0;
 }

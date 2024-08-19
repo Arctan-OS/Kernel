@@ -28,12 +28,11 @@
 #include <abi-bits/errno.h>
 #include <lib/atomics.h>
 #include <lib/perms.h>
-#include <fs/vfs.h>
 #include <mm/allocator.h>
 #include <global.h>
-#include <time.h>
 #include <lib/util.h>
 #include <sys/stat.h>
+#include <abi-bits/seek-whence.h>
 
 #define ARC_NAME_OFFSET (sizeof(struct ARC_HeaderCPIO))
 #define ARC_NAME_SIZE(header) (header->namesize + (header->namesize & 1))
@@ -206,7 +205,7 @@ static int initramfs_seek(struct ARC_File *file, struct ARC_Resource *res, long 
 	long size = file->node->stat.st_size;
 
 	switch (whence) {
-		case ARC_VFS_SEEK_SET: {
+		case SEEK_SET: {
 			if (offset < size) {
 				file->offset = offset;
 			}
@@ -214,7 +213,7 @@ static int initramfs_seek(struct ARC_File *file, struct ARC_Resource *res, long 
 			return 0;
 		}
 
-		case ARC_VFS_SEEK_CUR: {
+		case SEEK_CUR: {
 			file->offset += offset;
 
 			if (file->offset >= size) {
@@ -224,7 +223,7 @@ static int initramfs_seek(struct ARC_File *file, struct ARC_Resource *res, long 
 			return 0;
 		}
 
-		case ARC_VFS_SEEK_END: {
+		case SEEK_END: {
 			file->offset = size - offset - 1;
 
 			if (file->offset < 0) {
@@ -240,6 +239,8 @@ static int initramfs_seek(struct ARC_File *file, struct ARC_Resource *res, long 
 
 ARC_REGISTER_DRIVER(0, initramfs_file) = {
 	.index = 1,
+	.instance_counter = 0,
+	.name_format = "cpiof%d",
 	.init = initramfs_init,
 	.uninit = initramfs_uninit,
 	.open = initramfs_open,

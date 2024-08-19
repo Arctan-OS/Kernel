@@ -82,7 +82,6 @@ int do_rsdt(void *address) {
 		struct ARC_RSDTBaseEntry *entry = (void *)ARC_PHYS_TO_HHDM(table->entries[i]);
 
 		int index = -1;
-		char *path = NULL;
 
 		switch (entry->signature) {
 			case ARC_ACPI_TBLSIG_APIC: {
@@ -98,14 +97,12 @@ int do_rsdt(void *address) {
 
 			case ARC_ACPI_TBLSIG_FACP: {
 				index = ARC_DRI_FADT;
-				path = "/dev/acpi/fadt/";
 
 				break;
 			}
 
 			case ARC_ACPI_TBLSIG_HPET: {
 				index = ARC_DRI_HPET;
-				path = "/dev/acpi/hpet/";
 
 				break;
 			}
@@ -116,9 +113,9 @@ int do_rsdt(void *address) {
 			}
 		}
 
-		vfs_create(path, ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
-		struct ARC_Resource *res = init_resource(ARC_DRI_DEV, index, (void *)entry);
-		vfs_mount(path, res);
+		if (init_resource_at("/dev/acpi", ARC_DRI_DEV, index, (void *)entry) != 0) {
+			ARC_DEBUG(ERR, "Failed to initialize resource\n");
+		}
 	}
 
 	return 0;
@@ -151,7 +148,6 @@ int do_xsdt(void *address) {
 		struct ARC_RSDTBaseEntry *entry = (void *)ARC_PHYS_TO_HHDM(table->entries[i]);
 
 		int index = -1;
-		char *path = NULL;
 
 		switch (entry->signature) {
 			case ARC_ACPI_TBLSIG_APIC: {
@@ -167,27 +163,25 @@ int do_xsdt(void *address) {
 
 			case ARC_ACPI_TBLSIG_FACP: {
 				index = ARC_DRI_FADT;
-				path = "/dev/acpi/fadt/";
 
 				break;
 			}
 
 			case ARC_ACPI_TBLSIG_HPET: {
 				index = ARC_DRI_HPET;
-				path = "/dev/acpi/hpet/";
 
 				break;
 			}
 
 			default: {
-				ARC_DEBUG(INFO, "Unimplemented RSDT table \"%.*s\", 0x%"PRIX32"\n", 4, (char *)&entry->signature, entry->signature);
+				ARC_DEBUG(INFO, "Unimplemented RSDT table \"%.*s\", 0x%"PRIx32"\n", 4, (char *)&entry->signature, entry->signature);
 				continue;
 			}
 		}
 
-		vfs_create(path, ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
-		struct ARC_Resource *res = init_resource(ARC_DRI_DEV, index, (void *)entry);
-		vfs_mount(path, res);
+		if (init_resource_at("/dev/acpi", ARC_DRI_DEV, index, (void *)entry) != 0) {
+			ARC_DEBUG(ERR, "Failed to initialize resource\n");
+		}
 	}
 
 	return 0;
@@ -224,6 +218,8 @@ int uninit_rsdt() {
 
 ARC_REGISTER_DRIVER(3, rsdt_driver) = {
         .index = ARC_DRI_RSDT,
+	.instance_counter = 0,
+	.name_format = "acpi",
         .init = init_rsdt,
 	.uninit = uninit_rsdt,
 	.read = empty_rsdt,

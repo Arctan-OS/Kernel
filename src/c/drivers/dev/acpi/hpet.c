@@ -81,6 +81,8 @@ int write_hpet(void *buffer, size_t size, size_t count, struct ARC_File *file, s
 
 ARC_REGISTER_DRIVER(3, hpet) = {
         .index = ARC_DRI_HPET,
+	.instance_counter = 0,
+	.name_format = "hpet%d",
 	.init = init_hpet,
 	.uninit = uninit_hpet,
 	.read = read_hpet,
