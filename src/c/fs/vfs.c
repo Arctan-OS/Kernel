@@ -60,30 +60,23 @@ int init_vfs() {
 
 int vfs_mount(char *mountpoint, struct ARC_Resource *resource) {
 	if (mountpoint == NULL || resource == NULL) {
-		ARC_DEBUG(ERR, "Invalid arguments (%p, %p\n", mountpoint, resource);
+		ARC_DEBUG(ERR, "Invalid arguments (%p, %p)\n", mountpoint, resource);
 		return EINVAL;
 	}
 
-	ARC_DEBUG(INFO, "Mounting %p on %s\n", resource, mountpoint);
-
 	// If the directory does not already exist, create it in graph, as a disk write could be saved
-	struct arc_vfs_traverse_info info = { .type = ARC_VFS_N_DIR, .create_level = ARC_VFS_GR_CREAT };
+	struct arc_vfs_traverse_info info = { .type = ARC_VFS_N_DIR, .create_level = ARC_VFS_NO_CREAT };
 	ARC_VFS_DETERMINE_START(info, mountpoint);
 
 	if (vfs_traverse(mountpoint, &info, 0) != 0) {
-		ARC_DEBUG(ERR, "Failed to traverse graph\n");
+		ARC_DEBUG(ERR, "Failed to traverse graph to mount resource %p\n", resource);
 		return -1;
 	}
 
 	struct ARC_VFSNode *mount = info.node;
 
-	if (mount == NULL) {
-		ARC_DEBUG(ERR, "Mount is NULL\n");
-		return -1;
-	}
-
 	if (mount->type != ARC_VFS_N_DIR) {
-		ARC_DEBUG(ERR, "%s is not a directory (or already mounted)\n", mountpoint);
+		ARC_DEBUG(ERR, "%s is not a directory (or already mounted), %p\n", mountpoint, resource);
 		ARC_ATOMIC_DEC(mount->ref_count);
 		ticket_unlock(info.ticket);
 		return -2;
@@ -101,7 +94,7 @@ int vfs_mount(char *mountpoint, struct ARC_Resource *resource) {
 	//       a mountpoint
 	ticket_unlock(info.ticket);
 
-	ARC_DEBUG(INFO, "Successfully mounted resource %p at %s (%p)\n", resource, mountpoint, mount);
+	ARC_DEBUG(INFO, "Mounted resource %p at %s (%p)\n", resource, mountpoint, mount);
 
 	return 0;
 }

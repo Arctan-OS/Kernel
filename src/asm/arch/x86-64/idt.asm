@@ -120,3 +120,22 @@ common_idt_stub 29
 common_idt_stub 30
 common_idt_stub 31
 common_idt_stub 32
+
+common_idt_stub 33
+common_idt_stub 34
+common_idt_stub 35
+common_idt_stub 36
+common_idt_stub 37
+common_idt_stub 38
+common_idt_stub 39
+common_idt_stub 40
+common_idt_stub 41
+common_idt_stub 42
+common_idt_stub 43
+common_idt_stub 44
+common_idt_stub 45
+common_idt_stub 46
+common_idt_stub 47
+common_idt_stub 48
+common_idt_stub 49
+common_idt_stub 50
