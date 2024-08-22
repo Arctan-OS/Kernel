@@ -401,7 +401,6 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 
 			ARC_DEBUG(INFO, "Created new node %s (%p)\n", next->name, next);
 
-
 			// Check for node on physical filesystem
 			if (info->mount == NULL) {
 				goto skip_stat;
@@ -447,9 +446,16 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 			uint64_t index = vfs_type2idx(next->type, info->mount);
 			// If the resource is NULL, the driver will definitely be
 			// in the super/file group, otherwise use the mount's group
-			int group = (info->mount == NULL ? 0 : info->mount->resource->dri_group);
+			int group = (info->mount != NULL ? info->mount->resource->dri_group : 0);
+
 			// Determine the arguments
-			void *args = (info->overwrite_arg == NULL && info->mount != NULL ? info->mount->resource->driver_state : info->overwrite_arg);
+			void *locate = NULL;
+			if (info->mount != NULL) {
+				struct ARC_SuperDriverDef *super_def = (struct ARC_SuperDriverDef *)info->mount->resource->driver->driver;
+				locate = super_def->locate(info->mount->resource, info->mountpath);
+			}
+
+			void *args = (info->overwrite_arg == NULL && info->mount != NULL ? locate : info->overwrite_arg);
 
 			next->resource = init_resource(group, index, args);
 

@@ -100,11 +100,11 @@ struct ARC_DriverDef {
 	// Generic
 	int (*init)(struct ARC_Resource *res, void *args);
 	int (*uninit)(struct ARC_Resource *res);
-	int (*open)(struct ARC_File *file, struct ARC_Resource *res, char *path, int flags, uint32_t mode);
+	int (*open)(struct ARC_File *file, struct ARC_Resource *res, int flags, uint32_t mode);
 	int (*write)(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res);
 	int (*read)(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res);
 	int (*close)(struct ARC_File *file, struct ARC_Resource *res);
-	int (*seek)(struct ARC_File *file, struct ARC_Resource *res, long offset, int whence);
+	int (*seek)(struct ARC_File *file, struct ARC_Resource *res);
 	/// Rename the resource.
 	int (*rename)(char *newname, struct ARC_Resource *res);
 };
@@ -116,6 +116,8 @@ struct ARC_SuperDriverDef {
 	/// Rename the file.
 	int (*rename)(char *a, char *b);
 	int (*stat)(struct ARC_Resource *res, char *filename, struct stat *stat);
+	/// Acquire the needed information for initalization of a file resource. The return value should be passed as the argument of the function.
+	void *(*locate)(struct ARC_Resource *res, char *filename);
 };
 // /Driver definitions
 

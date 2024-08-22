@@ -55,38 +55,8 @@ struct ARC_HeaderCPIO {
 
 struct internal_driver_state {
 	struct ARC_Resource *resource;
-	void *initramfs_base;
+	void *base;
 };
-
-static void *initramfs_find_file(void *fs, char *filename) {
-	if (fs == NULL || filename == NULL) {
-		ARC_DEBUG(ERR, "Either fs %p or filename %p is NULL\n", fs, filename);
-		return NULL;
-	}
-
-	struct ARC_HeaderCPIO *header = (struct ARC_HeaderCPIO *)fs;
-	uint64_t offset = 0;
-
-	while (header->magic == 0070707) {
-		char *name = ((char *)header) + ARC_NAME_OFFSET;
-
-		if (strncmp(name, filename, strlen(filename)) != 0) {
-			goto next;
-		}
-
-		ARC_DEBUG(INFO, "Found file \"%s\"\n", name);
-
-		return (void *)header;
-
-		next:;
-		offset += ARC_DATA_OFFSET(header) + ARC_DATA_SIZE(header);
-		header = (struct ARC_HeaderCPIO *)(fs + offset);
-	}
-
-	ARC_DEBUG(ERR, "Could not find file \"%s\"\n", filename);
-
-	return NULL;
-}
 
 static int initramfs_internal_stat(struct ARC_HeaderCPIO *header, struct stat *stat) {
 	stat->st_uid = header->uid;
@@ -108,10 +78,13 @@ static int initramfs_empty() {
 }
 
 static int initramfs_init(struct ARC_Resource *res, void *args) {
-	struct internal_driver_state *org_state = (struct internal_driver_state *)args;
 	struct internal_driver_state *state = (struct internal_driver_state *)alloc(sizeof(struct internal_driver_state));
 
-	state->initramfs_base = org_state->initramfs_base;
+	if (state == NULL) {
+		return -1;
+	}
+
+	state->base = args;
 	state->resource = res;
 	res->driver_state = state;
 
@@ -124,7 +97,7 @@ static int initramfs_uninit(struct ARC_Resource *res) {
 	return 0;
 }
 
-static int initramfs_open(struct ARC_File *file, struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
+static int initramfs_open(struct ARC_File *file, struct ARC_Resource *res, int flags, uint32_t mode) {
 	(void)flags;
 
 	if (file == NULL) {
@@ -135,26 +108,13 @@ static int initramfs_open(struct ARC_File *file, struct ARC_Resource *res, char 
 		return EPERM;
 	}
 
-	// Lock dir_state
-	mutex_lock(&res->dri_state_mutex);
-
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
-	struct ARC_HeaderCPIO *header = initramfs_find_file(state->initramfs_base, path);
 
-	if (header == NULL) {
-		ARC_DEBUG(ERR, "Failed to open file\n");
-		// Unlock dri_state
-		mutex_unlock(&res->dri_state_mutex);
-
-		return 1;
+	if (state == NULL) {
+		return -1;
 	}
 
-	state->initramfs_base = (void *)header;
-
-	// Unlock dri_state
-	mutex_unlock(&res->dri_state_mutex);
-
-	initramfs_internal_stat(header, &file->node->stat);
+	initramfs_internal_stat(state->base, &file->node->stat);
 
 	return 0;
 }
@@ -165,7 +125,7 @@ static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Fi
 	}
 
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
-	void *addfiles = state->initramfs_base;
+	void *addfiles = state->base;
 
 	if (addfiles == NULL) {
 		return 0;
@@ -195,44 +155,14 @@ static int initramfs_write() {
 	return 1;
 }
 
-static int initramfs_seek(struct ARC_File *file, struct ARC_Resource *res, long offset, int whence) {
+static int initramfs_seek(struct ARC_File *file, struct ARC_Resource *res) {
+	(void)file;
 	(void)res;
 
-	if (file == NULL) {
-		return 1;
-	}
-
-	long size = file->node->stat.st_size;
-
-	switch (whence) {
-		case SEEK_SET: {
-			if (offset < size) {
-				file->offset = offset;
-			}
-
-			return 0;
-		}
-
-		case SEEK_CUR: {
-			file->offset += offset;
-
-			if (file->offset >= size) {
-				file->offset = size;
-			}
-
-			return 0;
-		}
-
-		case SEEK_END: {
-			file->offset = size - offset - 1;
-
-			if (file->offset < 0) {
-				file->offset = 0;
-			}
-
-			return 0;
-		}
-	}
+	// NOTE: This driver function means to serve as a way to notify
+	//       the driver that the user is moving the RW head to another
+	//       place in the file. For an initramfs this doesn't do much,
+	//       but for other drivers it may be useful to update caches here.
 
 	return 0;
 }

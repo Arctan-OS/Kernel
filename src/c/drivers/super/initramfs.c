@@ -139,12 +139,25 @@ static int initramfs_stat(struct ARC_Resource *res, char *filename, struct stat 
 	return initramfs_internal_stat(header, stat);
 }
 
+static void *initramfs_locate(struct ARC_Resource *res, char *filename) {
+	if (res == NULL || filename == NULL) {
+		return NULL;
+	}
+
+	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
+
+	void *ret = initramfs_find_file(state->initramfs_base, filename);
+
+	return ret;
+}
+
 struct ARC_SuperDriverDef initramfs_super_spec = {
 	.create = initramfs_empty,
 	.remove = initramfs_empty,
 	.link = initramfs_empty,
 	.rename = initramfs_empty,
 	.stat = initramfs_stat,
+	.locate = initramfs_locate,
 };
 
 ARC_REGISTER_DRIVER(0, initramfs_super) = {

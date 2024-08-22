@@ -26,6 +26,7 @@
  * The implementation of the virtual filesystem's behavior.
 */
 #include <abi-bits/stat.h>
+#include <abi-bits/fcntl.h>
 #include <lib/atomics.h>
 #include <abi-bits/errno.h>
 #include <lib/resource.h>
@@ -79,6 +80,7 @@ int vfs_mount(char *mountpoint, struct ARC_Resource *resource) {
 		ARC_DEBUG(ERR, "%s is not a directory (or already mounted), %p\n", mountpoint, resource);
 		ARC_ATOMIC_DEC(mount->ref_count);
 		ticket_unlock(info.ticket);
+
 		return -2;
 	}
 
@@ -134,20 +136,23 @@ int vfs_unmount(struct ARC_VFSNode *mount) {
 	return 0;
 }
 
-int vfs_open(char *path, int flags, uint32_t mode, int link_depth, struct ARC_File **ret) {
-	(void)flags;
-
-	if (path == NULL) {
+int vfs_open(char *path, int flags, uint32_t mode, int linkdepth, struct ARC_File **ret) {
+	if (path == NULL || ret == NULL) {
 		return EINVAL;
 	}
 
-	ARC_DEBUG(INFO, "Opening file %s (%d %d) to a depth of %d, returning to %p\n", path, flags, mode, link_depth, ret);
+	ARC_DEBUG(INFO, "Opening file %s (%d %d), returning to %p\n", path, flags, mode, ret);
 
 	// Find file in node graph, create node graph if needed, do not create the file
 	struct arc_vfs_traverse_info info = { .create_level = ARC_VFS_GR_CREAT };
+
+	if (flags & O_CREAT) {
+		info.create_level = ARC_VFS_FS_CREAT;
+	}
+
 	ARC_VFS_DETERMINE_START(info, path);
 
-	int info_ret = vfs_traverse(path, &info, link_depth);
+	int info_ret = vfs_traverse(path, &info, 1);
 	if (info_ret != 0) {
 		ARC_DEBUG(ERR, "Failed to traverse node graph (%d)\n", info_ret);
 		return -1;
@@ -155,23 +160,16 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, struct ARC_Fi
 
 	struct ARC_VFSNode *node = info.node;
 
-	if (node == NULL) {
-		ARC_DEBUG(ERR, "Discovered node is NULL\n");
-		return -1;
-	}
-
-	ARC_DEBUG(INFO, "Found node %p\n", node);
-
 	// Create file descriptor
 	struct ARC_File *desc = (struct ARC_File *)alloc(sizeof(*desc));
 	if (desc == NULL) {
+		ARC_DEBUG_ERR("Failed to allocate file descriptor\n");
 		ARC_ATOMIC_DEC(node->ref_count);
 		ticket_unlock(info.ticket);
 		return ENOMEM;
 	}
 
 	memset(desc, 0, sizeof(*desc));
-	*ret = desc;
 
 	desc->mode = mode;
 	desc->node = node;
@@ -179,7 +177,6 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, struct ARC_Fi
 	ARC_DEBUG(INFO, "Created file descriptor %p\n", desc);
 
 	mutex_lock(&node->property_lock);
-
 	if (node->is_open == 0 && node->type != ARC_VFS_N_DIR) {
 		if (node->type == ARC_VFS_N_LINK) {
 			node = node->link;
@@ -187,8 +184,7 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, struct ARC_Fi
 		}
 
 		struct ARC_Resource *res = node->resource;
-
-		if (res == NULL || res->driver->open(desc, res, info.mountpath, 0, mode) != 0) {
+		if (res == NULL || res->driver->open(desc, res, 0, mode) != 0) {
 			ARC_DEBUG(ERR, "Failed to open file\n");
 			return -2;
 		}
@@ -201,13 +197,13 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, struct ARC_Fi
 		desc->node->is_open = 1;
 		node = desc->node;
 	}
-
 	mutex_unlock(&node->property_lock);
 
 	desc->reference = reference_resource(node->resource);
 
 	ticket_unlock(info.ticket);
 
+	*ret = desc;
 	ARC_DEBUG(INFO, "Opened file successfully\n");
 
 	return 0;
@@ -282,7 +278,39 @@ int vfs_seek(struct ARC_File *file, long offset, int whence) {
 		return -1;
 	}
 
-	return res->driver->seek(file, res, offset, whence);
+	long size = file->node->stat.st_size;
+
+	switch (whence) {
+		case SEEK_SET: {
+			if (offset < size) {
+				file->offset = offset;
+			}
+
+			return 0;
+		}
+
+		case SEEK_CUR: {
+			file->offset += offset;
+
+			if (file->offset >= size) {
+				file->offset = size;
+			}
+
+			return 0;
+		}
+
+		case SEEK_END: {
+			file->offset = size - offset - 1;
+
+			if (file->offset < 0) {
+				file->offset = 0;
+			}
+
+			return 0;
+		}
+	}
+
+	return res->driver->seek(file, res);
 }
 
 int vfs_close(struct ARC_File *file) {

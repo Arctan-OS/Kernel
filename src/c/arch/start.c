@@ -92,7 +92,7 @@ int init_arch() {
 
 	vfs_link("/initramfs/boot/ANTIQUE.F14", "/font.fnt", -1);
 	vfs_rename("/font.fnt", "/fonts/font.fnt");
-	vfs_open("/initramfs/boot/ANTIQUE.F14", 0, 0, 0, (void *)&Arc_FontFile);
+	vfs_open("/fonts/font.fnt", 0, 0, 0, (void *)&Arc_FontFile);
 
 	return 0;
 }

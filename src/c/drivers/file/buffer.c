@@ -64,10 +64,9 @@ static int buffer_uninit(struct ARC_Resource *res) {
 	return 0;
 }
 
-static int buffer_open(struct ARC_File *file, struct ARC_Resource *res, char *path, int flags, uint32_t mode) {
+static int buffer_open(struct ARC_File *file, struct ARC_Resource *res, int flags, uint32_t mode) {
 	(void)mode;
 	(void)flags;
-	(void)path;
 
 	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
 
@@ -138,44 +137,9 @@ static int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File
 	return given;
 }
 
-static int buffer_seek(struct ARC_File *file, struct ARC_Resource *res, long offset, int whence) {
+static int buffer_seek(struct ARC_File *file, struct ARC_Resource *res) {
+	(void)file;
 	(void)res;
-
-	if (file == NULL) {
-		return 1;
-	}
-
-	long size = file->node->stat.st_size;
-
-	switch (whence) {
-		case SEEK_SET: {
-			if (offset < size) {
-				file->offset = offset;
-			}
-
-			return 0;
-		}
-
-		case SEEK_CUR: {
-			file->offset += offset;
-
-			if (file->offset >= size) {
-				file->offset = size;
-			}
-
-			return 0;
-		}
-
-		case SEEK_END: {
-			file->offset = size - offset - 1;
-
-			if (file->offset < 0) {
-				file->offset = 0;
-			}
-
-			return 0;
-		}
-	}
 
 	return 0;
 }
