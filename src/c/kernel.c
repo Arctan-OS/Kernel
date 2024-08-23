@@ -107,6 +107,11 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	printf("Processors wrote: %s\n", buffer);
 	vfs_close(file);
 
+	vfs_open("/initramfs/boot/reference.txt", 0, ARC_STD_PERM, &file);
+	vfs_read(buffer, 1, 24, file);
+	printf("Link resolves: %s\n", buffer);
+	vfs_close(file);
+
 	term_draw(&Arc_MainTerm);
 
 	vfs_close(Arc_FontFile);

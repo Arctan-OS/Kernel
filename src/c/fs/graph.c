@@ -230,35 +230,17 @@ int vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
 	return count;
 }
 
-
-int vfs_open_vfs_link(struct ARC_VFSNode *node, struct ARC_VFSNode **ret, int link_depth) {
-	(void)node;
-	(void)ret;
-	(void)link_depth;
-	// TODO: Open and read contents of node, which is a link,
-	//       vfs_traverse to the path this node contains.
-	//       Once link_depth == 0, return whatever node was
-	//       found, even if it is a link.
-	//
-	//       Error Cases:
-	//          Cyclic Links - If any given node in the list of nodes
-	//                         we have found with this function points
-	//                         back to another node in this functio, we have
-	//                         a cyclic link. Not sure how to resolve this
-	//                         besides just erroring out and saying "could
-	//                         not resolve link"
-	//          vfs_traverse - We failed to traverse the node graph, so we
-	//                         "could not resolve link"
-	//
-	return 0;
-}
-
 int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolve_links) {
 	(void)resolve_links;
+	char *link_path = NULL;
 
 	if (filepath == NULL || info == NULL) {
 		return -1;
 	}
+
+	struct ARC_VFSNode *node = info->start;
+
+	top:;
 
 	size_t max = strlen(filepath);
 
@@ -268,7 +250,6 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 
 	ARC_DEBUG(INFO, "Traversing %s\n", filepath);
 
-	struct ARC_VFSNode *node = info->start;
 	ARC_ATOMIC_INC(node->ref_count);
 
 	void *ticket = ticket_lock(&node->branch_lock);
@@ -474,6 +455,34 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 
 	ARC_DEBUG(INFO, "Successfully traversed %s\n", filepath);
 
+	if (node->type == ARC_VFS_N_LINK && node->link == NULL && resolve_links) {
+		struct ARC_File fake = { .flags = 0, .offset = 0, .mode = 0, .node = node, .reference = NULL };
+
+		if (link_path != NULL) {
+			free(link_path);
+		}
+
+		link_path = (char *)alloc(node->stat.st_size);
+		vfs_read(link_path, 1, node->stat.st_size, &fake);
+
+		ARC_DEBUG(INFO, "Resolving link to %s\n", link_path);
+
+		max = strlen(link_path);
+		filepath = link_path;
+
+		if (info->node == NULL) {
+			info->node = node;
+			info->ticket = ticket;
+		} else {
+			ARC_ATOMIC_DEC(node->ref_count);
+			ticket_unlock(ticket);
+		}
+
+		node = node->parent;
+
+		goto top;
+	}
+
 	// Returned state of node:
 	//    - branch_lock is held
 	//    - ref_count is incremented by 1
@@ -481,10 +490,16 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 	// decrement ref_count when it is done
 	// wth the node
 
-	info->node = node;
-	info->ticket = ticket;
+	if (link_path == NULL) {
+		info->node = node;
+		info->ticket = ticket;
+	} else {
+		info->node->link = node;
+		ticket_unlock(ticket);
+		free(link_path);
+	}
 
-	ticket_lock_yield(ticket);
+	ticket_lock_yield(info->ticket);
 
 	return 0;
 }

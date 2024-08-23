@@ -220,13 +220,15 @@ int vfs_read(void *buffer, size_t size, size_t count, struct ARC_File *file) {
 		return 0;
 	}
 
-	if (file->node->type == ARC_VFS_N_LINK && file->node->link == NULL) {
-		return -1;
+	struct ARC_Resource *res = NULL;
+
+	if (file->node->type == ARC_VFS_N_LINK && file->node->link != NULL) {
+		res = file->node->link->resource;
+	} else {
+		res = file->node->resource;
 	}
 
-	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
-
-	if (res == NULL || res->driver->read == NULL) {
+	if (res == NULL) {
 		ARC_DEBUG(ERR, "One or more is NULL: %p %p\n", res, res->driver->read);
 		return -1;
 	}
@@ -247,11 +249,13 @@ int vfs_write(void *buffer, size_t size, size_t count, struct ARC_File *file) {
 		return 0;
 	}
 
-	if (file->node->type == ARC_VFS_N_LINK && file->node->link == NULL) {
-		return -1;
-	}
+	struct ARC_Resource *res = NULL;
 
-	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
+	if (file->node->type == ARC_VFS_N_LINK && file->node->link != NULL) {
+		res = file->node->link->resource;
+	} else {
+		res = file->node->resource;
+	}
 
 	if (res == NULL) {
 		ARC_DEBUG(ERR, "One or more is NULL: %p %p\n", res, res->driver->write);
@@ -270,11 +274,13 @@ int vfs_seek(struct ARC_File *file, long offset, int whence) {
 		return -1;
 	}
 
-	if (file->node->type == ARC_VFS_N_LINK && file->node->link == NULL) {
-		return -1;
-	}
+	struct ARC_Resource *res = NULL;
 
-	struct ARC_Resource *res = file->node->type == ARC_VFS_N_LINK ? file->node->link->resource : file->node->resource;
+	if (file->node->type == ARC_VFS_N_LINK && file->node->link != NULL) {
+		res = file->node->link->resource;
+	} else {
+		res = file->node->resource;
+	}
 
 	if (res == NULL) {
 		return -1;
