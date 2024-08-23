@@ -88,7 +88,7 @@ int do_rsdt(void *address) {
 				size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry) - 8;
 				vfs_create("/dev/acpi/apic", ARC_STD_PERM, ARC_VFS_N_BUFF, &size);
 				struct ARC_File *file = NULL;
-				vfs_open("/dev/acpi/apic", 0, ARC_STD_PERM, 0, (void *)&file);
+				vfs_open("/dev/acpi/apic", 0, ARC_STD_PERM, (void *)&file);
 				vfs_write((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
 				vfs_close(file);
 
@@ -154,7 +154,7 @@ int do_xsdt(void *address) {
 				size_t size = entry->length - sizeof(struct ARC_RSDTBaseEntry) - 8;
 				vfs_create("/dev/acpi/apic", ARC_STD_PERM, ARC_VFS_N_BUFF, &size);
 				struct ARC_File *file = NULL;
-				vfs_open("/dev/acpi/apic", 0, ARC_STD_PERM, 0, (void *)&file);
+				vfs_open("/dev/acpi/apic", 0, ARC_STD_PERM, (void *)&file);
 				vfs_write((uint8_t *)entry + sizeof(struct ARC_RSDTBaseEntry) + 8, 1, size, file);
 				vfs_close(file);
 

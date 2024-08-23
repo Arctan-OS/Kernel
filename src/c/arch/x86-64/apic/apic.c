@@ -102,7 +102,7 @@ int init_apic() {
 	lapic_refresh_timer(1000);
 
 	struct ARC_File *apic = NULL;
-	vfs_open("/dev/acpi/apic", 0, 0, 0, (void *)&apic);
+	vfs_open("/dev/acpi/apic", 0, ARC_STD_PERM, (void *)&apic);
 
 	if (apic == NULL) {
 		return -1;

@@ -97,7 +97,6 @@ uint64_t vfs_type2idx(int type, struct ARC_VFSNode *mount) {
 	}
 }
 
-
 int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
 		return 1;
@@ -118,9 +117,8 @@ int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 	return err;
 }
 
-
 int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
-	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
+	if (node == NULL || node->ref_count > 0 || node->is_open) {
 		return 1;
 	}
 
@@ -137,8 +135,11 @@ int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 		return err + 1;
 	}
 
+	if (uninit_resource(node->resource) != 0) {
+		return 1;
+	}
+
 	free(node->name);
-	uninit_resource(node->resource);
 
 	if (node->prev == NULL) {
 		node->parent->children = node->next;
@@ -438,29 +439,18 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 				goto skip_resource;
 			}
 
-			if (info->mount != NULL) {
-				mutex_lock(&info->mount->resource->dri_state_mutex);
-			}
-
 			// Figure out the index from the given type
 			uint64_t index = vfs_type2idx(next->type, info->mount);
-			// If the resource is NULL, the driver will definitely be
-			// in the super/file group, otherwise use the mount's group
-			int group = (info->mount != NULL ? info->mount->resource->dri_group : 0);
-
-			// Determine the arguments
-			void *locate = NULL;
-			if (info->mount != NULL) {
-				struct ARC_SuperDriverDef *super_def = (struct ARC_SuperDriverDef *)info->mount->resource->driver->driver;
-				locate = super_def->locate(info->mount->resource, info->mountpath);
-			}
-
-			void *args = (info->overwrite_arg == NULL && info->mount != NULL ? locate : info->overwrite_arg);
-
-			next->resource = init_resource(group, index, args);
 
 			if (info->mount != NULL) {
-				mutex_unlock(&info->mount->resource->dri_state_mutex);
+				struct ARC_Resource *res = info->mount->resource;
+
+				struct ARC_SuperDriverDef *super_def = (struct ARC_SuperDriverDef *)res->driver->driver;
+				void *locate = super_def->locate(res, info->mountpath);
+
+				next->resource = init_resource(res->dri_group, index, locate);
+			} else {
+				next->resource = init_resource(0, index, info->overwrite_arg);
 			}
 
 			skip_resource:;

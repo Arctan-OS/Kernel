@@ -153,8 +153,6 @@ int init_resource_at(char *base_path, int dri_group, uint64_t dri_index, void *a
 	char *filepath = (char *)alloc(strlen(base_path) + strlen(name));
 	sprintf(filepath, "%s/%s", base_path, name);
 
-	printf("Initialziing at: %s\n", filepath);
-
 	if (vfs_create(filepath, ARC_STD_PERM | 1, ARC_VFS_N_DIR, NULL) != 0) {
 		return -2;
 	}
@@ -172,22 +170,25 @@ int uninit_resource(struct ARC_Resource *resource) {
 		return 1;
 	}
 
-	if (resource->ref_count > 0) {
-		ARC_DEBUG(ERR, "Resource %lu is in use!\n", resource->id);
+	if (resource->ref_count > 1) {
+		ARC_DEBUG(ERR, "Resource %lu is in use! (%lu > 1)\n", resource->id, resource->ref_count);
 		return 2;
 	}
 
-	ARC_DEBUG(INFO, "Uninitializing resource: %lu\n", resource->id);
+	ARC_DEBUG(INFO, "Uninitializing resource %lu\n", resource->id);
 
 	// Close all references
 	struct ARC_Reference *current_ref = resource->references;
 	while (current_ref != NULL) {
 		void *next = current_ref->next;
 
-		// TODO: What if we fail to close?
-		if (current_ref->signal(ARC_SIGREF_CLOSE, NULL) == 0) {
+		int sigret = 0;
+		if (current_ref->signal != NULL && (sigret = current_ref->signal(ARC_SIGREF_CLOSE, NULL)) == 0) {
 			ARC_ATOMIC_DEC(resource->ref_count);
 			free(current_ref);
+		} else {
+			ARC_DEBUG(ERR, "Cannot signal a close to reference %p (%d)\n", current_ref, sigret);
+			return 1;
 		}
 
 		current_ref = next;

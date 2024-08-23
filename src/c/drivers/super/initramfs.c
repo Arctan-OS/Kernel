@@ -118,6 +118,7 @@ static int initramfs_init(struct ARC_Resource *res, void *args) {
 }
 
 static int initramfs_uninit(struct ARC_Resource *res) {
+	mutex_lock(&res->dri_state_mutex);
 	free(res->driver_state);
 
 	return 0;
@@ -128,9 +129,12 @@ static int initramfs_stat(struct ARC_Resource *res, char *filename, struct stat 
 		return 1;
 	}
 
-	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
+	mutex_lock(&res->dri_state_mutex);
 
+	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
 	struct ARC_HeaderCPIO *header = initramfs_find_file(state->initramfs_base, filename);
+
+	mutex_unlock(&res->dri_state_mutex);
 
 	if (header == NULL) {
 		return 1;
@@ -144,9 +148,12 @@ static void *initramfs_locate(struct ARC_Resource *res, char *filename) {
 		return NULL;
 	}
 
-	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
+	mutex_lock(&res->dri_state_mutex);
 
+	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
 	void *ret = initramfs_find_file(state->initramfs_base, filename);
+
+	mutex_unlock(&res->dri_state_mutex);
 
 	return ret;
 }

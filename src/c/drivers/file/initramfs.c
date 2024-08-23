@@ -27,7 +27,6 @@
 */
 #include <abi-bits/errno.h>
 #include <lib/atomics.h>
-#include <lib/perms.h>
 #include <mm/allocator.h>
 #include <global.h>
 #include <lib/util.h>
@@ -99,13 +98,10 @@ static int initramfs_uninit(struct ARC_Resource *res) {
 
 static int initramfs_open(struct ARC_File *file, struct ARC_Resource *res, int flags, uint32_t mode) {
 	(void)flags;
+	(void)mode;
 
 	if (file == NULL) {
 		return EINVAL;
-	}
-
-	if (check_current_perms(mode) != 0) {
-		return EPERM;
 	}
 
 	struct internal_driver_state *state = (struct internal_driver_state *)res->driver_state;
@@ -152,7 +148,7 @@ static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Fi
 static int initramfs_write() {
 	ARC_DEBUG(ERR, "Read only file system\n");
 
-	return 1;
+	return 0;
 }
 
 static int initramfs_seek(struct ARC_File *file, struct ARC_Resource *res) {

@@ -117,10 +117,10 @@ int vfs_unmount(struct ARC_VFSNode *mount);
  * @param char *filepath - Path to the file to open.
  * @param int flags - Flags to open the file with.
  * @param uint32_t mode - Permissions to open the file with.
- * @param struct ARC_Reference **reference - A reference to the resource.
- * @return A non-NULL pointer on success.
+ * @param struct ARC_File **ret - The pointer to write the address of the resultant file descriptor to.
+ * @return zero upon success.
  * */
-int vfs_open(char *path, int flags, uint32_t mode, int link_depth, struct ARC_File **ret);
+int vfs_open(char *path, int flags, uint32_t mode, struct ARC_File **ret);
 
 /**
  * Read the given file.
@@ -131,11 +131,10 @@ int vfs_open(char *path, int flags, uint32_t mode, int link_depth, struct ARC_Fi
  * @param void *buffer - The buffer into which to read the file data.
  * @param size_t size - The size of each word to read.
  * @param size_t count - The number of words to read.
- * @param struct ARC_VFSNode *file - The file to read.
- * @return The number of words read.
+ * @param struct ARC_File *file - The file to read.
+ * @return the number of bytes read.
  * */
 int vfs_read(void *buffer, size_t size, size_t count, struct ARC_File *file);
-
 
 /**
  * Write to the given file.
@@ -147,7 +146,7 @@ int vfs_read(void *buffer, size_t size, size_t count, struct ARC_File *file);
  * @param size_t size - The size of each word to write.
  * @param size_t count - The number of words to write.
  * @param struct ARC_VFSNode *file - The file to write.
- * @return The number of words written.
+ * @return the number of bytes written.
  * */
 int vfs_write(void *buffer, size_t size, size_t count, struct ARC_File *file);
 
@@ -164,8 +163,7 @@ int vfs_seek(struct ARC_File *file, long offset, int whence);
 /**
  * Close the given file in the VFS.
  *
- * @param struct ARC_VFSNode *file - The file to close.
- * @param struct ARC_Reference *reference - The reference which is closing the file.
+ * @param struct ARC_File *file - The file to close.
  * @return zero on success.
  * */
 int vfs_close(struct ARC_File *file);
@@ -187,6 +185,12 @@ int vfs_remove(char *filepath, bool physical, bool recurse);
 int vfs_link(char *a, char *b, uint32_t mode);
 int vfs_rename(char *a, char *b);
 int vfs_list(char *path, int recurse);
+
 struct ARC_VFSNode *vfs_create_rel(char *relative_path, struct ARC_VFSNode *start, uint32_t mode, int type, void *arg);
+
+/**
+ * Get the relative path from B to A.
+ * */
+char *vfs_get_relative_path(struct ARC_VFSNode *a, struct ARC_VFSNode *b);
 
 #endif

@@ -524,7 +524,7 @@ int caml_parse_def_block(uint8_t *buffer, size_t size) {
 	memset(state, 0, sizeof(struct caml_state));
 
 	struct ARC_File *file = NULL;
-	if (vfs_open("/dev/acpi/", 0, ARC_STD_PERM, 0, (void *)&file) != 0) {
+	if (vfs_open("/dev/acpi/", 0, ARC_STD_PERM, (void *)&file) != 0) {
 		return -1;
 	}
 

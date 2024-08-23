@@ -41,6 +41,7 @@
 // TODO: Correct permissions, currently the inference
 //       of permissions for new paths is quite hacky
 //       and seems vulnerable
+// TODO: Create a list of nodes marked for deletion.
 
 static const char *root = "\0";
 static const struct ARC_Resource root_res = { 0 };
@@ -136,7 +137,7 @@ int vfs_unmount(struct ARC_VFSNode *mount) {
 	return 0;
 }
 
-int vfs_open(char *path, int flags, uint32_t mode, int linkdepth, struct ARC_File **ret) {
+int vfs_open(char *path, int flags, uint32_t mode, struct ARC_File **ret) {
 	if (path == NULL || ret == NULL) {
 		return EINVAL;
 	}
@@ -166,6 +167,7 @@ int vfs_open(char *path, int flags, uint32_t mode, int linkdepth, struct ARC_Fil
 		ARC_DEBUG_ERR("Failed to allocate file descriptor\n");
 		ARC_ATOMIC_DEC(node->ref_count);
 		ticket_unlock(info.ticket);
+
 		return ENOMEM;
 	}
 
@@ -324,11 +326,18 @@ int vfs_close(struct ARC_File *file) {
 
 	mutex_lock(&node->property_lock);
 
+	if (!node->is_open) {
+		mutex_unlock(&node->property_lock);
+
+		return -1;
+	}
+
+	unrefrence_resource(file->reference);
+
 	// TODO: Account if node->type == ARC_VFS_N_LINK
 	if (node->ref_count > 1 || (node->type != ARC_VFS_N_FILE && node->type != ARC_VFS_N_LINK)) {
 		ARC_DEBUG(INFO, "ref_count (%lu) > 1 or is non-file, closing file descriptor\n", node->ref_count);
 
-		unrefrence_resource(file->reference);
 		free(file);
 		ARC_ATOMIC_DEC(node->ref_count);
 
@@ -349,20 +358,34 @@ int vfs_close(struct ARC_File *file) {
 	}
 
 	if (node->ref_count > 1) {
+		free(file);
+		ARC_ATOMIC_DEC(node->ref_count);
+
 		mutex_unlock(&node->property_lock);
 		ticket_lock_thaw(ticket);
+
 		return 0;
+	}
+
+	if (node->type == ARC_VFS_N_LINK) {
+		ARC_ATOMIC_DEC(node->link->ref_count);
 	}
 
 	struct ARC_Resource *res = node->resource;
 
 	if (res == NULL) {
-		ARC_DEBUG(ERR, "Node has NULL resource\n")
+		ARC_DEBUG(ERR, "Node has NULL resource\n");
+		mutex_unlock(&node->property_lock);
+		ticket_lock_thaw(ticket);
+		return -2;
 	}
 
-	if (res != NULL && res->driver->close(file, res) != 0) {
+	if (res->driver->close(file, res) != 0) {
 		ARC_DEBUG(ERR, "Failed to physically close file\n");
 	}
+
+	ARC_ATOMIC_DEC(node->ref_count);
+	node->is_open = 0;
 
 	struct ARC_VFSNode *parent = node->parent;
 	struct ARC_VFSNode *top = node->mount;
@@ -487,7 +510,7 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 		mode = info_a.node->stat.st_mode;
 	}
 
-	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT, .mode = mode, .type = ARC_VFS_N_LINK };
+	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_GR_CREAT, .mode = mode, .type = ARC_VFS_N_LINK };
 	ARC_VFS_DETERMINE_START(info_b, b);
 
 	ret = vfs_traverse(b, &info_b, 0);
@@ -508,8 +531,13 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 		src = src->link;
 	}
 
+	struct ARC_File fake = { .node = lnk, .offset = 0, .reference = NULL, .flags = 0, .mode = 0};
+	char *relative_path = vfs_get_relative_path(src, lnk);
+	vfs_write(relative_path, 1, strlen(relative_path), &fake);
+
 	mutex_lock(&src->property_lock);
 	mutex_lock(&lnk->property_lock);
+
 	src->stat.st_nlink++;
 	// src->ref_count is already incremented from the traverse
 	ARC_ATOMIC_DEC(lnk->ref_count);
@@ -731,4 +759,18 @@ struct ARC_VFSNode *vfs_create_rel(char *relative_path, struct ARC_VFSNode *star
 	}
 
 	return info.node;
+}
+
+char *vfs_get_relative_path(struct ARC_VFSNode *a, struct ARC_VFSNode *b) {
+	(void)a;
+	(void)b;
+
+	char *path = (char *)alloc(12);
+	if (path == NULL) {
+		return NULL;
+	}
+
+	sprintf(path, "hello world");
+
+	return path;
 }

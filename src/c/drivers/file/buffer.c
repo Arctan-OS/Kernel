@@ -58,6 +58,10 @@ static int buffer_init(struct ARC_Resource *res, void *arg) {
 static int buffer_uninit(struct ARC_Resource *res) {
 	struct buffer_dri_state *state = (struct buffer_dri_state *)res->driver_state;
 
+	if (state == NULL) {
+		return 1;
+	}
+
 	free(state->buffer);
 	free(state);
 
@@ -155,4 +159,5 @@ ARC_REGISTER_DRIVER(0, buffer) = {
 	.write = buffer_write,
 	.seek = buffer_seek,
 	.rename = buffer_empty,
+	.close = buffer_empty,
 };
