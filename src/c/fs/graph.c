@@ -455,6 +455,8 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 
 	ARC_DEBUG(INFO, "Successfully traversed %s\n", filepath);
 
+	ticket_lock_yield(ticket);
+
 	if (node->type == ARC_VFS_N_LINK && node->link == NULL && resolve_links) {
 		struct ARC_File fake = { .flags = 0, .offset = 0, .mode = 0, .node = node, .reference = NULL };
 
@@ -499,7 +501,6 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 		free(link_path);
 	}
 
-	ticket_lock_yield(info->ticket);
 
 	return 0;
 }

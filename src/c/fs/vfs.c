@@ -538,8 +538,9 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 	}
 
 	struct ARC_File fake = { .node = lnk, .offset = 0, .reference = NULL, .flags = 0, .mode = 0};
-	char *relative_path = vfs_get_relative_path(src, lnk);
+	char *relative_path = vfs_get_relative_path(b, a);
 	vfs_write(relative_path, 1, strlen(relative_path), &fake);
+	free(relative_path);
 
 	mutex_lock(&src->property_lock);
 	mutex_lock(&lnk->property_lock);
@@ -767,16 +768,44 @@ struct ARC_VFSNode *vfs_create_rel(char *relative_path, struct ARC_VFSNode *star
 	return info.node;
 }
 
-char *vfs_get_relative_path(struct ARC_VFSNode *a, struct ARC_VFSNode *b) {
-	(void)a;
-	(void)b;
-
-	char *path = (char *)alloc(12);
-	if (path == NULL) {
+char *vfs_get_relative_path(char *from, char *to) {
+	if (from == NULL || to == NULL) {
 		return NULL;
 	}
 
-	sprintf(path, "hello world");
+	ARC_VFS_TO_ABS_PATH(from);
+	ARC_VFS_TO_ABS_PATH(to);
+
+	size_t max_from = strlen(from);
+	size_t max_to = strlen(to);
+	size_t max = min(max_from, max_to);
+
+	size_t i = 0;
+	for (; i < max; i++) {
+		if (from[i] != to[i]) {
+			break;
+		}
+	}
+
+	size_t dotdots = -1;
+	for (size_t j = max_from - 1; j >= i - 1 && j < max_from; j--) {
+		if (from[j] == '/') {
+			dotdots++;
+		}
+	}
+
+	to += i;
+
+	if (dotdots == (size_t)-1) {
+		dotdots = 0;
+	}
+
+	char *path = (char *)alloc(dotdots * 3 + strlen(to));
+
+	for (size_t j = 0; j < dotdots; j++) {
+		sprintf(path + j * 3, "../");
+	}
+	sprintf(path + dotdots * 3, "%s", to);
 
 	return path;
 }

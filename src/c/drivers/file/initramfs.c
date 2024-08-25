@@ -145,8 +145,8 @@ static int initramfs_read(void *buffer, size_t size, size_t count, struct ARC_Fi
 	return count;
 }
 
-static int initramfs_write() {
-	ARC_DEBUG(ERR, "Read only file system\n");
+static int initramfs_write(void *buffer, size_t size, size_t count, struct ARC_File *file, struct ARC_Resource *res) {
+	ARC_DEBUG(ERR, "Read only file system, tried to write %s\n", buffer);
 
 	return 0;
 }

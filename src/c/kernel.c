@@ -54,6 +54,11 @@ int proc_test(int processor) {
 	vfs_write(data, 1, 3, file);
 	vfs_close(file);
 
+	vfs_open("/initramfs/boot/reference.txt", 0, ARC_STD_PERM, &file);
+	vfs_read(data, 1, 24, file);
+	printf("Link resolves: %s\n", data);
+	vfs_close(file);
+
 	printf("Processor did not deadlock %d\n", processor);
 
 	ARC_HANG;
@@ -107,10 +112,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	printf("Processors wrote: %s\n", buffer);
 	vfs_close(file);
 
-	vfs_open("/initramfs/boot/reference.txt", 0, ARC_STD_PERM, &file);
-	vfs_read(buffer, 1, 24, file);
-	printf("Link resolves: %s\n", buffer);
-	vfs_close(file);
+	vfs_link("/initramfs/boot/credit.txt", "/initramfs/boot/a/b/c/credit.txt", -1);
+	vfs_link("/initramfs/boot/credit.txt", "/initramfs/credit.txt", -1);
+	vfs_link("/initramfs/boot/credit.txt", "/credit.txt", -1);
 
 	term_draw(&Arc_MainTerm);
 

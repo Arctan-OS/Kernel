@@ -191,6 +191,6 @@ struct ARC_VFSNode *vfs_create_rel(char *relative_path, struct ARC_VFSNode *star
 /**
  * Get the relative path from B to A.
  * */
-char *vfs_get_relative_path(struct ARC_VFSNode *a, struct ARC_VFSNode *b);
+char *vfs_get_relative_path(char *a, char *b);
 
 #endif

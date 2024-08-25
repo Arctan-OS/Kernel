@@ -32,11 +32,16 @@
 #include <stdbool.h>
 #include <fs/vfs.h>
 
-#define ARC_VFS_DETERMINE_START(info, path) \
-        if (*path == '/') { \
-		info.start = &vfs_root; \
+#define ARC_VFS_DETERMINE_START(__info, __path) \
+        if (*__path == '/') { \
+		__info.start = &vfs_root; \
 	} else { \
 		ARC_DEBUG(WARN, "Definitely getting current directory\n") \
+	}
+
+#define ARC_VFS_TO_ABS_PATH(__relative) \
+	if (*__relative != '/') {					\
+		ARC_DEBUG(WARN, "Definitely converting relative path to absolute\n"); \
 	}
 
 struct arc_vfs_traverse_info {
