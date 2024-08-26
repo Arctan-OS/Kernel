@@ -34,6 +34,7 @@
 #include <lib/util.h>
 #include <drivers/dri_defs.h>
 #include <lib/resource.h>
+#include <lib/perms.h>
 
 int vfs_stat2type(mode_t mode) {
 	switch (mode & S_IFMT) {
@@ -98,7 +99,7 @@ uint64_t vfs_type2idx(int type, struct ARC_VFSNode *mount) {
 }
 
 int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
-	if (node == NULL || node->ref_count > 0 || node->is_open != 0) {
+	if (node == NULL || node->ref_count > 0 || node->is_open) {
 		return 1;
 	}
 
@@ -110,8 +111,11 @@ int vfs_delete_node_recurse(struct ARC_VFSNode *node) {
 		child = child->next;
 	}
 
+	if (uninit_resource(node->resource) != 0) {
+		return err + 1;
+	}
+
 	free(node->name);
-	uninit_resource(node->resource);
 	free(node);
 
 	return err;
@@ -131,8 +135,8 @@ int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 		child = child->next;
 	}
 
-	if (node->children != NULL) {
-		return err + 1;
+	if (err != 0) {
+		return err;
 	}
 
 	if (uninit_resource(node->resource) != 0) {
@@ -153,7 +157,7 @@ int vfs_delete_node(struct ARC_VFSNode *node, bool recurse) {
 
 	free(node);
 
-	return err;
+	return 0;
 }
 
 int vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
@@ -176,7 +180,7 @@ int vfs_bottom_up_prune(struct ARC_VFSNode *bottom, struct ARC_VFSNode *top) {
 	return freed;
 }
 
-int vfs_top_down_prune_recurs(struct ARC_VFSNode *node, int depth) {
+static int vfs_top_down_prune_recurse(struct ARC_VFSNode *node, int depth) {
 	if (node->ref_count > 0 || depth <= 0 || node->type == ARC_VFS_N_MOUNT) {
 		// Set the sign bit to indicate that this
 		// path cannot be freed as there is still
@@ -190,7 +194,7 @@ int vfs_top_down_prune_recurs(struct ARC_VFSNode *node, int depth) {
 	int count = 0;
 
 	while (child != NULL) {
-		int diff = vfs_top_down_prune_recurs(child, depth - 1);
+		int diff = vfs_top_down_prune_recurse(child, depth - 1);
 
 		if (diff < 0 && count > 0) {
 			count *= -1;
@@ -223,7 +227,7 @@ int vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
 	int count = 0;
 
 	while (node != NULL) {
-		count += vfs_top_down_prune_recurs(node, depth - 1);
+		count += vfs_top_down_prune_recurse(node, depth - 1);
 		node = node->next;
 	}
 
@@ -231,7 +235,6 @@ int vfs_top_down_prune(struct ARC_VFSNode *top, int depth) {
 }
 
 int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolve_links) {
-	(void)resolve_links;
 	char *link_path = NULL;
 
 	if (filepath == NULL || info == NULL) {
@@ -316,6 +319,22 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 			info->mountpath = component;
 		}
 
+		mutex_lock(&node->property_lock);
+		int perm_check = check_permissions(&node->stat, info->mode);
+		mutex_unlock(&node->property_lock);
+
+		if (perm_check != 0) {
+			ARC_ATOMIC_DEC(node->ref_count);
+			ticket_unlock(ticket);
+
+			if (info->node != NULL) {
+				ARC_ATOMIC_DEC(info->node->ref_count);
+				ticket_unlock(info->ticket);
+			}
+
+			return EPERM;
+		}
+
 		if (component_size == 2 && component[0] == '.' && component[1] == '.') {
 			next = node->parent;
 			goto resolve;
@@ -341,10 +360,15 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 				// is set, therefore just return
 				ARC_DEBUG(ERR, "ARC_VFS_NO_CREAT specified\n");
 
-				node->ref_count--;
+				ARC_ATOMIC_DEC(node->ref_count);
 				ticket_unlock(ticket);
 
-				return i;
+				if (info->node != NULL) {
+					ARC_ATOMIC_DEC(info->node->ref_count);
+					ticket_unlock(info->ticket);
+				}
+
+				return -3;
 			}
 
 			// NOTE: ARC_VFS_GR_CREAT is not really used
@@ -354,8 +378,13 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 			if (next == NULL) {
 				ARC_DEBUG(ERR, "Failed to allocate new node\n");
 
-				node->ref_count--;
+				ARC_ATOMIC_DEC(node->ref_count);
 				ticket_unlock(ticket);
+
+				if (info->node != NULL) {
+					ARC_ATOMIC_DEC(info->node->ref_count);
+					ticket_unlock(info->ticket);
+				}
 
 				return i;
 			}
@@ -443,7 +472,16 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 		void *next_ticket = ticket_lock(&next->branch_lock);
 		if (next_ticket == NULL) {
 			ARC_DEBUG(ERR, "Lock error!\n");
-			// TODO: Do something
+
+			ARC_ATOMIC_DEC(node->ref_count);
+			ticket_unlock(ticket);
+
+			if (info->node != NULL) {
+				ARC_ATOMIC_DEC(info->node->ref_count);
+				ticket_unlock(info->ticket);
+			}
+
+			return -3;
 		}
 		ticket_unlock(ticket);
 		ticket = next_ticket;
@@ -500,7 +538,6 @@ int vfs_traverse(char *filepath, struct arc_vfs_traverse_info *info, bool resolv
 		ticket_unlock(ticket);
 		free(link_path);
 	}
-
 
 	return 0;
 }

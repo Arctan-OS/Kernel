@@ -28,6 +28,7 @@
 #include <fs/vfs.h>
 #include <arch/acpi/acpi.h>
 #include <drivers/dri_defs.h>
+#include <lib/perms.h>
 
 struct fadt {
         struct ARC_RSDTBaseEntry base;

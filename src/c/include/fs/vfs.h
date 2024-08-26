@@ -52,21 +52,6 @@
  * A single node in a VFS tree.
  * */
 struct ARC_VFSNode {
-	/// Lock on branching of this node (link, parent, children, next, prev, name)
-	struct ARC_TicketLock branch_lock;
-	/// Lock on the properties of this node (type, mount, stat, is_open)
-	ARC_GenericMutex property_lock;
-	/// Pointer to the device. References can be found through consulting resource.
-	struct ARC_Resource *resource;
-	/// The type of node.
-	int type;
-	/// Number of references to this node (> 0 means node and children cannot be destroyed).
-	uint64_t ref_count;
-	bool is_open;
-	/// The name of this node.
-	char *name;
-	// Stat
-	struct stat stat;
 	/// Pointer to the link.
 	struct ARC_VFSNode *link;
 	/// Pointer to the mount structure this node is or is under.
@@ -79,6 +64,21 @@ struct ARC_VFSNode {
 	struct ARC_VFSNode *next;
 	/// Pointer to the previous element in the current linked list.
 	struct ARC_VFSNode *prev;
+	/// Lock on branching of this node (link, parent, children, next, prev, name)
+	struct ARC_TicketLock branch_lock;
+	/// Pointer to the device. References can be found through consulting resource.
+	struct ARC_Resource *resource;
+	/// The name of this node.
+	char *name;
+	/// Number of references to this node (> 0 means node and children cannot be destroyed).
+	uint64_t ref_count;
+	/// Lock on the properties of this node (type, mount, stat, is_open)
+	ARC_GenericMutex property_lock;
+	/// The type of node.
+	int type;
+	bool is_open;
+	// Stat
+	struct stat stat;
 };
 
 /**
@@ -181,7 +181,7 @@ int vfs_close(struct ARC_File *file);
 int vfs_stat(char *filepath, struct stat *stat);
 
 int vfs_create(char *path, uint32_t mode, int type, void *arg);
-int vfs_remove(char *filepath, bool physical, bool recurse);
+int vfs_remove(char *filepath, bool recurse);
 int vfs_link(char *a, char *b, uint32_t mode);
 int vfs_rename(char *a, char *b);
 int vfs_list(char *path, int recurse);

@@ -31,6 +31,7 @@
 #include <interface/framebuffer.h>
 #include <mp/sched/abstract.h>
 #include <mm/allocator.h>
+#include <lib/perms.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };

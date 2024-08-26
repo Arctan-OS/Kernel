@@ -36,11 +36,9 @@
 #include <lib/util.h>
 #include <fs/graph.h>
 #include <drivers/dri_defs.h>
+#include <lib/perms.h>
 
 // TODO: Implement error cases for all functions.
-// TODO: Correct permissions, currently the inference
-//       of permissions for new paths is quite hacky
-//       and seems vulnerable
 // TODO: Create a list of nodes marked for deletion.
 
 static const char *root = "\0";
@@ -52,8 +50,13 @@ int init_vfs() {
 	vfs_root.resource = (struct ARC_Resource *)&root_res;
 	vfs_root.type = ARC_VFS_N_ROOT;
 
-	init_static_ticket_lock(&vfs_root.branch_lock);
-	init_static_mutex(&vfs_root.property_lock);
+	if (init_static_ticket_lock(&vfs_root.branch_lock) != 0) {
+		return -1;
+	}
+
+	if (init_static_mutex(&vfs_root.property_lock) != 0) {
+		return -1;
+	}
 
 	ARC_DEBUG(INFO, "Created VFS root (%p)\n", &vfs_root);
 
@@ -127,8 +130,12 @@ int vfs_unmount(struct ARC_VFSNode *mount) {
 		return -1;
 	}
 
-	// TODO: Synchronize
-	// TODO: Destroy nodes
+	ARC_ATOMIC_DEC(mount->ref_count);
+
+	// NOTE: The recursive delete function will destroy all nodes
+	//       from the top down. The closing procedure also unintiailizes
+	//       the resource, which will synchronize nodes to disk
+	vfs_delete_node(mount, 1);
 
 	ticket_unlock(ticket);
 
@@ -154,6 +161,7 @@ int vfs_open(char *path, int flags, uint32_t mode, struct ARC_File **ret) {
 	ARC_VFS_DETERMINE_START(info, path);
 
 	int info_ret = vfs_traverse(path, &info, 1);
+
 	if (info_ret != 0) {
 		ARC_DEBUG(ERR, "Failed to traverse node graph (%d)\n", info_ret);
 		return -1;
@@ -427,56 +435,69 @@ int vfs_create(char *path, uint32_t mode, int type, void *arg) {
 	return ret;
 }
 
-int vfs_remove(char *filepath, bool physical, bool recurse) {
+int vfs_remove(char *filepath, bool recurse) {
 	if (filepath == NULL) {
 		ARC_DEBUG(ERR, "No path given\n");
 		return -1;
 	}
 
-	ARC_DEBUG(INFO, "Removing %s (%d, %d)\n", filepath, physical, recurse);
+	ARC_DEBUG(INFO, "Removing %s (%d)\n", filepath, recurse);
 
-	struct arc_vfs_traverse_info info = { .create_level = ARC_VFS_NO_CREAT };
+	struct arc_vfs_traverse_info info = { .create_level = ARC_VFS_NO_CREAT, .mode = ARC_STD_PERM };
 	ARC_VFS_DETERMINE_START(info, filepath);
 
 	int ret = vfs_traverse(filepath, &info, 0);
 
-	if (ret != 0 || info.node == NULL) {
+	if (ret != 0) {
 		ARC_DEBUG(ERR, "%s does not exist in node graph\n", filepath);
+
 		return -1;
 	}
 
+	ARC_ATOMIC_DEC(info.node->ref_count);
+
 	if (recurse == 0 && info.node->type == ARC_VFS_N_DIR) {
 		ARC_DEBUG(ERR, "Trying to non-recursively delete directory\n");
+
+		ticket_unlock(info.ticket);
+
 		return -1;
 	}
 
 	mutex_lock(&info.node->property_lock);
 
-	ARC_ATOMIC_DEC(info.node->ref_count);
-
-	if (info.node->ref_count > 0 || info.node->is_open == 0) {
+	if (info.node->ref_count > 0 || info.node->is_open == 1) {
 		ARC_DEBUG(ERR, "Node %p is still in use\n", info.node);
+
 		mutex_unlock(&info.node->property_lock);
 		ticket_unlock(info.ticket);
+
 		return -1;
 	}
 
 	if (ticket_lock_freeze(&info.node->branch_lock) != 0) {
 		ARC_DEBUG(ERR, "Failed to freeze the lock\n");
+
+		mutex_unlock(&info.node->property_lock);
+		ticket_unlock(info.ticket);
+
 		return -2;
 	}
 
 	// We now have the node completely under control
 
-	if (physical == 1 && info.mount != NULL) {
+	if (info.mount != NULL) {
 		ARC_DEBUG(INFO, "Removing %s physically on mount %p\n", info.mountpath, info.mount);
 
 		struct ARC_Resource *res = info.mount->resource;
 
 		if (res == NULL) {
 			ARC_DEBUG(ERR, "Cannot physically remove path, mount resource is NULL\n");
+
 			mutex_unlock(&info.node->property_lock);
+			ticket_lock_thaw(info.ticket);
 			ticket_unlock(info.ticket);
+
 			return -1;
 		}
 
@@ -484,6 +505,12 @@ int vfs_remove(char *filepath, bool physical, bool recurse) {
 
 		if (def->remove(info.mountpath) != 0) {
 			ARC_DEBUG(WARN, "Cannot physically remove path\n");
+
+			mutex_unlock(&info.node->property_lock);
+			ticket_lock_thaw(info.ticket);
+			ticket_unlock(info.ticket);
+
+			return -1;
 		}
 	}
 
@@ -550,13 +577,11 @@ int vfs_link(char *a, char *b, uint32_t mode) {
 	ARC_ATOMIC_DEC(lnk->ref_count);
 	lnk->link = src;
 	lnk->is_open = src->is_open;
+
 	mutex_unlock(&src->property_lock);
 	mutex_unlock(&lnk->property_lock);
 
-	// TODO: Make sure that lnk is a classified as a link
-	//       on physical filesystem and in node graph
 	// TODO: Think about if b already exists
-	// TODO: Perms check
 
 	ARC_DEBUG(INFO, "Linked %s (%p, %lu) -> %s (%p, %lu)\n", a, src, src->ref_count, b, lnk, lnk->ref_count);
 
@@ -573,27 +598,29 @@ int vfs_rename(char *a, char *b) {
 
 	struct arc_vfs_traverse_info info_a = { .create_level = ARC_VFS_GR_CREAT };
 	ARC_VFS_DETERMINE_START(info_a, a);
-
 	int ret = vfs_traverse(a, &info_a, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find %s in node graph\n", a);
 		return -1;
 	}
+
 	struct ARC_VFSNode *node_a = info_a.node;
+	ARC_ATOMIC_DEC(node_a->ref_count);
 
 	struct arc_vfs_traverse_info info_b = { .create_level = ARC_VFS_FS_CREAT | ARC_VFS_NOLCMP, .mode = node_a->stat.st_mode };
 	ARC_VFS_DETERMINE_START(info_b, b);
-
 	ret = vfs_traverse(b, &info_b, 0);
 
 	if (ret != 0) {
 		ARC_DEBUG(ERR, "Failed to find or create %s in node graph / on disk\n", b);
 		ticket_unlock(info_a.ticket);
+
 		return -1;
 	}
 
 	struct ARC_VFSNode *node_b = info_b.node;
+	ARC_ATOMIC_DEC(node_b->ref_count);
 
 	if (node_b == node_a->parent) {
 		// Node A is already under B, just rename A.
@@ -711,7 +738,24 @@ static int list(struct ARC_VFSNode *node, int recurse, int org) {
 			printf("\t");
 		}
 
-		printf("%s (%s, %o, 0x%"PRIx64" B)\n", child->name, names[child->type], child->stat.st_mode, child->stat.st_size);
+		if (child->type == ARC_VFS_N_LINK) {
+			struct ARC_File fake = { .flags = 0, .mode = 0, .node = child, .offset = 0, .reference = NULL};
+			char *link_to = (char *)alloc(child->stat.st_size);
+
+			if (link_to == NULL) {
+				goto default_condition;
+			}
+
+			memset(link_to, 0, child->stat.st_size);
+
+			vfs_read(link_to, 1, child->stat.st_size, &fake);
+			printf("%s (Link to %s, %o, 0x%"PRIx64" B)\n", child->name, link_to, child->stat.st_mode, child->stat.st_size);
+
+			free(link_to);
+		} else {
+			default_condition:;
+			printf("%s (%s, %o, 0x%"PRIx64" B)\n", child->name, names[child->type], child->stat.st_mode, child->stat.st_size);
+		}
 
 		if (recurse > 0) {
 			list(child, recurse - 1, org);

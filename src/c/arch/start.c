@@ -32,6 +32,7 @@
 #include <mm/vmm.h>
 #include <mm/pmm.h>
 #include <boot/parse.h>
+#include <lib/perms.h>
 
 #include <fs/vfs.h>
 #include <lib/resource.h>
@@ -85,7 +86,10 @@ int init_arch() {
         init_acpi(Arc_BootMeta->rsdp);
 
 #ifdef ARC_TARGET_ARCH_X86_64
-        init_apic();
+        if (init_apic() != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize interrupts\n");
+		ARC_HANG;
+	}
 	__asm__("sti");
 	init_syscall();
 #endif

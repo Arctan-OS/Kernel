@@ -41,12 +41,18 @@ int buffer_empty() {
 }
 
 static int buffer_init(struct ARC_Resource *res, void *arg) {
-	if (arg == NULL) {
-		return 0;
+	size_t size = 128;
+
+	if (arg != NULL) {
+		size = *(size_t *)arg;
 	}
 
-	size_t size = *(size_t *)arg;
 	struct buffer_dri_state *state = (struct buffer_dri_state *)alloc(sizeof(struct buffer_dri_state));
+
+	if (state == NULL) {
+		return -1;
+	}
+
 	state->buffer = (void *)alloc(size);
 	state->size = size;
 
@@ -116,6 +122,7 @@ static int buffer_write(void *buffer, size_t size, size_t count, struct ARC_File
 	if (buffer == NULL || size == 0 || count == 0 || file == NULL || res == NULL || res->driver_state == NULL) {
 		return -1;
 	}
+
 
 	mutex_lock(&res->dri_state_mutex);
 

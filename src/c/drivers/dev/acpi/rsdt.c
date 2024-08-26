@@ -32,6 +32,7 @@
 #include <arch/acpi/acpi.h>
 #include <fs/vfs.h>
 #include <drivers/dri_defs.h>
+#include <lib/perms.h>
 
 struct rsdp {
 	char signature[8];

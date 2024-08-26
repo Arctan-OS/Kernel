@@ -83,7 +83,7 @@
 #define PAGE_SIZE 0x1000
 
 
-#define ARC_STD_PERM S_IEXEC | S_IREAD | S_IWRITE
+
 
 #define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
 

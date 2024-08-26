@@ -32,6 +32,7 @@
 #include <global.h>
 #include <arch/smp.h>
 #include <lib/util.h>
+#include <lib/perms.h>
 
 #define ENTRY_TYPE_LAPIC               0x00
 #define ENTRY_TYPE_IOAPIC              0x01

@@ -25,9 +25,25 @@
  * @DESCRIPTION
 */
 #include <lib/perms.h>
+#include <global.h>
 
-int check_current_perms(int perms) {
-	// You can do whatever you want
-	(void)perms;
-	return 0;
+int check_permissions(struct stat *stat, uint32_t requested) {
+	// TODO: Look these up from some sort of list
+	uint32_t UID = 0;
+	uint32_t GID = 0;
+
+	if (UID == 0) {
+		// ROOT CAN DO WHATEVER!!!!
+		return 0;
+	}
+
+	if (stat->st_uid == UID) {
+		return (stat->st_mode ^ requested) & ((requested >> 6) & 07);
+	}
+
+	if (stat->st_gid == GID) {
+		return (stat->st_mode ^ requested) & ((requested >> 3) & 07);
+	}
+
+	return (stat->st_mode ^ requested) & (requested & 07);
 }

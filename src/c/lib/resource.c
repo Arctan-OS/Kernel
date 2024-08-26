@@ -30,6 +30,7 @@
 #include <global.h>
 #include <lib/util.h>
 #include <lib/atomics.h>
+#include <lib/perms.h>
 
 /*
 ** Driver Groups:

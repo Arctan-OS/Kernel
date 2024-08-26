@@ -27,12 +27,18 @@
 #ifndef ARC_LIB_PERMS_H
 #define ARC_LIB_PERMS_H
 
+#include <stdint.h>
+#include <abi-bits/stat.h>
+
+#define ARC_STD_PERM 0700
+
 /**
- * Check the permissions of the current program against the ones given
+ * Check the requested permissions against the permissions of the file.
  *
- * @param int perms - Requested permissions.
+ * @param struct stat *stat - The permissions of the file.
+ * @param uint32_t requested - Requested permissions (mode).
  * @return Zero if the current program has requested privelleges.
  * */
-int check_current_perms(int perms);
+int check_permissions(struct stat *stat, uint32_t requested);
 
 #endif

@@ -31,6 +31,7 @@
 #include <mm/allocator.h>
 #include <stdint.h>
 #include <lib/util.h>
+#include <lib/perms.h>
 
 #define ADVANCE_STATE(state) state->buffer++; state->max--;
 #define REGRESS_STATE(state) state->buffer--; state->max++;
