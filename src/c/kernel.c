@@ -117,6 +117,10 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_link("/initramfs/boot/credit.txt", "/initramfs/credit.txt", -1);
 	vfs_link("/initramfs/boot/credit.txt", "/credit.txt", -1);
 
+#ifdef __arctan__
+	printf("\nCompiled using gcc for Arctan\n\n");
+#endif
+
 	term_draw(&Arc_MainTerm);
 
 	vfs_close(Arc_FontFile);
