@@ -385,7 +385,6 @@ int pager_fly_map(uintptr_t virtual, size_t size, uint32_t attributes) {
 			//       leaks!
 			return -3;
 		}
-
 		pml1[index] = ARC_HHDM_TO_PHYS(pmm_alloc()) | get_entry_bits(1, attributes);
 
 		__asm__("invlpg [%0]" : : "r"(virtual) : );
@@ -478,11 +477,13 @@ int pager_set_attr(uint64_t virtual, size_t size, uint32_t attributes) {
 
 }
 
-void init_pager() {
+int init_pager() {
 	ARC_DEBUG(INFO, "Initializing pager\n");
 
 	_x86_getCR3();
 	pml4 = (uint64_t *)ARC_PHYS_TO_HHDM(_x86_CR3);
 
 	ARC_DEBUG(INFO, "Initialized pager (%p)\n", pml4);
+
+	return 0;
 }

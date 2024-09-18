@@ -26,7 +26,7 @@
 */
 #include <arctan.h>
 #include <global.h>
-#include <mm/freelist.h>
+#include <mm/algo/freelist.h>
 #include <mm/pmm.h>
 #include <stdint.h>
 

@@ -25,8 +25,8 @@
  * @DESCRIPTION
  * Abstract freelist implementation.
 */
-#ifndef ARC_MM_FREELIST_H
-#define ARC_MM_FREELIST_H
+#ifndef ARC_MM_ALGO_FREELIST_H
+#define ARC_MM_ALGO_FREELIST_H
 
 #include <stdint.h>
 #include <lib/atomics.h>

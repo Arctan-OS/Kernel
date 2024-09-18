@@ -25,10 +25,10 @@
  * @DESCRIPTION
  * Abstract freelist implementation.
 */
+#include <mm/algo/freelist.h>
 #include <lib/atomics.h>
 #include <lib/util.h>
 #include <global.h>
-#include <mm/freelist.h>
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -282,7 +282,7 @@ struct ARC_FreelistMeta *init_freelist(uint64_t _base, uint64_t _ceil, uint64_t 
 	meta->object_size = _object_size;
 	meta->free_objects = (_ceil - _base) / _object_size - objects + 1;
 
-	ARC_DEBUG(INFO, "Creating freelist from 0x%"PRIx64" (%p) to 0x%"PRIx64" (%p)\n", (uint64_t)_base, base, (uint64_t)_ceil, ceil);
+	ARC_DEBUG(INFO, "Creating freelist from 0x%"PRIx64" (%p) to 0x%"PRIx64" (%p) with objects of %lu bytes\n", (uint64_t)_base, base, (uint64_t)_ceil, ceil, _object_size);
 
 	// Initialize the linked list
 	struct ARC_FreelistNode *current = NULL;

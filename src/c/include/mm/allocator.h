@@ -34,7 +34,7 @@ void *calloc(size_t size, size_t count);
 void *free(void *address);
 void *realloc(void *address, size_t size);
 
-int Arc_ExpandAllocator(size_t pages);
+int allocator_expand(size_t pages);
 
 int init_allocator(size_t pages);
 

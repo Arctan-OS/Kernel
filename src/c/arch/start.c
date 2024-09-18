@@ -29,6 +29,7 @@
 #include <arch/pager.h>
 #include <global.h>
 #include <mm/allocator.h>
+#include <mm/algo/allocator.h>
 #include <mm/vmm.h>
 #include <mm/pmm.h>
 #include <boot/parse.h>
@@ -47,33 +48,48 @@
 #endif
 
 int init_arch() {
-#ifdef ARC_TARGET_ARCH_X86_64
-	ARC_DEBUG(INFO, "Successfully entered long mode\n");
+	if (init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len) != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize physical memory manager\n");
+		ARC_HANG;
+	}
 
+	if (init_pager() != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize architectural pager\n");
+		ARC_HANG;
+	}
+
+#ifdef ARC_TARGET_ARCH_X86_64
 	init_gdt();
 	init_idt();
-#endif
-	init_pager();
-	init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len);
-
-#ifdef ARC_TARGET_ARCH_X86_64
 	init_sse();
 #endif
-	parse_boot_info();
+
+	if (parse_boot_info() != 0) {
+		ARC_DEBUG(ERR, "Failed to parse boot information\n");
+		ARC_HANG;
+	}
 
 	if (Arc_MainTerm.framebuffer != NULL) {
 		Arc_MainTerm.term_width = (Arc_MainTerm.fb_width / Arc_MainTerm.font_width);
 		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
 	}
 
-        // Initialize memory
-	init_allocator(128);
+	// Initialize the internal SLAB allocator
+	if (init_iallocator(128) != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize internal allocator\n");
+		ARC_HANG;
+	}
 
-#ifdef ARC_TARGET_ARCH_X86_64
-	create_tss(pmm_alloc() + PAGE_SIZE - 0x10, (void *)&__KERNEL_STACK__);
-#endif
+	// Initialize the top level kernel allocator
+	if (init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000) != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize virtual memory manager\n");
+		ARC_HANG;
+	}
 
-	init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000);
+	if (init_allocator(128) != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize kernel allocator\n");
+		ARC_HANG;
+	}
 
 	init_vfs();
 
@@ -86,6 +102,7 @@ int init_arch() {
         init_acpi(Arc_BootMeta->rsdp);
 
 #ifdef ARC_TARGET_ARCH_X86_64
+	create_tss(pmm_alloc() + PAGE_SIZE - 0x10, (void *)&__KERNEL_STACK__);
         if (init_apic() != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize interrupts\n");
 		ARC_HANG;

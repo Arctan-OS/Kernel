@@ -91,6 +91,6 @@ int pager_set_attr(uintptr_t virtual, size_t size, uint32_t attributes);
 /**
  * Initialize the x86-64 pager.
  * */
-void init_pager();
+int init_pager();
 
 #endif

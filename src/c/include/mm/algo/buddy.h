@@ -24,24 +24,22 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_MM_BUDDY_H
-#define ARC_MM_BUDDY_H
+#ifndef ARC_MM_ALGO_BUDDY_H
+#define ARC_MM_ALGO_BUDDY_H
 
 #include <stddef.h>
 #include <lib/atomics.h>
-#include <mm/freelist.h>
+#include <mm/algo/freelist.h>
 
 struct ARC_BuddyMeta {
 	/// Base of the allocator.
 	void *base;
-	/// Next free block of any size.
-	void *next;
 	/// Ceiling of the allocator.
 	void *ceil;
 	/// Allocator tree.
 	void *tree;
-	/// The lowest exponent of two an allocation can be aligned to.
-	int lowest_exponent;
+	/// The size of the smallest object that can be allocated.
+	size_t smallest_object;
 	/// Lock for the meta.
 	ARC_GenericMutex mutex;
 };
@@ -55,9 +53,9 @@ size_t buddy_free(struct ARC_BuddyMeta *meta, void *address);
  * @param struct ARC_BuddyMeta *meta - Meta of the allocator.
  * @param void *base - First allocatable address.
  * @param size_t size - Size of the first allocatable region (ensure this is aligned to the nearest power of 2).
- * @param int lowest_exponent - The exponent of the smallest region (ideally log2(system_width)).
+ * @param size_t smallest_object - Size of the smallest allocatable object (ensure this is aligned to the nearest power of 2).
  * @return zero upon success.
  *  */
-int init_buddy(struct ARC_BuddyMeta *meta, void *base, size_t size, int lowest_exponent);
+int init_buddy(struct ARC_BuddyMeta *meta, void *base, size_t size, size_t smallest_object);
 
 #endif

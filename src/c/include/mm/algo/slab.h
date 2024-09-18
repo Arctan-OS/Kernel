@@ -24,16 +24,18 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_MM_SLAB_H
-#define ARC_MM_SLAB_H
+#ifndef ARC_MM_ALGO_SLAB_H
+#define ARC_MM_ALGO_SLAB_H
 
 #include <stddef.h>
-#include <mm/freelist.h>
+#include <mm/algo/freelist.h>
 
 struct ARC_SlabMeta {
 	struct ARC_FreelistMeta *physical_mem;
 	struct ARC_FreelistMeta *lists[8];
 	size_t list_sizes[8];
+	void *range;
+	size_t range_length;
 };
 
 /**
@@ -68,9 +70,10 @@ int slab_expand(struct ARC_SlabMeta *slab, int list, size_t pages);
  * Initialize the kernel SLAB allocator.
  *
  * @param struct ARC_FreelistMeta *memory - The freelist in which to initialize the allocator's lists.
- * @param int init_page_count - The number of 0x1000 byte pages each list is given.
+ * @param void *range - The base address of the contiguous allocation where the SLAB should be initialized.
+ * @param size_t range_size - Size of the range in bytes.
  * @return Error code (0: success).
  * */
-int init_slab(struct ARC_SlabMeta *meta, size_t init_page_count);
+void *init_slab(struct ARC_SlabMeta *meta, void *range, size_t range_size);
 
 #endif

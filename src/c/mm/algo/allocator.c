@@ -23,28 +23,29 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
- * Implements functions used for in kernel allocations.
+ * Implementation of functions to allocate data structures for other memory management
+ * algorithms.
 */
-#include <mm/allocator.h>
+#include <mm/algo/allocator.h>
 #include <mm/algo/slab.h>
-#include <mm/vmm.h>
+#include <mm/pmm.h>
 #include <global.h>
 
 static struct ARC_SlabMeta meta = { 0 };
 
-void *alloc(size_t size) {
+void *ialloc(size_t size) {
 	return slab_alloc(&meta, size);
 }
 
-void *calloc(size_t size, size_t count) {
+void *icalloc(size_t size, size_t count) {
 	return slab_alloc(&meta, size * count);
 }
 
-void *free(void *address) {
+void *ifree(void *address) {
 	return slab_free(&meta, address);
 }
 
-void *realloc(void *address, size_t size) {
+void *irealloc(void *address, size_t size) {
 	(void)address;
 	(void)size;
 
@@ -53,17 +54,22 @@ void *realloc(void *address, size_t size) {
 	return NULL;
 }
 
-int allocator_expand(size_t pages) {
-	return 0;
+int iallocator_expand(size_t pages) {
+	int cumulative_err = (slab_expand(&meta, 0, pages) == 0);
+	cumulative_err += (slab_expand(&meta, 1, pages) == 0);
+	cumulative_err += (slab_expand(&meta, 2, pages) == 0);
+	cumulative_err += (slab_expand(&meta, 3, pages) == 0);
+	cumulative_err += (slab_expand(&meta, 4, pages) == 0);
+	cumulative_err += (slab_expand(&meta, 5, pages) == 0);
+	cumulative_err += (slab_expand(&meta, 6, pages) == 0);
+	cumulative_err += (slab_expand(&meta, 7, pages) == 0);
+
+	return cumulative_err;
 }
 
-int init_allocator(size_t pages) {
+int init_iallocator(size_t pages) {
 	size_t range_length = (pages << 12) * 8;
-	void *range = (void *)vmm_alloc(range_length);
-
-	if (range == NULL) {
-		return -1;
-	}
+	void *range = (void *)pmm_contig_alloc(pages * 8);
 
 	return init_slab(&meta, range, range_length) != range + range_length;
 }

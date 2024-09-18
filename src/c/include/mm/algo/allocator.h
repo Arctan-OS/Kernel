@@ -1,5 +1,5 @@
 /**
- * @file pmm.h
+ * @file allocator.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -23,22 +23,21 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @DESCRIPTION
+ * Header file containing functions for the allocation of data structures for
+ * the various memory management algorithms.
 */
-#ifndef ARC_MM_PMM_H
-#define ARC_MM_PMM_H
+#ifndef ARC_MM_ALGO_ALLOCATOR
+#define ARC_MM_ALGO_ALLOCATOR
 
-#include <global.h>
+#include <stddef.h>
 
-void *pmm_alloc();
-void *pmm_contig_alloc(size_t objects);
-void *pmm_free(void *address);
-void *pmm_contig_free(void *address, size_t objects);
+void *ialloc(size_t size);
+void *icalloc(size_t size, size_t count);
+void *ifree(void *address);
+void *irealloc(void *address, size_t size);
 
-void *pmm_low_alloc();
-void *pmm_low_contig_alloc(size_t objects);
-void *pmm_low_free(void *address);
-void *pmm_low_contig_free(void *address, size_t objects);
+int iallocator_expand(size_t pages);
 
-int init_pmm(struct ARC_MMap *mmap, int entries);
+int init_iallocator(size_t pages);
 
 #endif
