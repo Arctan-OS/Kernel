@@ -67,6 +67,17 @@
 		     }
 #define ALIGN(v, a) ((v + (a - 1)) & ~(a - 1))
 
+// NOTE: This does not account for v = 0.
+#define SIZE_T_NEXT_POW2(v) \
+	v--; \
+	v |= v >> 1; \
+	v |= v >> 2; \
+	v |= v >> 4; \
+	v |= v >> 8; \
+	v |= v >> 16; \
+	v |= v >> 32; \
+	v++;
+
 #define max(a, b) \
         ({ __typeof__ (a) _a = (a); \
         __typeof__ (b) _b = (b); \
@@ -81,9 +92,6 @@
 	(a < 0 ? -a : a)
 
 #define PAGE_SIZE 0x1000
-
-
-
 
 #define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
 

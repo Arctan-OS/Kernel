@@ -33,15 +33,31 @@
 static struct ARC_SlabMeta meta = { 0 };
 
 void *alloc(size_t size) {
+	if (size >= PAGE_SIZE / 2) {
+		return vmm_alloc(size);
+	}
+
 	return slab_alloc(&meta, size);
 }
 
 void *calloc(size_t size, size_t count) {
-	return slab_alloc(&meta, size * count);
+	size_t final = size * count;
+
+	if (final >= PAGE_SIZE / 2) {
+		return vmm_alloc(size);
+	}
+
+	return slab_alloc(&meta, final);
 }
 
 void *free(void *address) {
-	return slab_free(&meta, address);
+	void *ret = slab_free(&meta, address);
+
+	if (ret == NULL && address != NULL) {
+		ret = vmm_free(address);
+	}
+
+	return ret;
 }
 
 void *realloc(void *address, size_t size) {
@@ -54,6 +70,7 @@ void *realloc(void *address, size_t size) {
 }
 
 int allocator_expand(size_t pages) {
+	(void)pages;
 	return 0;
 }
 

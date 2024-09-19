@@ -94,16 +94,16 @@ void *buddy_alloc(struct ARC_BuddyMeta *meta, size_t size) {
 	struct buddy_node *current = meta->tree;
 
 	// Align the size up
-	size = ALIGN(size, 2);
+	SIZE_T_NEXT_POW2(size);
 
 	while (current != NULL) {
 		if ((current->attributes & 1) == 1) {
 			// Already allocated
-			continue;
+			goto cycle_end;
 		}
 
 		if (size > current->size) {
-			continue;
+			goto cycle_end;
 		}
 
 		if (current->size > size) {
@@ -118,6 +118,7 @@ void *buddy_alloc(struct ARC_BuddyMeta *meta, size_t size) {
 			break;
 		}
 
+		cycle_end:
 		current = current->next;
 	}
 
@@ -137,7 +138,7 @@ size_t buddy_free(struct ARC_BuddyMeta *meta, void *address) {
 
 	struct buddy_node *current = meta->tree;
 
-	while (current != NULL && current->base == address) {
+	while (current != NULL && current->base != address) {
 		current = current->next;
 	}
 

@@ -121,6 +121,10 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	printf("\nCompiled using gcc for Arctan\n\n");
 #endif
 
+	void *a = alloc(10);
+	printf("%p\n", a);
+	printf("%p\n", free(a));
+
 	term_draw(&Arc_MainTerm);
 
 	vfs_close(Arc_FontFile);
