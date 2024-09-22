@@ -56,7 +56,9 @@ void *slab_free(struct ARC_SlabMeta *meta, void *address) {
 		}
 	}
 
-	ARC_DEBUG(ERR, "Failed to free %p\n", address);
+	if ((meta->attributes & 1) == 0) {
+		ARC_DEBUG(ERR, "Failed to free %p\n", address);
+	}
 
 	return NULL;
 }
@@ -74,7 +76,7 @@ int slab_expand(struct ARC_SlabMeta *slab, int list, size_t pages) {
 	return link_freelists(slab->lists[list], meta);
 }
 
-void *init_slab(struct ARC_SlabMeta *meta, void *range, size_t range_size) {
+void *init_slab(struct ARC_SlabMeta *meta, void *range, size_t range_size, uint32_t attributes) {
 	ARC_DEBUG(INFO, "Initializing SLAB allocator in range %p (%lu)\n", range, range_size);
 
 	size_t partition_size = range_size >> 3;
@@ -116,6 +118,7 @@ void *init_slab(struct ARC_SlabMeta *meta, void *range, size_t range_size) {
 
 	meta->range = range;
 	meta->range_length = range_size;
+	meta->attributes = attributes;
 
 	ARC_DEBUG(INFO, "Initialized SLAB allocator\n");
 

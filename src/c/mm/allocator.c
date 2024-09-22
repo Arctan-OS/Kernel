@@ -57,6 +57,10 @@ void *free(void *address) {
 		ret = vmm_free(address);
 	}
 
+	if (ret == NULL) {
+		ARC_DEBUG(ERR, "Failed to free %p\n", address);
+	}
+
 	return ret;
 }
 
@@ -82,5 +86,10 @@ int init_allocator(size_t pages) {
 		return -1;
 	}
 
-	return init_slab(&meta, range, range_length) != range + range_length;
+	// NOTE: Bit 0 is set here as the free function blindly pokes the SLAB allocator
+	//       to see if it can free the given address. If it can't the SLAB allocator, properly
+	//       reports an error. This is not desired here, as the allocation may be allocated using
+	//       the VMM instead. The free function resorts to reporting its own error in the event
+	//       it fails
+	return init_slab(&meta, range, range_length, 1) != range + range_length;
 }

@@ -305,6 +305,7 @@ static int pager_fly_unmap_callback(struct pager_traverse_info *info, uint64_t *
 
 	pmm_free((void *)ARC_PHYS_TO_HHDM(table[index] & ADDRESS_MASK));
 	table[index] = 0;
+	__asm__("invlpg [%0]" : : "r"(info->virtual) : );
 
 	return 0;
 }
@@ -320,7 +321,26 @@ int pager_fly_unmap(uintptr_t virtual, size_t size) {
 	return 0;
 }
 
+static int pager_set_attr_callback(struct pager_traverse_info *info, uint64_t *table, int index, int level) {
+	if (info == NULL || table == NULL || level == 0) {
+		return -1;
+	}
+
+	uint64_t address = table[index] & ADDRESS_MASK;
+	table[index] = address | get_entry_bits(level, info->attributes);
+	__asm__("invlpg [%0]" : : "r"(info->virtual) : );
+
+	return 0;
+}
+
 int pager_set_attr(uintptr_t virtual, size_t size, uint32_t attributes) {
+	struct pager_traverse_info info = { .virtual = virtual, .size = size, .attributes = attributes};
+
+	if (pager_traverse(&info, pager_set_attr_callback) != 0) {
+		ARC_DEBUG(ERR, "Failed to set attr V0x%"PRIx64" (0x%"PRIx64" B, 0x%x)\n", virtual, size, attributes);
+		return -1;
+	}
+
 	return 0;
 }
 
