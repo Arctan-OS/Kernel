@@ -61,6 +61,7 @@
 #define ARC_DEBUG_WARN(...) ;
 #endif // ARC_DEBUG_ENABLE
 
+#define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
 #define ASSERT(cond) if (!(cond)) {					\
 			printf("Assertion %s failed (%s:%d)\n", #cond, __FILE__, __LINE__); \
 			for (;;); \
@@ -92,8 +93,7 @@
 	(a < 0 ? -a : a)
 
 #define PAGE_SIZE 0x1000
-
-#define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#define ARC_STD_BUFF_SIZE 0x1000
 
 extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta Arc_MainTerm;

@@ -77,7 +77,7 @@ static int initramfs_empty() {
 }
 
 static int initramfs_init(struct ARC_Resource *res, void *args) {
-	struct internal_driver_state *state = (struct internal_driver_state *)alloc(sizeof(struct internal_driver_state));
+	struct internal_driver_state *state = (struct internal_driver_state *)alloc(sizeof(*state));
 
 	if (state == NULL) {
 		return -1;

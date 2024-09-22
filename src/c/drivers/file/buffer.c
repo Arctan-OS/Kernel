@@ -30,6 +30,7 @@
 #include <mm/allocator.h>
 #include <lib/util.h>
 #include <abi-bits/seek-whence.h>
+#include <arctan.h>
 
 struct buffer_dri_state {
 	size_t size;
@@ -41,13 +42,13 @@ int buffer_empty() {
 }
 
 static int buffer_init(struct ARC_Resource *res, void *arg) {
-	size_t size = 128;
+	size_t size = ARC_STD_BUFF_SIZE;
 
 	if (arg != NULL) {
 		size = *(size_t *)arg;
 	}
 
-	struct buffer_dri_state *state = (struct buffer_dri_state *)alloc(sizeof(struct buffer_dri_state));
+	struct buffer_dri_state *state = (struct buffer_dri_state *)alloc(sizeof(*state));
 
 	if (state == NULL) {
 		return -1;

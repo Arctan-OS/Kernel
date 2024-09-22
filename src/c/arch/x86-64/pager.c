@@ -171,7 +171,7 @@ static int pager_traverse(struct pager_traverse_info *info, int (*callback)(stru
 
 	uintptr_t target = info->virtual + info->size;
 
-	while (info->virtual <= target) {
+	while (info->virtual < target) {
 		uint64_t *table = pml4;
 		int index = get_page_table(table, 4, info->virtual, info->attributes);
 
