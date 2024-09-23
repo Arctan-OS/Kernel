@@ -88,70 +88,67 @@ struct tss_descriptor {
 
 struct gdt_entry_container {
 	struct gdt_entry gdt[8];
-	struct tss_entry tss[ARC_MAX_PROCESSORS];
-	int next_tss;
+	struct tss_entry tss;
 }__attribute__((packed));
 
-struct gdt_entry_container gdt_entries;
+void set_gdt_gate(struct gdt_entry_container *gdt_entries, int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
+	gdt_entries->gdt[i].base1 = (base      ) & 0xFFFF;
+	gdt_entries->gdt[i].base2 = (base >> 16) & 0xFF;
+	gdt_entries->gdt[i].base3 = (base >> 24) & 0xFF;
 
-void set_gdt_gate(int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
-	gdt_entries.gdt[i].base1 = (base      ) & 0xFFFF;
-	gdt_entries.gdt[i].base2 = (base >> 16) & 0xFF;
-	gdt_entries.gdt[i].base3 = (base >> 24) & 0xFF;
+	gdt_entries->gdt[i].access = access;
 
-	gdt_entries.gdt[i].access = access;
-
-	gdt_entries.gdt[i].limit = (limit) & 0xFFFF;
-	gdt_entries.gdt[i].flags_limit = (flags & 0x0F) << 4 | ((limit >> 16) & 0x0F);
+	gdt_entries->gdt[i].limit = (limit) & 0xFFFF;
+	gdt_entries->gdt[i].flags_limit = (flags & 0x0F) << 4 | ((limit >> 16) & 0x0F);
 }
 
-void set_tss_gate(int i, uint64_t base, uint32_t limit, uint8_t access, uint8_t flags) {
-	gdt_entries.tss[i].base1 = (base      ) & 0xFFFF;
-	gdt_entries.tss[i].base2 = (base >> 16) & 0xFF;
-	gdt_entries.tss[i].base3 = (base >> 24) & 0xFF;
-	gdt_entries.tss[i].base4 = (base >> 32) & UINT32_MAX;
+void set_tss_gate(struct gdt_entry_container *gdt_entries, uint64_t base, uint32_t limit, uint8_t access, uint8_t flags) {
+	gdt_entries->tss.base1 = (base      ) & 0xFFFF;
+	gdt_entries->tss.base2 = (base >> 16) & 0xFF;
+	gdt_entries->tss.base3 = (base >> 24) & 0xFF;
+	gdt_entries->tss.base4 = (base >> 32) & UINT32_MAX;
 
-	gdt_entries.tss[i].access = access;
+	gdt_entries->tss.access = access;
 
-	gdt_entries.tss[i].limit = (limit) & 0xFFFF;
-	gdt_entries.tss[i].flags_limit = (flags & 0x0F) << 4 | ((limit >> 16) & 0x0F);
+	gdt_entries->tss.limit = (limit) & 0xFFFF;
+	gdt_entries->tss.flags_limit = (flags & 0x0F) << 4 | ((limit >> 16) & 0x0F);
 }
 
+extern void _install_gdt();
 extern void _install_tss(uint32_t index);
-int create_tss(void *ist, void *rsp) {
-	int index = gdt_entries.next_tss++;
+void init_gdt() {
+	ARC_DEBUG(INFO, "Initializing GDT\n");
+
+	struct gdt_entry_container *container = (struct gdt_entry_container *)alloc(sizeof(*container));
+
+	set_gdt_gate(container, 0, 0, 0, 0, 0);
+	set_gdt_gate(container, 1, 0, 0xFFFFFFFF, 0x9A, 0xA); // Kernel Code 64
+	set_gdt_gate(container, 2, 0, 0xFFFFFFFF, 0x92, 0xC); // Kernel Data 32 / 64
+	set_gdt_gate(container, 3, 0, 0xFFFFFFFF, 0xF2, 0xC); // User Data 32 / 64
+	set_gdt_gate(container, 4, 0, 0xFFFFFFFF, 0xFA, 0xA); // User Code 64
+
+	ARC_DEBUG(INFO, "Installed basic descriptors\n");
 
 	struct tss_descriptor *tss = (struct tss_descriptor *)alloc(sizeof(*tss));
+	set_tss_gate(container, (uint64_t)tss, sizeof(*tss) - 1, 0x89, 0x0);
 
-	if (tss == NULL) {
-		return -1;
-	}
+	printf("a\n");
+	uintptr_t ist = (uintptr_t)alloc(PAGE_SIZE * 2);
+	printf("b\n");
+	uintptr_t rsp = (uintptr_t)alloc(PAGE_SIZE * 2);
+	printf("c\n");
+	tss->ist1_low = (ist & UINT32_MAX);
+	tss->ist1_high = (ist >> 32) & UINT32_MAX;
+	tss->rsp0_low = (rsp & UINT32_MAX);
+	tss->rsp0_high = (rsp >> 32) & UINT32_MAX;
+	ARC_DEBUG(INFO, "Created TSS\n");
 
-	set_tss_gate(index, (uint64_t)tss, sizeof(*tss) - 1, 0x89, 0x0);
-
-	tss->ist1_low = (((uintptr_t)ist) & UINT32_MAX);
-	tss->ist1_high = (((uintptr_t)ist) >> 32) & UINT32_MAX;
-	tss->rsp0_low = (((uintptr_t)rsp) & UINT32_MAX);
-	tss->rsp0_high = (((uintptr_t)rsp) >> 32) & UINT32_MAX;
-
-	_install_tss(sizeof(gdt_entries.gdt) + (index * sizeof(struct tss_entry)));
-
-	return sizeof(gdt_entries.gdt) + (index * sizeof(struct tss_entry));
-}
-
-void init_gdt() {
-	set_gdt_gate(0, 0, 0, 0, 0);
-	set_gdt_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xA); // Kernel Code 64
-	set_gdt_gate(2, 0, 0xFFFFFFFF, 0x92, 0xC); // Kernel Data 32 / 64
-	set_gdt_gate(3, 0, 0xFFFFFFFF, 0xF2, 0xC); // User Data 32 / 64
-	set_gdt_gate(4, 0, 0xFFFFFFFF, 0xFA, 0xA); // User Code 64
-
-	gdt_entries.next_tss = 0;
-
-	gdtr.size = sizeof(gdt_entries) * 8 - 1;
-	gdtr.base = (uintptr_t)&gdt_entries;
+	gdtr.size = sizeof(*container) - 1;
+	gdtr.base = (uintptr_t)container;
 
 	_install_gdt();
-
 	ARC_DEBUG(INFO, "Installed GDT\n");
+
+	_install_tss(sizeof(container->gdt));
+	ARC_DEBUG(INFO, "Installed TSS\nInitialized GDT\n");
 }

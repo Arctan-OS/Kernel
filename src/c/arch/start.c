@@ -59,8 +59,6 @@ int init_arch() {
 	}
 
 #ifdef ARC_TARGET_ARCH_X86_64
-	init_gdt();
-	init_idt();
 	init_sse();
 #endif
 
@@ -91,6 +89,11 @@ int init_arch() {
 		ARC_HANG;
 	}
 
+#ifdef ARC_TARGET_ARCH_X86_64
+	init_gdt();
+	init_idt();
+#endif
+
 	init_vfs();
 
 	vfs_create("/initramfs/", ARC_STD_PERM, ARC_VFS_N_DIR, NULL);
@@ -102,7 +105,6 @@ int init_arch() {
         init_acpi(Arc_BootMeta->rsdp);
 
 #ifdef ARC_TARGET_ARCH_X86_64
-	create_tss(pmm_alloc() + PAGE_SIZE - 0x10, (void *)&__KERNEL_STACK__);
         if (init_apic() != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize interrupts\n");
 		ARC_HANG;
