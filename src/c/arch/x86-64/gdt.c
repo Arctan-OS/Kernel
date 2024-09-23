@@ -132,11 +132,8 @@ void init_gdt() {
 	struct tss_descriptor *tss = (struct tss_descriptor *)alloc(sizeof(*tss));
 	set_tss_gate(container, (uint64_t)tss, sizeof(*tss) - 1, 0x89, 0x0);
 
-	printf("a\n");
 	uintptr_t ist = (uintptr_t)alloc(PAGE_SIZE * 2);
-	printf("b\n");
 	uintptr_t rsp = (uintptr_t)alloc(PAGE_SIZE * 2);
-	printf("c\n");
 	tss->ist1_low = (ist & UINT32_MAX);
 	tss->ist1_high = (ist >> 32) & UINT32_MAX;
 	tss->rsp0_low = (rsp & UINT32_MAX);
