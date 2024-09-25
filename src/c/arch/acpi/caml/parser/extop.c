@@ -1,5 +1,5 @@
 /**
- * @file parse.h
+ * @file extop.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,19 +24,7 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_ACPI_CAML_PARSE_H
-#define ARC_ARCH_ACPI_CAML_PARSE_H
-
-#include <stddef.h>
-#include <stdint.h>
-
-struct ARC_cAMLState {
-	uint8_t *buffer;
-	size_t max;
-	struct ARC_VFSNode *root;
-	struct ARC_VFSNode *parent;
-};
-
-int caml_parse(uint8_t *buffer, size_t size);
-
-#endif
+int extop_parse(struct ARC_cAMLState *state) {
+	(void)state;
+	return 0;
+}

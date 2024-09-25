@@ -147,5 +147,6 @@ void init_gdt() {
 	ARC_DEBUG(INFO, "Installed GDT\n");
 
 	_install_tss(sizeof(container->gdt));
-	ARC_DEBUG(INFO, "Installed TSS\nInitialized GDT\n");
+	ARC_DEBUG(INFO, "Installed TSS\n");
+	ARC_DEBUG(INFO, "Initialized GDT\n");
 }

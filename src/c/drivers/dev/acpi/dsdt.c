@@ -72,7 +72,7 @@ int init_dsdt(struct ARC_Resource *res, void *arg) {
 		}
 	}
 
-	caml_parse_def_block(table->bytes, table->base.length - sizeof(struct xsdt));
+	caml_parse(table->bytes, table->base.length - sizeof(struct xsdt));
 
 	return 0;
 }
