@@ -24,3 +24,25 @@
  *
  * @DESCRIPTION
 */
+#include <arch/acpi/caml/parser/package.h>
+#include <arch/acpi/caml/parser/sequencer.h>
+
+size_t parse_package_length(struct ARC_cAMLState *state) {
+	uint8_t pkglead = *state->buffer;
+	uint8_t count = (pkglead >> 6) & 0b11;
+	size_t package_size = pkglead & 0x3F;
+
+	ADVANCE_STATE(state);
+
+	if (count > 0) {
+		package_size = pkglead & 0xF;
+		for (int i = 0; i < count; i++) {
+			package_size |= *state->buffer << (i * 8 + 4);
+			ADVANCE_STATE(state);
+		}
+	}
+
+	// Exclude size of PkgLength header, as buffer
+	// has already been advanced over it
+	return package_size - (count + 1);
+}

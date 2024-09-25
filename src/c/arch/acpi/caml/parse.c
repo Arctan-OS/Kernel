@@ -25,16 +25,30 @@
  * @DESCRIPTION
 */
 #include <arch/acpi/caml/parse.h>
+#include <arch/acpi/caml/parser/sequencer.h>
+#include <lib/perms.h>
 #include <global.h>
 
 int caml_parse(uint8_t *buffer, size_t size) {
+	struct ARC_File *root = NULL;
+
+	if (vfs_open("/dev/acpi/", 0, ARC_STD_PERM, &root) != 0) {
+		ARC_DEBUG(ERR, "Failed to open ACPI root\n");
+		return -1;
+	}
+
 	struct ARC_cAMLState state = {
   	        .buffer = buffer,
-	        .max = size
+	        .max = size,
+		.root = root->node,
+		.parent = root->node
         };
 
+	if (sequencer_begin(&state) != 0) {
+		ARC_DEBUG(ERR, "Failed to parse AML\n");
+	}
 
-	ARC_DEBUG(WARN, "Most definitely parsing\n");
+	vfs_close(root);
 
 	return 0;
 }

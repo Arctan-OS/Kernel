@@ -24,8 +24,8 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_ACPI_CAML_PARSER_EXTOP
-#define ARC_ARCH_ACPI_CAML_PARSER_EXTOP
+#ifndef ARC_ARCH_ACPI_CAML_PARSER_EXTOP_H
+#define ARC_ARCH_ACPI_CAML_PARSER_EXTOP_H
 
 #include <arch/acpi/caml/parse.h>
 

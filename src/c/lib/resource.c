@@ -239,7 +239,7 @@ struct ARC_Reference *reference_resource(struct ARC_Resource *resource) {
 }
 
 int unrefrence_resource(struct ARC_Reference *reference) {
-	if (reference == NULL) {
+	if (reference == NULL || reference->resource == NULL) {
 		ARC_DEBUG(ERR, "Resource is NULL, cannot unreference\n");
 		return EINVAL;
 	}

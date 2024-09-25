@@ -1,5 +1,5 @@
 /**
- * @file sequencer.h
+ * @file scope.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,30 +24,34 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_ACPI_CAML_PARSER_SEQUENCER_H
-#define ARC_ARCH_ACPI_CAML_PARSER_SEQUENCER_H
+#include <arch/acpi/caml/parser/scope.h>
+#include <arch/acpi/caml/parser/package.h>
+#include <arch/acpi/caml/parser/name.h>
+#include <arch/acpi/caml/parser/sequencer.h>
+#include <mm/allocator.h>
+#include <fs/vfs.h>
+#include <lib/util.h>
+#include <lib/perms.h>
+#include <global.h>
 
-#define ADVANCE_STATE(state) \
-	state->buffer++; \
-	state->max--;
+int parse_scope(struct ARC_cAMLState *state) {
+	size_t length = parse_package_length(state);
 
-#define ADVANCE_STATE_BY(state, by) \
-	state->buffer += by; \
-	state->max -= by;
+	char *name = parse_name_string(state);
 
-#define REGRESS_STATE(state) \
-	state->buffer--; \
-	state->max++;
+	ARC_DEBUG(INFO, "\tPkgLength: %lu\n", length);
+	ARC_DEBUG(INFO, "\tName: %s\n", name);
 
-#define REGRESS_STATE_BY(state, by) \
-	state->buffer -= by; \
-	state->max += by;
+	sequencer_push_scope(length);
 
-#include <arch/acpi/caml/parse.h>
+	struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->parent, ARC_STD_PERM, ARC_VFS_N_DIR, NULL) : state->parent;
 
-uint64_t sequencer_pop_scope();
-int sequencer_push_scope(uint64_t scope);
+	free(name);
 
-int sequencer_begin(struct ARC_cAMLState *state);
+	if (node == NULL) {
+		ARC_DEBUG(ERR, "Failed to create new directory\n");
+		return -1;
+	}
 
-#endif
+	return 0;
+}

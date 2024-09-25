@@ -26,122 +26,112 @@
 */
 #include <arch/acpi/caml/parser/sequencer.h>
 #include <arch/acpi/caml/parser/extop.h>
+#include <arch/acpi/caml/parser/scope.h>
 #include <mm/allocator.h>
 #include <global.h>
-
-static int cannot_parse_error_handle(struct ARC_cAMLState *state) {
-	if (state == NULL || state->buffer == NULL) {
-		ARC_DEBUG(ERR, "State or buffer (%p, %p) is NULL\n", state, state->buffer);
-		return -2;
-	}
-
-	ARC_DEBUG(ERR, "Cannot parse byte 0x%02x\n", *state->buffer);
-
-	return -1;
-}
 
 static int (*sequencer_table[256])(struct ARC_cAMLState *state) = {
         [0x00] = NULL,
         [0x01] = NULL,
-        [0x02] = cannot_parse_error_handle,
-        [0x03] = cannot_parse_error_handle,
-        [0x04] = cannot_parse_error_handle,
-        [0x05] = cannot_parse_error_handle,
+        [0x02] = NULL,
+        [0x03] = NULL,
+        [0x04] = NULL,
+        [0x05] = NULL,
         [0x06] = NULL,
-        [0x07] = cannot_parse_error_handle,
+        [0x07] = NULL,
         [0x08] = NULL,
-        [0x09] = cannot_parse_error_handle,
+        [0x09] = NULL,
         [0x0A] = NULL,
         [0x0B] = NULL,
         [0x0C] = NULL,
         [0x0D] = NULL,
         [0x0E] = NULL,
-        [0x0F] = cannot_parse_error_handle,
+        [0x0F] = NULL,
 
-        [0x10] = NULL,
+        [0x10] = parse_scope,
         [0x11] = NULL,
         [0x12] = NULL,
         [0x13] = NULL,
         [0x14] = NULL,
         [0x15] = NULL,
-        [0x16] = cannot_parse_error_handle,
-        [0x17] = cannot_parse_error_handle,
-        [0x18] = cannot_parse_error_handle,
-        [0x19] = cannot_parse_error_handle,
-        [0x1A] = cannot_parse_error_handle,
-        [0x1B] = cannot_parse_error_handle,
-        [0x1C] = cannot_parse_error_handle,
-        [0x1D] = cannot_parse_error_handle,
-        [0x1E] = cannot_parse_error_handle,
-        [0x1F] = cannot_parse_error_handle,
+        [0x16] = NULL,
+        [0x17] = NULL,
+        [0x18] = NULL,
+        [0x19] = NULL,
+        [0x1A] = NULL,
+        [0x1B] = NULL,
+        [0x1C] = NULL,
+        [0x1D] = NULL,
+        [0x1E] = NULL,
+        [0x1F] = NULL,
 
-        [0x20] = cannot_parse_error_handle,
-        [0x21] = cannot_parse_error_handle,
-        [0x22] = cannot_parse_error_handle,
-        [0x23] = cannot_parse_error_handle,
-        [0x24] = cannot_parse_error_handle,
-        [0x25] = cannot_parse_error_handle,
-        [0x26] = cannot_parse_error_handle,
-        [0x27] = cannot_parse_error_handle,
-        [0x28] = cannot_parse_error_handle,
-        [0x29] = cannot_parse_error_handle,
-        [0x2A] = cannot_parse_error_handle,
-        [0x2B] = cannot_parse_error_handle,
-        [0x2C] = cannot_parse_error_handle,
-        [0x2D] = cannot_parse_error_handle,
-        [0x2E] = cannot_parse_error_handle, // Dual Name Prefix
-        [0x2F] = cannot_parse_error_handle, // Multi Name Prefix
+        [0x20] = NULL,
+        [0x21] = NULL,
+        [0x22] = NULL,
+        [0x23] = NULL,
+        [0x24] = NULL,
+        [0x25] = NULL,
+        [0x26] = NULL,
+        [0x27] = NULL,
+        [0x28] = NULL,
+        [0x29] = NULL,
+        [0x2A] = NULL,
+        [0x2B] = NULL,
+        [0x2C] = NULL,
+        [0x2D] = NULL,
+        [0x2E] = NULL, // Dual Name Prefix
+        [0x2F] = NULL, // Multi Name Prefix
 
-        [0x30] = cannot_parse_error_handle, // Digit Characters Begin
-        [0x31] = cannot_parse_error_handle,
-        [0x32] = cannot_parse_error_handle,
-        [0x33] = cannot_parse_error_handle,
-        [0x34] = cannot_parse_error_handle,
-        [0x35] = cannot_parse_error_handle,
-        [0x36] = cannot_parse_error_handle,
-        [0x37] = cannot_parse_error_handle,
-        [0x38] = cannot_parse_error_handle,
-        [0x39] = cannot_parse_error_handle, // Digit Characters End
-        [0x3A] = cannot_parse_error_handle,
-        [0x3B] = cannot_parse_error_handle,
-        [0x3C] = cannot_parse_error_handle,
-        [0x3D] = cannot_parse_error_handle,
-        [0x3E] = cannot_parse_error_handle,
-        [0x3F] = cannot_parse_error_handle,
+        [0x30] = NULL, // Digit Characters Begin
+        [0x31] = NULL,
+        [0x32] = NULL,
+        [0x33] = NULL,
+        [0x34] = NULL,
+        [0x35] = NULL,
+        [0x36] = NULL,
+        [0x37] = NULL,
+        [0x38] = NULL,
+        [0x39] = NULL, // Digit Characters End
+        [0x3A] = NULL,
+        [0x3B] = NULL,
+        [0x3C] = NULL,
+        [0x3D] = NULL,
+        [0x3E] = NULL,
+        [0x3F] = NULL,
 
-        [0x40] = cannot_parse_error_handle,
-        [0x41] = cannot_parse_error_handle, // ASCII Characters Begin
-        [0x42] = cannot_parse_error_handle,
-        [0x43] = cannot_parse_error_handle,
-        [0x44] = cannot_parse_error_handle,
-        [0x45] = cannot_parse_error_handle,
-        [0x46] = cannot_parse_error_handle,
-        [0x47] = cannot_parse_error_handle,
-        [0x48] = cannot_parse_error_handle,
-        [0x49] = cannot_parse_error_handle,
-        [0x4A] = cannot_parse_error_handle,
-        [0x4B] = cannot_parse_error_handle,
-        [0x4C] = cannot_parse_error_handle,
-        [0x4D] = cannot_parse_error_handle,
-        [0x4E] = cannot_parse_error_handle,
-        [0x4F] = cannot_parse_error_handle,
+        [0x40] = NULL,
+        [0x41] = NULL, // ASCII Characters Begin
+        [0x42] = NULL,
+        [0x43] = NULL,
+        [0x44] = NULL,
+        [0x45] = NULL,
+        [0x46] = NULL,
+        [0x47] = NULL,
+        [0x48] = NULL,
+        [0x49] = NULL,
+        [0x4A] = NULL,
+        [0x4B] = NULL,
+        [0x4C] = NULL,
+        [0x4D] = NULL,
+        [0x4E] = NULL,
+        [0x4F] = NULL,
 
-        [0x50] = cannot_parse_error_handle,
-        [0x51] = cannot_parse_error_handle,
-        [0x52] = cannot_parse_error_handle,
-        [0x53] = cannot_parse_error_handle,
-        [0x54] = cannot_parse_error_handle,
-        [0x55] = cannot_parse_error_handle,
-        [0x56] = cannot_parse_error_handle,
-        [0x57] = cannot_parse_error_handle,
-        [0x58] = cannot_parse_error_handle,
-        [0x59] = cannot_parse_error_handle,
-        [0x5A] = cannot_parse_error_handle, // ASCII Characters End
+        [0x50] = NULL,
+        [0x51] = NULL,
+        [0x52] = NULL,
+        [0x53] = NULL,
+        [0x54] = NULL,
+        [0x55] = NULL,
+        [0x56] = NULL,
+        [0x57] = NULL,
+        [0x58] = NULL,
+        [0x59] = NULL,
+        [0x5A] = NULL, // ASCII Characters End
         [0x5B] = extop_parse, // Ext Op Prefix
-        [0x5C] = cannot_parse_error_handle, // Root Character
-        [0x5D] = cannot_parse_error_handle,
-        [0x5E] = cannot_parse_error_handle, // Parent Prefix Character
-        [0x5F] = cannot_parse_error_handle, // ASCII Character
+        [0x5C] = NULL, // Root Character
+        [0x5D] = NULL,
+        [0x5E] = NULL, // Parent Prefix Character
+        [0x5F] = NULL, // ASCII Character
 
         [0x60] = NULL,
         [0x61] = NULL,
@@ -158,7 +148,7 @@ static int (*sequencer_table[256])(struct ARC_cAMLState *state) = {
         [0x6C] = NULL,
         [0x6D] = NULL,
         [0x6E] = NULL,
-        [0x6F] = cannot_parse_error_handle,
+        [0x6F] = NULL,
 
         [0x70] = NULL,
         [0x71] = NULL,
@@ -204,8 +194,8 @@ static int (*sequencer_table[256])(struct ARC_cAMLState *state) = {
         [0x97] = NULL,
         [0x98] = NULL,
         [0x99] = NULL,
-        [0x9A] = cannot_parse_error_handle,
-        [0x9B] = cannot_parse_error_handle,
+        [0x9A] = NULL,
+        [0x9B] = NULL,
         [0x9C] = NULL,
         [0x9D] = NULL,
         [0x9E] = NULL,
@@ -217,100 +207,100 @@ static int (*sequencer_table[256])(struct ARC_cAMLState *state) = {
         [0xA3] = NULL,
         [0xA4] = NULL,
         [0xA5] = NULL,
-        [0xA6] = cannot_parse_error_handle,
-        [0xA7] = cannot_parse_error_handle,
-        [0xA8] = cannot_parse_error_handle,
-        [0xA9] = cannot_parse_error_handle,
-        [0xAA] = cannot_parse_error_handle,
-        [0xAB] = cannot_parse_error_handle,
-        [0xAC] = cannot_parse_error_handle,
-        [0xAD] = cannot_parse_error_handle,
-        [0xAE] = cannot_parse_error_handle,
-        [0xAF] = cannot_parse_error_handle,
+        [0xA6] = NULL,
+        [0xA7] = NULL,
+        [0xA8] = NULL,
+        [0xA9] = NULL,
+        [0xAA] = NULL,
+        [0xAB] = NULL,
+        [0xAC] = NULL,
+        [0xAD] = NULL,
+        [0xAE] = NULL,
+        [0xAF] = NULL,
 
-        [0xB0] = cannot_parse_error_handle,
-        [0xB1] = cannot_parse_error_handle,
-        [0xB2] = cannot_parse_error_handle,
-        [0xB3] = cannot_parse_error_handle,
-        [0xB4] = cannot_parse_error_handle,
-        [0xB5] = cannot_parse_error_handle,
-        [0xB6] = cannot_parse_error_handle,
-        [0xB7] = cannot_parse_error_handle,
-        [0xB8] = cannot_parse_error_handle,
-        [0xB9] = cannot_parse_error_handle,
-        [0xBA] = cannot_parse_error_handle,
-        [0xBB] = cannot_parse_error_handle,
-        [0xBC] = cannot_parse_error_handle,
-        [0xBD] = cannot_parse_error_handle,
-        [0xBE] = cannot_parse_error_handle,
-        [0xBF] = cannot_parse_error_handle,
+        [0xB0] = NULL,
+        [0xB1] = NULL,
+        [0xB2] = NULL,
+        [0xB3] = NULL,
+        [0xB4] = NULL,
+        [0xB5] = NULL,
+        [0xB6] = NULL,
+        [0xB7] = NULL,
+        [0xB8] = NULL,
+        [0xB9] = NULL,
+        [0xBA] = NULL,
+        [0xBB] = NULL,
+        [0xBC] = NULL,
+        [0xBD] = NULL,
+        [0xBE] = NULL,
+        [0xBF] = NULL,
 
-        [0xC0] = cannot_parse_error_handle,
-        [0xC1] = cannot_parse_error_handle,
-        [0xC2] = cannot_parse_error_handle,
-        [0xC3] = cannot_parse_error_handle,
-        [0xC4] = cannot_parse_error_handle,
-        [0xC5] = cannot_parse_error_handle,
-        [0xC6] = cannot_parse_error_handle,
-        [0xC7] = cannot_parse_error_handle,
-        [0xC8] = cannot_parse_error_handle,
-        [0xC9] = cannot_parse_error_handle,
-        [0xCA] = cannot_parse_error_handle,
-        [0xCB] = cannot_parse_error_handle,
+        [0xC0] = NULL,
+        [0xC1] = NULL,
+        [0xC2] = NULL,
+        [0xC3] = NULL,
+        [0xC4] = NULL,
+        [0xC5] = NULL,
+        [0xC6] = NULL,
+        [0xC7] = NULL,
+        [0xC8] = NULL,
+        [0xC9] = NULL,
+        [0xCA] = NULL,
+        [0xCB] = NULL,
         [0xCC] = NULL,
-        [0xCD] = cannot_parse_error_handle,
-        [0xCE] = cannot_parse_error_handle,
-        [0xCF] = cannot_parse_error_handle,
+        [0xCD] = NULL,
+        [0xCE] = NULL,
+        [0xCF] = NULL,
 
-        [0xD0] = cannot_parse_error_handle,
-        [0xD1] = cannot_parse_error_handle,
-        [0xD2] = cannot_parse_error_handle,
-        [0xD3] = cannot_parse_error_handle,
-        [0xD4] = cannot_parse_error_handle,
-        [0xD5] = cannot_parse_error_handle,
-        [0xD6] = cannot_parse_error_handle,
-        [0xD7] = cannot_parse_error_handle,
-        [0xD8] = cannot_parse_error_handle,
-        [0xD9] = cannot_parse_error_handle,
-        [0xDA] = cannot_parse_error_handle,
-        [0xDB] = cannot_parse_error_handle,
-        [0xDC] = cannot_parse_error_handle,
-        [0xDD] = cannot_parse_error_handle,
-        [0xDE] = cannot_parse_error_handle,
-        [0xDF] = cannot_parse_error_handle,
+        [0xD0] = NULL,
+        [0xD1] = NULL,
+        [0xD2] = NULL,
+        [0xD3] = NULL,
+        [0xD4] = NULL,
+        [0xD5] = NULL,
+        [0xD6] = NULL,
+        [0xD7] = NULL,
+        [0xD8] = NULL,
+        [0xD9] = NULL,
+        [0xDA] = NULL,
+        [0xDB] = NULL,
+        [0xDC] = NULL,
+        [0xDD] = NULL,
+        [0xDE] = NULL,
+        [0xDF] = NULL,
 
-        [0xE0] = cannot_parse_error_handle,
-        [0xE1] = cannot_parse_error_handle,
-        [0xE2] = cannot_parse_error_handle,
-        [0xE3] = cannot_parse_error_handle,
-        [0xE4] = cannot_parse_error_handle,
-        [0xE5] = cannot_parse_error_handle,
-        [0xE6] = cannot_parse_error_handle,
-        [0xE7] = cannot_parse_error_handle,
-        [0xE8] = cannot_parse_error_handle,
-        [0xE9] = cannot_parse_error_handle,
-        [0xEA] = cannot_parse_error_handle,
-        [0xEB] = cannot_parse_error_handle,
-        [0xEC] = cannot_parse_error_handle,
-        [0xED] = cannot_parse_error_handle,
-        [0xEE] = cannot_parse_error_handle,
-        [0xEF] = cannot_parse_error_handle,
+        [0xE0] = NULL,
+        [0xE1] = NULL,
+        [0xE2] = NULL,
+        [0xE3] = NULL,
+        [0xE4] = NULL,
+        [0xE5] = NULL,
+        [0xE6] = NULL,
+        [0xE7] = NULL,
+        [0xE8] = NULL,
+        [0xE9] = NULL,
+        [0xEA] = NULL,
+        [0xEB] = NULL,
+        [0xEC] = NULL,
+        [0xED] = NULL,
+        [0xEE] = NULL,
+        [0xEF] = NULL,
 
-        [0xF0] = cannot_parse_error_handle,
-        [0xF1] = cannot_parse_error_handle,
-        [0xF2] = cannot_parse_error_handle,
-        [0xF3] = cannot_parse_error_handle,
-        [0xF4] = cannot_parse_error_handle,
-        [0xF5] = cannot_parse_error_handle,
-        [0xF6] = cannot_parse_error_handle,
-        [0xF7] = cannot_parse_error_handle,
-        [0xF8] = cannot_parse_error_handle,
-        [0xF9] = cannot_parse_error_handle,
-        [0xFA] = cannot_parse_error_handle,
-        [0xFB] = cannot_parse_error_handle,
-        [0xFC] = cannot_parse_error_handle,
-        [0xFD] = cannot_parse_error_handle,
-        [0xFE] = cannot_parse_error_handle,
+        [0xF0] = NULL,
+        [0xF1] = NULL,
+        [0xF2] = NULL,
+        [0xF3] = NULL,
+        [0xF4] = NULL,
+        [0xF5] = NULL,
+        [0xF6] = NULL,
+        [0xF7] = NULL,
+        [0xF8] = NULL,
+        [0xF9] = NULL,
+        [0xFA] = NULL,
+        [0xFB] = NULL,
+        [0xFC] = NULL,
+        [0xFD] = NULL,
+        [0xFE] = NULL,
         [0xFF] = NULL,
 };
 
@@ -322,8 +312,8 @@ static int (*sequencer_table[256])(struct ARC_cAMLState *state) = {
 static uint64_t *scope_stack = NULL;
 static int sequencer_ptr = 0;
 
-int sequencer_pop_scope() {
-
+uint64_t sequencer_pop_scope() {
+	return scope_stack[--sequencer_ptr];
 }
 
 int sequencer_push_scope(uint64_t scope) {
@@ -332,13 +322,30 @@ int sequencer_push_scope(uint64_t scope) {
 	return 0;
 }
 
-int sequencer_begin(struct ARC_cAMLState *start_state) {
-	size_t current = 0;
+int sequencer_begin(struct ARC_cAMLState *state) {
+	if (state == NULL || state->buffer == NULL) {
+		ARC_DEBUG(ERR, "State or buffer (%p, %p) is NULL\n", state, state->buffer);
+		return -2;
+	}
 
+	size_t max = state->max;
 	scope_stack = alloc(PAGE_SIZE);
 
-	while (current < start_state->max) {
-		sequencer_table[start_state->buffer[current]](start_state);
+	while (state->max > 0 && state->max <= max) {
+		uint8_t i = *state->buffer;
+		ADVANCE_STATE(state);
+
+		if (sequencer_table[i] == NULL) {
+			ARC_DEBUG(ERR, "Unrecognized bytecode 0x%02x\n", *state->buffer);
+			for (int i = -16; i <= 16; i++) {
+				printf("%c%02X%c ", (i == 0 ? '[' : '\0'), state->buffer[i], (i == 0 ? ']' : '\0'));
+			}
+			printf("\n");
+
+			break;
+		}
+
+		sequencer_table[i](state);
 	}
 
 	free(scope_stack);

@@ -1,5 +1,5 @@
 /**
- * @file sequencer.h
+ * @file scope.h
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,30 +24,11 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_ACPI_CAML_PARSER_SEQUENCER_H
-#define ARC_ARCH_ACPI_CAML_PARSER_SEQUENCER_H
-
-#define ADVANCE_STATE(state) \
-	state->buffer++; \
-	state->max--;
-
-#define ADVANCE_STATE_BY(state, by) \
-	state->buffer += by; \
-	state->max -= by;
-
-#define REGRESS_STATE(state) \
-	state->buffer--; \
-	state->max++;
-
-#define REGRESS_STATE_BY(state, by) \
-	state->buffer -= by; \
-	state->max += by;
+#ifndef ARC_ARCH_ACPI_CAML_PARSER_SCOPE_H
+#define ARC_ARCH_ACPI_CAML_PARSER_SCOPE_H
 
 #include <arch/acpi/caml/parse.h>
 
-uint64_t sequencer_pop_scope();
-int sequencer_push_scope(uint64_t scope);
-
-int sequencer_begin(struct ARC_cAMLState *state);
+int parse_scope(struct ARC_cAMLState *state);
 
 #endif

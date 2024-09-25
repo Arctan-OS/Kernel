@@ -24,7 +24,12 @@
  *
  * @DESCRIPTION
 */
+#ifndef ARC_ARCH_X86_64_CMOS_H
+#define ARC_ARCH_X86_64_CMOS_H
+
 #include <stdint.h>
 
 uint8_t cmos_read(uint8_t reg);
 int cmos_write(uint8_t reg, uint8_t value);
+
+#endif

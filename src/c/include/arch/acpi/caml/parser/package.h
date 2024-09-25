@@ -24,7 +24,11 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_ACPI_CAML_PARSER_PACKAGE
-#define ARC_ARCH_ACPI_CAML_PARSER_PACKAGE
+#ifndef ARC_ARCH_ACPI_CAML_PARSER_PACKAGE_H
+#define ARC_ARCH_ACPI_CAML_PARSER_PACKAGE_H
+
+#include <arch/acpi/caml/parse.h>
+
+size_t parse_package_length(struct ARC_cAMLState *state);
 
 #endif

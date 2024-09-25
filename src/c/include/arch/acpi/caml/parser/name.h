@@ -24,7 +24,11 @@
  *
  * @DESCRIPTION
 */
-#ifndef ARC_ARCH_ACPI_CAML_PARSER_NAME
-#define ARC_ARCH_ACPI_CAML_PARSER_NAME
+#ifndef ARC_ARCH_ACPI_CAML_PARSER_NAME_H
+#define ARC_ARCH_ACPI_CAML_PARSER_NAME_H
+
+#include <arch/acpi/caml/parse.h>
+
+char *parse_name_string(struct ARC_cAMLState *state);
 
 #endif
