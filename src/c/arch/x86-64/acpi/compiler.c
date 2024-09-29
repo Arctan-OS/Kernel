@@ -29,5 +29,8 @@
 
 int compile_to_hex_string(struct ARC_cAMLState *state) {
 	printf("parsing hex string\n");
+
+
+
 	return 0;
 }
