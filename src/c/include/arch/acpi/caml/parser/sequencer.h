@@ -27,26 +27,23 @@
 #ifndef ARC_ARCH_ACPI_CAML_PARSER_SEQUENCER_H
 #define ARC_ARCH_ACPI_CAML_PARSER_SEQUENCER_H
 
-#define ADVANCE_STATE(state) \
-	state->buffer++; \
-	state->max--;
+#define ADVANCE_STATE(__state) \
+	__state->buffer++; \
+	__state->max--;
 
-#define ADVANCE_STATE_BY(state, by) \
-	state->buffer += by; \
-	state->max -= by;
+#define ADVANCE_STATE_BY(__state, __by) \
+	__state->buffer += __by; \
+	__state->max -= __by;
 
-#define REGRESS_STATE(state) \
-	state->buffer--; \
-	state->max++;
+#define REGRESS_STATE(__state) \
+	__state->buffer--; \
+	__state->max++;
 
-#define REGRESS_STATE_BY(state, by) \
-	state->buffer -= by; \
-	state->max += by;
+#define REGRESS_STATE_BY(__state, __by) \
+	__state->buffer -= __by; \
+	__state->max += __by;
 
 #include <arch/acpi/caml/parse.h>
-
-uint64_t sequencer_pop_scope();
-int sequencer_push_scope(uint64_t scope);
 
 int sequencer_begin(struct ARC_cAMLState *state);
 

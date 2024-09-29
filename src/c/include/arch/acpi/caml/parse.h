@@ -31,10 +31,19 @@
 #include <stdint.h>
 
 struct ARC_cAMLState {
+	// Buffer containing AML
 	uint8_t *buffer;
+	// Length of buffer containing AML
 	size_t max;
+	// The root directory of the ACPI tree
 	struct ARC_VFSNode *root;
+	// The current scope's working directory
 	struct ARC_VFSNode *parent;
+	// JIT buffer to write JITed code to (THIS IS A FAKE FILE)
+	struct ARC_File *jit_buffer;
+	// End first AML byte that should no longer be JIT compiled
+	// into the JIT buffer
+	size_t jit_limit;
 };
 
 int caml_parse(uint8_t *buffer, size_t size);

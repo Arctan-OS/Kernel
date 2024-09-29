@@ -1,5 +1,5 @@
 /**
- * @file scope.c
+ * @file method.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,32 +24,54 @@
  *
  * @DESCRIPTION
 */
-#include <arch/acpi/caml/parser/scope.h>
+#include <arch/acpi/caml/parser/method.h>
 #include <arch/acpi/caml/parser/package.h>
 #include <arch/acpi/caml/parser/name.h>
+#include <arch/acpi/caml/ops.h>
 #include <arch/acpi/caml/parser/sequencer.h>
 #include <mm/allocator.h>
-#include <fs/vfs.h>
 #include <lib/util.h>
 #include <lib/perms.h>
+#include <fs/vfs.h>
 #include <global.h>
 
-int parse_scope(struct ARC_cAMLState *state) {
-	size_t length = parse_package_length(state);
+int parse_method(struct ARC_cAMLState *state) {
+	ARC_DEBUG(INFO, "Reading method %p:\n", state->buffer);
+
+	size_t package_size = parse_package_length(state);
+	size_t delta = state->max;
 
 	char *name = parse_name_string(state);
+	uint8_t flags = *state->buffer;
+	ADVANCE_STATE(state);
 
-	ARC_DEBUG(INFO, "\tPkgLength: %lu\n", length);
+	delta -= state->max;
+	package_size -= delta;
+
+	ARC_DEBUG(INFO, "\tPkgLength: %lu\n", package_size);
 	ARC_DEBUG(INFO, "\tName: %s\n", name);
+	ARC_DEBUG(INFO, "\tFlags: 0x%x\n", flags);
 
-	struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->parent, ARC_STD_PERM, ARC_VFS_N_DIR, NULL) : state->parent;
+	if (strlen(name) > 0) {
+		struct ARC_VFSNode *node = vfs_create_rel(name, state->parent, ARC_STD_PERM, ARC_VFS_N_BUFF, NULL);
+		struct ARC_File *fake = (struct ARC_File *)alloc(sizeof(*fake));
+
+		if (fake == NULL) {
+			goto skip;
+		}
+
+		memset(fake, 0, sizeof(*fake));
+
+		fake->node = node;
+		state->jit_buffer = fake;
+		state->jit_limit = package_size;
+	} else {
+		skip:;
+		ARC_DEBUG(ERR, "\tSkipped method\n");
+		ADVANCE_STATE_BY(state, package_size);
+	}
 
 	free(name);
-
-	if (node == NULL) {
-		ARC_DEBUG(ERR, "Failed to create new directory\n");
-		return -1;
-	}
 
 	return 0;
 }

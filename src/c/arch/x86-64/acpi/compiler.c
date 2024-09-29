@@ -1,5 +1,5 @@
 /**
- * @file scope.c
+ * @file compiler.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,32 +24,10 @@
  *
  * @DESCRIPTION
 */
-#include <arch/acpi/caml/parser/scope.h>
-#include <arch/acpi/caml/parser/package.h>
-#include <arch/acpi/caml/parser/name.h>
-#include <arch/acpi/caml/parser/sequencer.h>
-#include <mm/allocator.h>
-#include <fs/vfs.h>
-#include <lib/util.h>
-#include <lib/perms.h>
+#include <arch/x86-64/acpi/compiler.h>
 #include <global.h>
 
-int parse_scope(struct ARC_cAMLState *state) {
-	size_t length = parse_package_length(state);
-
-	char *name = parse_name_string(state);
-
-	ARC_DEBUG(INFO, "\tPkgLength: %lu\n", length);
-	ARC_DEBUG(INFO, "\tName: %s\n", name);
-
-	struct ARC_VFSNode *node = strlen(name) > 0 ? vfs_create_rel(name, state->parent, ARC_STD_PERM, ARC_VFS_N_DIR, NULL) : state->parent;
-
-	free(name);
-
-	if (node == NULL) {
-		ARC_DEBUG(ERR, "Failed to create new directory\n");
-		return -1;
-	}
-
+int compile_to_hex_string(struct ARC_cAMLState *state) {
+	printf("parsing hex string\n");
 	return 0;
 }

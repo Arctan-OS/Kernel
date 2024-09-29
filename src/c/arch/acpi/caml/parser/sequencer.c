@@ -27,8 +27,13 @@
 #include <arch/acpi/caml/parser/sequencer.h>
 #include <arch/acpi/caml/parser/extop.h>
 #include <arch/acpi/caml/parser/scope.h>
+#include <arch/acpi/caml/parser/method.h>
 #include <mm/allocator.h>
 #include <global.h>
+
+#ifdef ARC_TARGET_ARCH_X86_64
+#include <arch/x86-64/acpi/compiler.h>
+#endif
 
 static int (*sequencer_table[256])(struct ARC_cAMLState *state) = {
         [0x00] = NULL,
@@ -52,7 +57,7 @@ static int (*sequencer_table[256])(struct ARC_cAMLState *state) = {
         [0x11] = NULL,
         [0x12] = NULL,
         [0x13] = NULL,
-        [0x14] = NULL,
+        [0x14] = parse_method,
         [0x15] = NULL,
         [0x16] = NULL,
         [0x17] = NULL,
@@ -192,7 +197,7 @@ static int (*sequencer_table[256])(struct ARC_cAMLState *state) = {
         [0x95] = NULL,
         [0x96] = NULL,
         [0x97] = NULL,
-        [0x98] = NULL,
+        [0x98] = compile_to_hex_string,
         [0x99] = NULL,
         [0x9A] = NULL,
         [0x9B] = NULL,
@@ -304,24 +309,6 @@ static int (*sequencer_table[256])(struct ARC_cAMLState *state) = {
         [0xFF] = NULL,
 };
 
-
-// Scope: A region of code
-// Lower 32-bits: Offset from current byte to the first byte outside
-//                of the current scope
-// Upper 32-bits: Attributes
-static uint64_t *scope_stack = NULL;
-static int sequencer_ptr = 0;
-
-uint64_t sequencer_pop_scope() {
-	return scope_stack[--sequencer_ptr];
-}
-
-int sequencer_push_scope(uint64_t scope) {
-	scope_stack[sequencer_ptr++] = scope;
-
-	return 0;
-}
-
 int sequencer_begin(struct ARC_cAMLState *state) {
 	if (state == NULL || state->buffer == NULL) {
 		ARC_DEBUG(ERR, "State or buffer (%p, %p) is NULL\n", state, state->buffer);
@@ -329,27 +316,28 @@ int sequencer_begin(struct ARC_cAMLState *state) {
 	}
 
 	size_t max = state->max;
-	scope_stack = alloc(PAGE_SIZE);
 
 	while (state->max > 0 && state->max <= max) {
 		uint8_t i = *state->buffer;
 		ADVANCE_STATE(state);
 
 		if (sequencer_table[i] == NULL) {
-			ARC_DEBUG(ERR, "Unrecognized bytecode 0x%02x\n", *state->buffer);
-			for (int i = -16; i <= 16; i++) {
-				printf("%c%02X%c ", (i == 0 ? '[' : '\0'), state->buffer[i], (i == 0 ? ']' : '\0'));
+			ARC_DEBUG(ERR, "Unrecognized bytecode 0x%02x\n", i);
+			for (int i = -17; i < 16; i++) {
+				printf("%c%02X%c ", (i == -1 ? '[' : '\0'), state->buffer[i], (i == -1 ? ']' : '\0'));
 			}
 			printf("\n");
+
+			if (state->jit_buffer != NULL) {
+				free(state->jit_buffer);
+				state->jit_buffer = NULL;
+			}
 
 			break;
 		}
 
 		sequencer_table[i](state);
 	}
-
-	free(scope_stack);
-	scope_stack = NULL;
 
 	return 0;
 }

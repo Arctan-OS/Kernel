@@ -1,5 +1,5 @@
 /**
- * @file jit.c
+ * @file compiler.c
  *
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
@@ -24,3 +24,13 @@
  *
  * @DESCRIPTION
 */
+#ifndef ARC_ARCH_X86_64_ACPI_COMPILER_H
+#define ARC_ARCH_X86_64_ACPI_COMPILER_H
+
+#include <stddef.h>
+#include <stdint.h>
+#include <arch/acpi/caml/parse.h>
+
+int compile_to_hex_string(struct ARC_cAMLState *state);
+
+#endif
