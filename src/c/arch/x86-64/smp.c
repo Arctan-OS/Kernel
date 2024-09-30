@@ -85,7 +85,6 @@ int smp_move_ap_high_mem(struct ap_start_info *info) {
 		ARC_HANG;
 	}
 
-	init_sse();
 	init_gdt();
 	_install_idt();
 
@@ -291,10 +290,9 @@ int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t ve
 	// which should bring AP to kernel_main where it will be
 	// detected, logged, and put into smp_hold
 	void *code = pmm_low_alloc();
-	// NOTE: All stacks are aligned to 16 bytes, so SSE does not complain
 	void *stack = pmm_low_alloc();
 	// NOTE: This is a virtual address
-	void *stack_high = pmm_contig_alloc(2) + (PAGE_SIZE * 2) - 0x10;
+	void *stack_high = pmm_contig_alloc(2);
 
 	pager_map(ARC_HHDM_TO_PHYS(code), ARC_HHDM_TO_PHYS(code), PAGE_SIZE, 1 << ARC_PAGER_4K | 1 << ARC_PAGER_RW);
 	pager_map(ARC_HHDM_TO_PHYS(stack), ARC_HHDM_TO_PHYS(stack), PAGE_SIZE, 1 << ARC_PAGER_4K | 1 << ARC_PAGER_RW);
@@ -306,8 +304,8 @@ int init_smp(uint32_t lapic, uint32_t acpi_uid, uint32_t acpi_flags, uint32_t ve
 	_x86_getCR3();
 	info->pml4 = _x86_CR3;
 	info->entry = (uintptr_t)smp_move_ap_high_mem;
-	info->stack = ARC_HHDM_TO_PHYS(stack) + PAGE_SIZE - 0x10;
-	info->stack_high = (uintptr_t)stack_high;
+	info->stack = ARC_HHDM_TO_PHYS(stack) + PAGE_SIZE - 0x8;
+	info->stack_high = (uintptr_t)stack_high + (PAGE_SIZE * 2) - 0x8;
 	info->gdt_size = 0x1F;
 	info->gdt_addr = ARC_HHDM_TO_PHYS(&info->gdt_table);
 	info->pat = _x86_RDMSR(0x277);

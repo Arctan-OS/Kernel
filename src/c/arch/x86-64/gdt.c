@@ -132,8 +132,8 @@ void init_gdt() {
 	struct tss_descriptor *tss = (struct tss_descriptor *)alloc(sizeof(*tss));
 	set_tss_gate(container, (uint64_t)tss, sizeof(*tss) - 1, 0x89, 0x0);
 
-	uintptr_t ist = (uintptr_t)alloc(PAGE_SIZE * 2);
-	uintptr_t rsp = (uintptr_t)alloc(PAGE_SIZE * 2);
+	uintptr_t ist = (uintptr_t)alloc(PAGE_SIZE * 2) + (PAGE_SIZE * 2) - 0x8;
+	uintptr_t rsp = (uintptr_t)alloc(PAGE_SIZE * 2) + (PAGE_SIZE * 2) - 0x8;
 	tss->ist1_low = (ist & UINT32_MAX);
 	tss->ist1_high = (ist >> 32) & UINT32_MAX;
 	tss->rsp0_low = (rsp & UINT32_MAX);

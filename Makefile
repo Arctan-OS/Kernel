@@ -55,7 +55,7 @@ OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include $(CPP_DEBUG_FLAG) $(CPP_E9HACK_FLAG) $(ARC_TARGET_ARCH)
 CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
 		  -fno-lto -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
-		  -Wextra -ffreestanding -fPIE
+		  -Wextra -ffreestanding -fPIE -mno-sse -mno-sse2
 
 LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -static -nostdlib -pie -o $(PRODUCT)
 

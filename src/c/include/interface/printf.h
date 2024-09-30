@@ -41,6 +41,9 @@
 #define printf printf_
 #define sprintf sprintf_
 
+#define PRINTF_SUPPORT_DECIMAL_SPECIFIERS 0
+#define PRINTF_SUPPORT_EXPONENTIAL_SPECIFIERS 0
+
 // Configuration for printf.h
 //#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 1
 //#define PRINTF_SUPPORT_DECIMAL_SPECIFIERS 0

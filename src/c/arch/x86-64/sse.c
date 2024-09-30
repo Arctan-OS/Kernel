@@ -73,7 +73,7 @@ int init_sse() {
 			ARC_HANG;
 		}
 
-		_osxsave_support((uintptr_t)fxsave_space);
+		_osxsave_support((uintptr_t)fxsave_space - 0x10);
 	}
 
 	// Set MXCSR Register

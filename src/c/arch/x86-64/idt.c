@@ -163,12 +163,11 @@ struct interrupt_frame {
 }__attribute__((packed));
 STATIC_ASSERT(sizeof(struct interrupt_frame) == 40 , "Interrupt frame wrong size");
 
-
-
 GENERIC_HANDLER(0) {
 	GENERIC_EXCEPTION_PREAMBLE(0);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(0);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -177,6 +176,7 @@ GENERIC_HANDLER(1) {
 	GENERIC_EXCEPTION_PREAMBLE(1);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(1);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -185,6 +185,7 @@ GENERIC_HANDLER(2) {
 	GENERIC_EXCEPTION_PREAMBLE(2);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(2);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -193,6 +194,7 @@ GENERIC_HANDLER(3) {
 	GENERIC_EXCEPTION_PREAMBLE(3);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(3);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -201,6 +203,7 @@ GENERIC_HANDLER(4) {
 	GENERIC_EXCEPTION_PREAMBLE(4);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(4);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -209,6 +212,7 @@ GENERIC_HANDLER(5) {
 	GENERIC_EXCEPTION_PREAMBLE(5);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(5);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -217,6 +221,7 @@ GENERIC_HANDLER(6) {
 	GENERIC_EXCEPTION_PREAMBLE(6);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(6);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -225,6 +230,7 @@ GENERIC_HANDLER(7) {
 	GENERIC_EXCEPTION_PREAMBLE(7);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(7);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -233,6 +239,7 @@ GENERIC_HANDLER(8) {
 	GENERIC_EXCEPTION_PREAMBLE(8);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(8);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -241,6 +248,7 @@ GENERIC_HANDLER(9) {
 	GENERIC_EXCEPTION_PREAMBLE(9);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(9);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -249,6 +257,7 @@ GENERIC_HANDLER(10) {
 	GENERIC_EXCEPTION_PREAMBLE(10);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(10);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -257,6 +266,7 @@ GENERIC_HANDLER(11) {
 	GENERIC_EXCEPTION_PREAMBLE(11);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(11);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -265,6 +275,7 @@ GENERIC_HANDLER(12) {
 	GENERIC_EXCEPTION_PREAMBLE(12);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(12);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -281,6 +292,8 @@ GENERIC_HANDLER(13) {
 	}
 
 	printf("Error code 0x%"PRIx64"\n", interrupt_error_code);
+
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -293,6 +306,7 @@ GENERIC_HANDLER(14) {
 	printf("CR2: 0x%016"PRIx64"\n", _x86_CR2);
 	_x86_getCR3();
 	printf("CR3: 0x%016"PRIx64"\n", _x86_CR3);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -301,6 +315,7 @@ GENERIC_HANDLER(15) {
 	GENERIC_EXCEPTION_PREAMBLE(15);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(15);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -309,6 +324,7 @@ GENERIC_HANDLER(16) {
 	GENERIC_EXCEPTION_PREAMBLE(16);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(16);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -317,6 +333,7 @@ GENERIC_HANDLER(17) {
 	GENERIC_EXCEPTION_PREAMBLE(17);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(17);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -325,6 +342,7 @@ GENERIC_HANDLER(18) {
 	GENERIC_EXCEPTION_PREAMBLE(18);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(18);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -333,6 +351,7 @@ GENERIC_HANDLER(19) {
 	GENERIC_EXCEPTION_PREAMBLE(19);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(19);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -341,6 +360,7 @@ GENERIC_HANDLER(20) {
 	GENERIC_EXCEPTION_PREAMBLE(20);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(20);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -349,6 +369,7 @@ GENERIC_HANDLER(21) {
 	GENERIC_EXCEPTION_PREAMBLE(21);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(21);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -357,6 +378,7 @@ GENERIC_HANDLER(22) {
 	GENERIC_EXCEPTION_PREAMBLE(22);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(22);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -365,6 +387,7 @@ GENERIC_HANDLER(23) {
 	GENERIC_EXCEPTION_PREAMBLE(23);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(23);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -373,6 +396,7 @@ GENERIC_HANDLER(24) {
 	GENERIC_EXCEPTION_PREAMBLE(24);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(24);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -381,6 +405,7 @@ GENERIC_HANDLER(25) {
 	GENERIC_EXCEPTION_PREAMBLE(25);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(25);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -389,6 +414,7 @@ GENERIC_HANDLER(26) {
 	GENERIC_EXCEPTION_PREAMBLE(26);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(26);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -397,6 +423,7 @@ GENERIC_HANDLER(27) {
 	GENERIC_EXCEPTION_PREAMBLE(27);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(27);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -405,6 +432,7 @@ GENERIC_HANDLER(28) {
 	GENERIC_EXCEPTION_PREAMBLE(28);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(28);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -413,6 +441,7 @@ GENERIC_HANDLER(29) {
 	GENERIC_EXCEPTION_PREAMBLE(29);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(29);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -421,6 +450,7 @@ GENERIC_HANDLER(30) {
 	GENERIC_EXCEPTION_PREAMBLE(30);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(30);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }
@@ -429,6 +459,7 @@ GENERIC_HANDLER(31) {
 	GENERIC_EXCEPTION_PREAMBLE(31);
 	(void)interrupt_error_code;
         GENERIC_EXCEPTION_REG_DUMP(31);
+	spinlock_unlock(&panic_lock);
 	ARC_HANG;
 	return 0;
 }

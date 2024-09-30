@@ -58,10 +58,6 @@ int init_arch() {
 		ARC_HANG;
 	}
 
-#ifdef ARC_TARGET_ARCH_X86_64
-	init_sse();
-#endif
-
 	if (parse_boot_info() != 0) {
 		ARC_DEBUG(ERR, "Failed to parse boot information\n");
 		ARC_HANG;
