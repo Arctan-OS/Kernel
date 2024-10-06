@@ -56,6 +56,18 @@ void *vmm_free(void *address) {
 	return address;
 }
 
+void *vmm_alloc_nopage(size_t size) {
+	if (size < PAGE_SIZE) {
+		size = PAGE_SIZE;
+	}
+
+	return buddy_alloc(&vmm_meta, size);
+}
+
+size_t vmm_free_nopage(void *address) {
+	return buddy_free(&vmm_meta, address);
+}
+
 int init_vmm(void *addr, size_t size) {
 	return init_buddy(&vmm_meta, addr, size, PAGE_SIZE);
 }

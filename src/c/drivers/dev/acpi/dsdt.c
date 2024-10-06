@@ -26,7 +26,6 @@
 */
 #include <lib/resource.h>
 #include <arch/acpi/acpi.h>
-#include <arch/acpi/caml/parse.h>
 #include <global.h>
 #include <drivers/dri_defs.h>
 

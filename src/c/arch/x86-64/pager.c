@@ -288,6 +288,7 @@ static int pager_fly_map_callback(struct pager_traverse_info *info, uint64_t *ta
 }
 
 int pager_fly_map(uintptr_t virtual, size_t size, uint32_t attributes) {
+	attributes |= 1 << ARC_PAGER_4K;
 	struct pager_traverse_info info = { .virtual = virtual, .size = size, .attributes = attributes };
 
 	if (pager_traverse(&info, pager_fly_map_callback) != 0) {

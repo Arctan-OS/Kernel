@@ -33,6 +33,7 @@
 #include <arch/smp.h>
 #include <lib/util.h>
 #include <lib/perms.h>
+#include <arch/acpi/acpi.h>
 
 #define ENTRY_TYPE_LAPIC               0x00
 #define ENTRY_TYPE_IOAPIC              0x01
@@ -102,15 +103,13 @@ int init_apic() {
 	Arc_ProcessorList[bsp].generic.timer_mode = ARC_LAPIC_TIMER_PERIODIC;
 	lapic_refresh_timer(1000);
 
-	struct ARC_File *apic = NULL;
-	vfs_open("/dev/acpi/apic", 0, ARC_STD_PERM, (void *)&apic);
+	uint8_t *data = NULL;
+	size_t max = acpi_get_madt(&data);
+	size_t i = 0;
 
-	if (apic == NULL) {
+	if (data == NULL || max == 0) {
 		return -1;
 	}
-
-	uint8_t data[256] = { 0 };
-	uint32_t offset = 0;
 
 	// NOTE: Is it possible for this data to be structured something
 	//       along the lines of:
@@ -122,12 +121,12 @@ int init_apic() {
 	//         - ...
 	//         Because if so, then this will need to be separated out into
 	//         two loops
-	while (vfs_read(data, 1, 256, apic) > 0) {
-		switch (data[0]) {
+	while (i < max) {
+		switch (data[i]) {
 			case ENTRY_TYPE_LAPIC: {
-				uint32_t uid = *(uint8_t *)(data + 2);
-				uint32_t id = *(uint8_t *)(data + 3);
-				uint32_t flags = *(uint32_t *)(data + 4);
+				uint32_t uid = *(uint8_t *)(data + i + 2);
+				uint32_t id = *(uint8_t *)(data + i + 3);
+				uint32_t flags = *(uint32_t *)(data + i + 4);
 
 				ARC_DEBUG(INFO, "LAPIC found (UID: %d, ID: %d, Flags: 0x%x)\n", uid, id, flags);
 
@@ -141,9 +140,9 @@ int init_apic() {
 				outb(0x21, 0xFF);
 				outb(0xA1, 0xFF);
 
-				uint32_t address = *(uint32_t *)(data + 4);
-				uint32_t gsi = *(uint32_t *)(data + 8);
-				uint32_t id = *(uint8_t *)(data + 2);
+				uint32_t address = *(uint32_t *)(data + i + 4);
+				uint32_t gsi = *(uint32_t *)(data + i + 8);
+				uint32_t id = *(uint8_t *)(data + i + 2);
 
 				ARC_DEBUG(INFO, "IOAPIC found (GSI: %d, Address: 0x%"PRIx32", ID: %d)\n", gsi, address, id);
 
@@ -172,9 +171,9 @@ int init_apic() {
 			}
 
 			case ENTRY_TYPE_INT_OVERRIDE_SRC: {
-				uint8_t irq = *(uint8_t *)(data + 3);
-				uint32_t gsi = *(uint32_t *)(data + 4);
-				uint16_t flags = *(uint16_t *)(data + 8);
+				uint8_t irq = *(uint8_t *)(data + i + 3);
+				uint32_t gsi = *(uint32_t *)(data + i + 4);
+				uint16_t flags = *(uint16_t *)(data + i + 8);
 				uint8_t polarity = (flags       & 0b11) == 0b11 ? 0x1 : 0x0; // 01: Active High; 11: Active Low
 				uint8_t trigger = ((flags >> 2) & 0b11) == 0b11 ? 0x1 : 0x0; // 01: Edge; 11: Level
 
@@ -195,16 +194,13 @@ int init_apic() {
 			}
 
 			default: {
-				ARC_DEBUG(INFO, "Unhandled MADT entry of type %d\n", data[0]);
+				ARC_DEBUG(INFO, "Unhandled MADT entry of type %d\n", data[i]);
 				break;
 			}		
 		}
 
-		offset += data[1];
-		vfs_seek(apic, offset, SEEK_SET);
+		i += data[i + 1];
 	}
-
-	vfs_close(apic);
 
 	return 0;
 }

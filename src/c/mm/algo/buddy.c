@@ -88,6 +88,12 @@ static int merge(struct buddy_node *base) {
 
 void *buddy_alloc(struct ARC_BuddyMeta *meta, size_t size) {
 	if (meta == NULL || size == 0 || meta->tree == NULL) {
+		ARC_DEBUG(ERR, "Invalid parameters\n");
+		return NULL;
+	}
+
+	if (size < meta->smallest_object) {
+		ARC_DEBUG(ERR, "Size to allocate is below limit\n");
 		return NULL;
 	}
 
@@ -148,9 +154,11 @@ size_t buddy_free(struct ARC_BuddyMeta *meta, void *address) {
 
 	current->attributes &= ~1;
 
+	size_t ret = current->size;
+
 	merge(current);
 
-        return 0;
+        return ret;
 }
 
 int init_buddy(struct ARC_BuddyMeta *meta, void *base, size_t size, size_t smallest_object) {

@@ -120,6 +120,8 @@ int init_static_mutex(ARC_GenericMutex *mutex);
 int mutex_lock(ARC_GenericMutex *mutex);
 int mutex_unlock(ARC_GenericMutex *mutex);
 
+int init_spinlock(ARC_GenericSpinlock **spinlock);
+int uninit_spinlock(ARC_GenericSpinlock *spinlock);
 int init_static_spinlock(ARC_GenericSpinlock *spinlock);
 int spinlock_lock(ARC_GenericSpinlock *spinlock);
 int spinlock_unlock(ARC_GenericSpinlock *spinlock);

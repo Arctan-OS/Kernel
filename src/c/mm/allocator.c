@@ -33,8 +33,8 @@
 static struct ARC_SlabMeta meta = { 0 };
 
 void *alloc(size_t size) {
-	if (size >= PAGE_SIZE / 2) {
-		return vmm_alloc(size);
+	if (size > PAGE_SIZE / 2) {
+		return vmm_alloc(max(PAGE_SIZE, size));
 	}
 
 	return slab_alloc(&meta, size);
@@ -43,8 +43,8 @@ void *alloc(size_t size) {
 void *calloc(size_t size, size_t count) {
 	size_t final = size * count;
 
-	if (final >= PAGE_SIZE / 2) {
-		return vmm_alloc(size);
+	if (final > PAGE_SIZE / 2) {
+		return vmm_alloc(max(PAGE_SIZE, size));
 	}
 
 	return slab_alloc(&meta, final);

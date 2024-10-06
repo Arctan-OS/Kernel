@@ -39,17 +39,18 @@
 void *freelist_alloc(struct ARC_FreelistMeta *meta) {
 	mutex_lock(&meta->mutex);
 
-	while (meta->free_objects < 1 && meta != NULL) {
+	while (meta != NULL && meta->free_objects < 1) {
 		if (meta->next != NULL) {
 			mutex_lock(&meta->next->mutex);
 		}
+
 
 		mutex_unlock(&meta->mutex);
 		meta = meta->next;
 	}
 
 	if (meta == NULL) {
-		ARC_DEBUG(INFO, "Found meta is NULL\n");
+		ARC_DEBUG(ERR, "Found meta is NULL\n");
 		return NULL;
 	}
 

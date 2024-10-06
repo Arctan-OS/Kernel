@@ -80,7 +80,7 @@ int init_arch() {
 		ARC_HANG;
 	}
 
-	if (init_allocator(128) != 0) {
+	if (init_allocator(256) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize kernel allocator\n");
 		ARC_HANG;
 	}
@@ -98,7 +98,7 @@ int init_arch() {
 	Arc_InitramfsRes = init_resource(0, ARC_SDRI_INITRAMFS, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
 
-        init_acpi(Arc_BootMeta->rsdp);
+        init_acpi();
 
 #ifdef ARC_TARGET_ARCH_X86_64
         if (init_apic() != 0) {

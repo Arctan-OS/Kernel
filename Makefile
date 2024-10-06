@@ -53,11 +53,12 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
 CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) -I src/c/include $(CPP_DEBUG_FLAG) $(CPP_E9HACK_FLAG) $(ARC_TARGET_ARCH)
-CFLAGS := -m64 -c -masm=intel -fno-stack-protector -nostdlib -fno-stack-check \
-		  -fno-lto -march=x86-64 -mno-mmx -mno-80387 -mno-red-zone -Wall \
-		  -Wextra -ffreestanding -fPIE -mno-sse -mno-sse2
+CFLAGS := -c -m64 -c -masm=intel -fno-stack-protector -fno-stack-check \
+		  -fno-lto -mno-mmx -mno-80387 -mno-red-zone -Wall \
+		  -Wextra -mno-sse -mno-sse2 \
+		  -fPIE -ffunction-sections -march=x86-64-v2
 
-LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -static -nostdlib -pie -o $(PRODUCT)
+LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -static -pie -o $(PRODUCT)
 
 NASMFLAGS := -f elf64
 
@@ -70,7 +71,7 @@ clean:
 	find . -name "*.o" -delete
 
 src/c/%.o: src/c/%.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 src/asm/%.o: src/asm/%.asm
 	nasm $(NASMFLAGS) $< -o $@

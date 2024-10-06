@@ -24,11 +24,12 @@
  *
  * @DESCRIPTION
 */
-#include "arctan.h"
 #include <arch/acpi/acpi.h>
+#include <uacpi/uacpi.h>
+#include <uacpi/event.h>
+#include <uacpi/tables.h>
 #include <fs/vfs.h>
 #include <global.h>
-#include <drivers/dri_defs.h>
 #include <lib/util.h>
 
 int acpi_checksum(void *data, size_t length) {
@@ -42,19 +43,36 @@ int acpi_checksum(void *data, size_t length) {
 	return sum;
 }
 
-int init_acpi(uint64_t rsdp_ptr) {
-	if (rsdp_ptr == 0) {
-		ARC_DEBUG(ERR, "NULL address provided\n");
+size_t acpi_get_madt(uint8_t **out) {
+	(void)out;
+
+	uacpi_table table = { 0 };
+	int r = 0;
+	if ((r = uacpi_table_find_by_signature("APIC", &table)) != UACPI_STATUS_OK) {
+		ARC_DEBUG(ERR, "Failed to get table %d\n");
 		return -1;
 	}
 
-        if (vfs_create("/dev/acpi/", 0, ARC_VFS_N_DIR, NULL) != 0) {
-                ARC_DEBUG(ERR, "Failed to create ACPI directory\n");
-                return -1;
-        }
+	*out = (uint8_t *)table.ptr + 44;
 
-	rsdp_ptr = ARC_PHYS_TO_HHDM(rsdp_ptr);
-	init_resource_at("/dev/", ARC_DRI_DEV, ARC_DRI_RSDT, (void *)rsdp_ptr);
+	return table.hdr->length - 44;
+}
+
+int init_acpi() {
+	if (uacpi_initialize(0) != UACPI_STATUS_OK) {
+		ARC_DEBUG(ERR, "Failed to initialize uACPi\n");
+		return -1;
+	}
+
+	if (uacpi_namespace_load() != UACPI_STATUS_OK) {
+		ARC_DEBUG(ERR, "Failed to load ACPI namespace\n");
+	}
+
+	if (uacpi_finalize_gpe_initialization() != UACPI_STATUS_OK) {
+		ARC_DEBUG(ERR, "Failed to finalize GPE\n");
+	}
+
+	ARC_DEBUG(INFO, "Initialized uACPI\n");
 
         return 0;
 }

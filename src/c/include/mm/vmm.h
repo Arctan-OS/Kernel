@@ -33,6 +33,9 @@
 void *vmm_alloc(size_t size);
 void *vmm_free(void *address);
 
+void *vmm_alloc_nopage(size_t size);
+size_t vmm_free_nopage(void *address);
+
 int init_vmm(void *addr, size_t size);
 
 #endif

@@ -206,13 +206,13 @@ int init_mutex(ARC_GenericMutex **mutex) {
 		return 1;
 	}
 
-	*mutex = (ARC_GenericMutex *)alloc(sizeof(ARC_GenericMutex));
+	*mutex = (ARC_GenericMutex *)alloc(sizeof(**mutex));
 
 	if (*mutex == NULL) {
 		return 1;
 	}
 
-	memset(*mutex, 0, sizeof(ARC_GenericMutex));
+	memset(*mutex, 0, sizeof(**mutex));
 
 	return 0;
 }
@@ -255,6 +255,28 @@ int mutex_unlock(ARC_GenericMutex *mutex) {
 	}
 
 	__atomic_clear(mutex, __ATOMIC_RELEASE);
+
+	return 0;
+}
+
+int init_spinlock(ARC_GenericSpinlock **spinlock) {
+	if (spinlock == NULL) {
+		return 1;
+	}
+
+	*spinlock = (ARC_GenericMutex *)alloc(sizeof(**spinlock));
+
+	if (*spinlock == NULL) {
+		return 1;
+	}
+
+	memset(*spinlock, 0, sizeof(**spinlock));
+
+	return 0;
+}
+
+int uninit_spinlock(ARC_GenericSpinlock *spinlock) {
+	free(spinlock);
 
 	return 0;
 }
