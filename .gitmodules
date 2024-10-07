@@ -1,0 +1,35 @@
+[submodule "Karch-x86-64"]
+	path = K/arch-x86-64
+	url = https://github.com/Arctan-OS/Karch-x86-64
+
+[submodule "Karch"]
+	path = K/arch
+	url = https://github.com/Arctan-OS/Karch
+
+[submodule "Kboot"]
+	path = K/boot
+	url = https://github.com/Arctan-OS/Kboot
+
+[submodule "Klib"]
+	path = K/lib
+	url = https://github.com/Arctan-OS/Klib
+
+[submodule "Kmm"]
+	path = K/mm
+	url = https://github.com/Arctan-OS/Kmm
+
+[submodule "Kmp"]
+	path = K/mp
+	url = https://github.com/Arctan-OS/Kmp
+
+[submodule "Kinterface"]
+	path = K/interface
+	url = https://github.com/Arctan-OS/Kinterface
+
+[submodule "Kdrivers"]
+	path = K/drivers
+	url = https://github.com/Arctan-OS/Kdrivers
+
+[submodule "Kfs"]
+	path = K/fs
+	url = https://github.com/Arctan-OS/Kfs

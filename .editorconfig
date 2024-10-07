@@ -1,0 +1,14 @@
+root = true
+
+[*]
+end_of_line = 1f
+insert_final_newline = true
+
+[COMMIT_EDITMSG]
+insert_final_newline = false
+indent_size = 0
+
+[*.{c,h}]
+charset = utf-8
+indent_style = tab
+indent_size = 8

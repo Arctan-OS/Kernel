@@ -1,4 +1,4 @@
-#/**
+/**
  *
  * MIT License
  *
@@ -23,7 +23,7 @@
  * SOFTWARE.
  *
  * */
-include <uacpi/internal/event.h>
+#include <uacpi/internal/event.h>
 #include <uacpi/internal/registers.h>
 #include <uacpi/internal/context.h>
 #include <uacpi/internal/io.h>
