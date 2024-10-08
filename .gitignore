@@ -1,1 +1,4 @@
+.ccls-cache/
 K/
+*.o
+*.elf

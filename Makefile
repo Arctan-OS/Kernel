@@ -24,7 +24,7 @@
 # *
 # * @DESCRIPTION
 #*/
-PRODUCT := kernel.elf
+PRODUCT := $(ARC_ROOT)/volatile/kernel.elf
 
 CPP_DEBUG_FLAG := -DARC_DEBUG_ENABLE
 CPP_E9HACK_FLAG := -DARC_E9HACK_ENABLE
@@ -117,5 +117,7 @@ src/asm/%.o: src/asm/%.asm
 
 .PHONY: clean
 clean:
-	echo "Cleaning kernel"
+	rm -f $(PRODUCT)
+	find . -type f -name "*.o" -delete
 
+-include clean
