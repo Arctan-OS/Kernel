@@ -2,3 +2,4 @@
 K/
 *.o
 *.elf
+compile_commands.json

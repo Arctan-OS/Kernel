@@ -121,6 +121,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	printf("\nCompiled using gcc for Arctan\n\n");
 #endif
 
+	vfs_open("/dev/nvme0", 0, ARC_STD_PERM, &file);
+	vfs_read((void *)0x100, 1, 1, file);
+
 	term_draw(&Arc_MainTerm);
 
 	vfs_close(Arc_FontFile);
