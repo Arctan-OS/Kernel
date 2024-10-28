@@ -92,6 +92,9 @@
 #define abs(a) \
 	(a < 0 ? -a : a)
 
+#define MASKED_READ(__value, __shift, __mask) (((__value) >> (__shift)) & (__mask))
+#define MASKED_WRITE(__to, __value, __shift, __mask) __to = (((__to) & ~((__mask) << (__shift))) | (((__value) & (__mask)) << (__shift)));
+
 #define PAGE_SIZE 0x1000
 #define ARC_STD_BUFF_SIZE 0x1000
 
