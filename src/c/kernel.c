@@ -33,6 +33,7 @@
 #include <mm/allocator.h>
 #include <lib/perms.h>
 #include <mm/pmm.h>
+#include <lib/util.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
@@ -69,7 +70,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	struct ARC_File *file = NULL;
 	uint8_t *data = pmm_alloc();
-	vfs_open("/dev/nvme0", 0, ARC_STD_PERM, &file);
+	vfs_open("/dev/nvme_namespace", 0, ARC_STD_PERM, &file);
 	vfs_read(data, 1, PAGE_SIZE, file);
 
 	for (int i = 0; i < PAGE_SIZE; i++) {
