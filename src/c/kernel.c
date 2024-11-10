@@ -34,6 +34,8 @@
 #include <lib/perms.h>
 #include <mm/pmm.h>
 #include <lib/util.h>
+#include <abi-bits/stat.h>
+#include <abi-bits/fcntl.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
@@ -69,11 +71,27 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	}
 
 	struct ARC_File *file = NULL;
-	uint8_t *data = pmm_alloc();
+	uint8_t *data = alloc(PAGE_SIZE * 4);
 	vfs_open("/dev/nvme_namespace", 0, ARC_STD_PERM, &file);
-	vfs_read(data, 1, PAGE_SIZE, file);
+	// TODO: Fix include
+	// TODO: This does not actually work as the size of the
+	//       namespace is not reported, so the seek is just
+	//       ignored. I need to fix this in the vfs_traverse
+	//       function
 
-	for (int i = 0; i < PAGE_SIZE; i++) {
+	vfs_read(data, 1, 512, file);
+	for (int i = 0; i < 512; i++) {
+		printf("%02X ", *(data + i));
+	}
+	printf("\n");
+
+	data[0] = 0xAB;
+	vfs_seek(file, 0, SEEK_SET);
+	vfs_write(data, 1, 512, file);
+
+	vfs_seek(file, 0, SEEK_SET);
+	vfs_read(data, 1, 512, file);
+	for (int i = 0; i < 512; i++) {
 		printf("%02X ", *(data + i));
 	}
 	printf("\n");
