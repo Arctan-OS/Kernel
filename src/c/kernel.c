@@ -72,7 +72,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	struct ARC_File *file = NULL;
 	uint8_t *data = alloc(PAGE_SIZE * 4);
-	vfs_open("/dev/nvme_namespace", 0, ARC_STD_PERM, &file);
+	vfs_open("/dev/nvme0n1", 0, ARC_STD_PERM, &file);
 	// TODO: Fix include
 	// TODO: This does not actually work as the size of the
 	//       namespace is not reported, so the seek is just
