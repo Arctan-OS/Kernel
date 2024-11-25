@@ -43,6 +43,39 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
+int proc_test(int processor) {
+	struct ARC_File *file = NULL;
+	int i = vfs_open("/initramfs/boot/credit.txt", 0, ARC_STD_PERM, (void *)&file);
+	char data[26] = { 0 };
+	vfs_read(&data, 1, 24, file);
+	printf("Processor %d has arrived %"PRIx64" %d %s\n", processor, get_current_tid(), i, data);
+	vfs_close(file);
+	size_t size = 26;
+	struct ARC_VFSNodeInfo info = {
+                .driver_arg = &size,
+		.mode = ARC_STD_PERM,
+		.type = ARC_VFS_N_BUFF,
+		.driver_group = -1,
+        };
+	vfs_create("/write_test.txt", &info);
+	vfs_open("/write_test.txt", 0, ARC_STD_PERM, (void *)&file);
+	vfs_seek(file, 3 * (processor - 1), SEEK_SET);
+	sprintf_(data, "C%d ", processor);
+	vfs_write(data, 1, 3, file);
+	vfs_close(file);
+
+/*
+	vfs_open("/initramfs/boot/reference.txt", 0, ARC_STD_PERM, &file);
+	vfs_read(data, 1, 24, file);
+	printf("Link resolves: %s\n", data);
+	vfs_close(file);
+
+	printf("Processor did not deadlock %d\n", processor);
+
+	 * */
+	ARC_HANG;
+}
+
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
 	Arc_BootMeta = boot_meta;
@@ -56,6 +89,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_MainTerm.font_height = 14;
 	Arc_MainTerm.cx = 0;
 	Arc_MainTerm.cy = 0;
+
 	init_static_mutex(&Arc_MainTerm.lock);
 
 	init_arch();
@@ -70,9 +104,27 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
+	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->generic.next;
+	while (desc != NULL) {
+		desc->generic.flags |= 1 << 1;
+		while ((desc->generic.flags >> 1) & 1) __asm__("pause");
+
+		smp_jmp(desc, proc_test, 1, desc->generic.acpi_uid);
+
+		desc = desc->generic.next;
+	}
+
 	struct ARC_File *file = NULL;
+	vfs_open("/write_test.txt", 0, ARC_STD_PERM, (void *)&file);
+	char buffer[26] = { 0 };
+	vfs_read(buffer, 1, 24, file);
+	printf("Processors wrote: %s\n", buffer);
+	vfs_close(file);
+
+
 	uint8_t *data = alloc(PAGE_SIZE * 4);
 	vfs_open("/dev/nvme0n1", 0, ARC_STD_PERM, &file);
+
 	// TODO: Fix include
 	// TODO: This does not actually work as the size of the
 	//       namespace is not reported, so the seek is just
@@ -83,9 +135,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	for (int i = 0; i < 512; i++) {
 		printf("%02X ", *(data + i));
 	}
-	printf("\n");
+ 	printf("\n");
 
-	data[0] = 0xAB;
+	data[0] = 0xAA;
 	vfs_seek(file, 0, SEEK_SET);
 	vfs_write(data, 1, 512, file);
 
