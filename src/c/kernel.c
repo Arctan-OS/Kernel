@@ -50,6 +50,7 @@ int proc_test(int processor) {
 	vfs_read(&data, 1, 24, file);
 	printf("Processor %d has arrived %"PRIx64" %d %s\n", processor, get_current_tid(), i, data);
 	vfs_close(file);
+
 	size_t size = 26;
 	struct ARC_VFSNodeInfo info = {
                 .driver_arg = &size,
@@ -58,13 +59,12 @@ int proc_test(int processor) {
 		.driver_group = -1,
         };
 	vfs_create("/write_test.txt", &info);
-	vfs_open("/write_test.txt", 0, ARC_STD_PERM, (void *)&file);
+	vfs_open("/write_test.txt", 0, ARC_STD_PERM, &file);
 	vfs_seek(file, 3 * (processor - 1), SEEK_SET);
 	sprintf_(data, "C%d ", processor);
 	vfs_write(data, 1, 3, file);
 	vfs_close(file);
 
-/*
 	vfs_open("/initramfs/boot/reference.txt", 0, ARC_STD_PERM, &file);
 	vfs_read(data, 1, 24, file);
 	printf("Link resolves: %s\n", data);
@@ -72,7 +72,6 @@ int proc_test(int processor) {
 
 	printf("Processor did not deadlock %d\n", processor);
 
-	 * */
 	ARC_HANG;
 }
 
@@ -96,14 +95,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	for (int i = 0; i < 60; i++) {
-		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
-			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {
-				ARC_FB_DRAW(Arc_MainTerm.framebuffer, x, (y * Arc_MainTerm.fb_width), Arc_MainTerm.fb_bpp, (x * y * i / 300) & 0x3FFF);
-			}
-		}
-	}
-
 	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->generic.next;
 	while (desc != NULL) {
 		desc->generic.flags |= 1 << 1;
@@ -114,6 +105,14 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		desc = desc->generic.next;
 	}
 
+	for (int i = 0; i < 60; i++) {
+		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
+			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {
+				ARC_FB_DRAW(Arc_MainTerm.framebuffer, x, (y * Arc_MainTerm.fb_width), Arc_MainTerm.fb_bpp, (x * y * i / 300) & 0x3FFF);
+			}
+		}
+	}
+
 	struct ARC_File *file = NULL;
 	vfs_open("/write_test.txt", 0, ARC_STD_PERM, (void *)&file);
 	char buffer[26] = { 0 };
@@ -121,6 +120,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	printf("Processors wrote: %s\n", buffer);
 	vfs_close(file);
 
+	vfs_open("/initramfs/a/b/c/d.txt", 0, ARC_STD_PERM, &file);
+	vfs_close(file);
 
 	uint8_t *data = alloc(PAGE_SIZE * 4);
 	vfs_open("/dev/nvme0n1", 0, ARC_STD_PERM, &file);
