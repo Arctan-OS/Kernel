@@ -121,6 +121,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_close(file);
 
 	vfs_open("/initramfs/a/b/c/d.txt", 0, ARC_STD_PERM, &file);
+	vfs_list("/", 8);
 	vfs_close(file);
 
 	uint8_t *data = alloc(PAGE_SIZE * 4);
@@ -148,10 +149,14 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		printf("%02X ", *(data + i));
 	}
 	printf("\n");
+	vfs_close(file);
 
 	vfs_list("/", 8);
 
 	term_draw(&Arc_MainTerm);
+
+	vfs_close(Arc_FontFile);
+	vfs_list("/", 8);
 
 	for (;;) ARC_HANG;
 
