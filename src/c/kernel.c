@@ -56,7 +56,7 @@ int proc_test(int processor) {
                 .driver_arg = &size,
 		.mode = ARC_STD_PERM,
 		.type = ARC_VFS_N_BUFF,
-		.driver_group = -1,
+		.driver_index = (uint64_t)-1
         };
 	vfs_create("/write_test.txt", &info);
 	vfs_open("/write_test.txt", 0, ARC_STD_PERM, &file);
