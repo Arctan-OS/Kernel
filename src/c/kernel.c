@@ -151,11 +151,26 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	printf("\n");
 	vfs_close(file);
 
+	struct ARC_VFSNodeInfo info = {
+	        .driver_index = (uint64_t)-1,
+		.mode = ARC_STD_PERM,
+		.type = ARC_VFS_N_DIR,
+        };
+	vfs_create("/a/b/c/d/e/f/g/h/", &info);
+	vfs_create("/a/b/c/d/e/f/g/i/", &info);
+	vfs_create("/a/b/c/d/e/f/g/j/", &info);
+
+	for (int i = 0; i < 100000; i++) {
+		outb(0x80, 0);
+	}
+
 	vfs_list("/", 8);
 
 	term_draw(&Arc_MainTerm);
 
-	vfs_close(Arc_FontFile);
+	vfs_remove("/a/b/c/d/e/", 1);
+
+	printf("Made it here\n");
 	vfs_list("/", 8);
 
 	for (;;) ARC_HANG;
