@@ -70,8 +70,16 @@ ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
 .PHONY: all
-all: $(OFILES) mm mp arch lib fs drivers interface boot
+all: build
 	$(LD) $(LDFLAGS) $(shell find . -type f -name "*.o")
+
+.PHONY: definitions
+definitions:
+	python K/drivers/tools/gen_dri_defs.py ARC_REGISTER_DRIVER K/drivers/src/ K/drivers/src/c/include/drivers/dri_defs.h K/drivers/src/c/dri_defs.c
+
+.PHONY: build
+build: definitions
+	$(MAKE) $(OFILES) drivers mm mp arch lib fs interface boot
 
 .PHONY: mm
 mm:
