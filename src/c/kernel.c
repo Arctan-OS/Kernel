@@ -35,6 +35,7 @@
 #include <mm/pmm.h>
 #include <lib/util.h>
 #include <lib/checksums.h>
+#include <drivers/dri_defs.h>
 #include <abi-bits/stat.h>
 #include <abi-bits/fcntl.h>
 
@@ -73,16 +74,14 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
-	struct ARC_File *file = NULL;
-	vfs_open("/dev/nvme0n1p0", 0, ARC_STD_PERM, &file);
-
-	uint8_t *buffer = alloc(0x1000);
-	vfs_read(buffer, 1, 0x1000, file);
-
-	for (int i = 0; i < 0x1000; i++) {
-		printf("%02X ", buffer[i]);
-	}
-	printf("\n");
+	struct ARC_Resource *ext2 = init_resource(ARC_DRIDEF_EXT2_SUPER, "/dev/nvme0n1p0");
+	struct ARC_VFSNodeInfo info = {
+	        .driver_index = (uint64_t)-1,
+		.mode = ARC_STD_PERM,
+		.type = ARC_VFS_N_DIR
+        };
+	vfs_create("/phys/", &info);
+	vfs_mount("/phys/", ext2);
 
 	vfs_list("/", 8);
 
