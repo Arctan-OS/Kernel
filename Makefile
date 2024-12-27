@@ -125,7 +125,6 @@ src/asm/%.o: src/asm/%.asm
 
 .PHONY: clean
 clean:
-	rm -f $(PRODUCT)
 	find . -type f -name "*.o" -delete
 
 -include clean
