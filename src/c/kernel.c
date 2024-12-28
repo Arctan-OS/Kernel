@@ -45,6 +45,40 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 
+/*
+int proc_test(int processor) {
+	struct ARC_File *file = NULL;
+	int i = vfs_open("/initramfs/boot/credit.txt", 0, ARC_STD_PERM, (void *)&file);
+	char data[26] = { 0 };
+	vfs_read(&data, 1, 24, file);
+	printf("Processor %d has arrived %"PRIx64" %d %s\n", processor, get_current_tid(), i, data);
+	vfs_close(file);
+
+	size_t size = 26;
+	struct ARC_VFSNodeInfo info = {
+                .driver_arg = &size,
+		.mode = ARC_STD_PERM,
+		.type = ARC_VFS_N_BUFF,
+		.driver_index = -1,
+        };
+	vfs_create("/write_test.txt", &info);
+	vfs_open("/write_test.txt", 0, ARC_STD_PERM, &file);
+	vfs_seek(file, 3 * (processor - 1), SEEK_SET);
+	sprintf_(data, "C%d ", processor);
+	vfs_write(data, 1, 3, file);
+	vfs_close(file);
+
+	vfs_open("/initramfs/boot/reference.txt", 0, ARC_STD_PERM, &file);
+	vfs_read(data, 1, 24, file);
+	printf("Link resolves: %s\n", data);
+	vfs_close(file);
+
+	printf("Processor did not deadlock %d\n", processor);
+
+	ARC_HANG;
+}
+*/
+
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
 	Arc_BootMeta = boot_meta;
@@ -65,6 +99,24 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	init_arch();
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
+
+	/*
+	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->generic.next;
+	while (desc != NULL) {
+		desc->generic.flags |= 1 << 1;
+		while ((desc->generic.flags >> 1) & 1) __asm__("pause");
+
+		smp_jmp(desc, proc_test, 1, desc->generic.acpi_uid);
+
+		desc = desc->generic.next;
+	}
+
+	struct ARC_File *file = NULL;
+	vfs_open("/write_test.txt", 0, ARC_STD_PERM, &file);
+	char value[24];
+	vfs_read(&value, 1, 10, file);
+	printf("%s\n", value);
+	*/
 
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {

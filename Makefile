@@ -78,8 +78,12 @@ definitions:
 	python K/drivers/tools/gen_dri_defs.py ARC_REGISTER_DRIVER K/drivers/src/ K/drivers/src/c/include/drivers/dri_defs.h K/drivers/src/c/dri_defs.c
 
 .PHONY: build
-build: definitions
+build: pre-build definitions
 	$(MAKE) $(OFILES) drivers mm mp arch lib fs interface boot
+
+.PHONY: pre-build
+pre-build:
+	find . -type f -name "*.o" -delete
 
 .PHONY: mm
 mm:
