@@ -136,10 +136,10 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_mount("/phys/", ext2);
 
 	struct ARC_File *file = NULL;
-	vfs_open("/phys/hello_world.txt", 0, ARC_STD_PERM, &file);
+	vfs_open("/phys/a/b/c/d/test.txt", 0, ARC_STD_PERM, &file);
 	char buffer[1024];
-	vfs_read(&buffer, 1, file->node->stat.st_size, file);
-	printf("File says: %s\n", buffer);
+	vfs_read(buffer, 1, 64, file);
+	printf("%s\n", buffer);
 
 	vfs_list("/", 8);
 
