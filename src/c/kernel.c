@@ -36,6 +36,7 @@
 #include <lib/util.h>
 #include <lib/checksums.h>
 #include <drivers/dri_defs.h>
+#include <arch/process.h>
 #include <abi-bits/stat.h>
 #include <abi-bits/fcntl.h>
 
@@ -126,23 +127,13 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
-	struct ARC_Resource *ext2 = init_resource(ARC_DRIDEF_EXT2_SUPER, "/dev/nvme0n1p0");
-	struct ARC_VFSNodeInfo info = {
-	        .driver_index = (uint64_t)-1,
-		.mode = ARC_STD_PERM,
-		.type = ARC_VFS_N_DIR
-        };
-	vfs_create("/phys/", &info);
-	vfs_mount("/phys/", ext2);
+	struct ARC_Process *userspace = process_create("/initramfs/userspace.elf", 0);
 
-	struct ARC_File *file = NULL;
-	vfs_open("/phys/a/b/c/d/test.txt", 0, ARC_STD_PERM, &file);
-	char buffer[1024];
-	vfs_read(buffer, 1, 64, file);
-	printf("%s\n", buffer);
+	if (userspace == NULL) {
+		ARC_DEBUG(ERR, "Failed to load userspace\n");
+	}
 
 	vfs_list("/", 8);
-
 	term_draw(&Arc_MainTerm);
 
 	for (;;) ARC_HANG;
