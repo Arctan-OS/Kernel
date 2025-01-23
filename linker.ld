@@ -29,6 +29,8 @@ PHDRS {
 SECTIONS {
     . = 0xFFFFFFFF80000000;
 
+    __KERNEL_START__ = .;
+
     .text : {
         *(.text .text.*)
     } :text
@@ -38,40 +40,6 @@ SECTIONS {
     .rodata : {
         *(.rodata .rodata.*)
     } :rodata
-
-    . = ALIGN(0x1000);
-
-    /* Drivers */
-    __DRIVERS0_START = .;
-
-    .drivers.0 : {
-        *(.drivers.0)
-    } :rodata
-
-    __DRIVERS0_END = .;
-    __DRIVERS1_START = .;
-
-    .drivers.1 : {
-        *(.drivers.1)
-    } :rodata
-
-    __DRIVERS1_END = .;
-    __DRIVERS2_START = .;
-
-    .drivers.2 : {
-        *(.drivers.2)
-    } :rodata
-
-    __DRIVERS2_END = .;
-    __DRIVERS3_START = .;
-
-    .drivers.3 : {
-        *(.drivers.3)
-    } :rodata
-
-    __DRIVERS3_END = .;
-    __DRIVERS_END = .;
-    /* /Drivers */
 
     . = ALIGN(0x1000);
 
@@ -85,8 +53,6 @@ SECTIONS {
         *(COMMON)
         *(.bss .bss.*)
     } :data
-
-    . = ALIGN(0x1000);
 
     __KERNEL_END__ = .;
 

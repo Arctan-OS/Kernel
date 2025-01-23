@@ -67,8 +67,7 @@ static void *elf_load64(void *page_tables, struct ARC_File *file) {
 
 	ARC_DEBUG(INFO, "Mapping sections (%d sections):\n", section_count);
 
-	uintptr_t last_phys_addr = 0;
-	uintptr_t last_load_base = 0;
+	uint64_t phys_address = 0;
 	for (uint32_t i = 0; i < section_count; i++) {
 		struct Elf64_Shdr section_header = section_headers[i];
 
@@ -89,47 +88,47 @@ static void *elf_load64(void *page_tables, struct ARC_File *file) {
 		}
 
 		size_t loaded = 0;
-
 		while (loaded < load_size) {
-			uintptr_t phys_address = 0;
-			uintptr_t load_delta = load_base - last_load_base;
-			size_t copy_size = min(PAGE_SIZE - load_delta, load_size - loaded);
+			uint64_t load_addr = load_base + loaded;
+			uint64_t jank = load_addr % PAGE_SIZE;
+			size_t copy_size = min(PAGE_SIZE - jank, load_size - loaded);
 
-			if (load_delta < PAGE_SIZE) {
-				// Adding to the existing page
-				phys_address = last_phys_addr;
+			if (jank != 0) {
+				if (section_header.sh_type != ELF_SHT_NOBITS) {
+					vfs_seek(file, section_header.sh_offset + loaded, SEEK_SET);
+					vfs_read((void *)(phys_address + jank), 1, copy_size, file);
+				} else {
+					memset((void *)(phys_address + jank), 0, copy_size);
+				}
 
-				vfs_seek(file, section_header.sh_offset, SEEK_SET);
-				vfs_read((void *)(phys_address + load_delta), 1, copy_size, file);
 				loaded += copy_size;
 				continue;
-			} else {
-				// Reading in an entirely new page
-				phys_address = (uintptr_t)pmm_alloc();
 			}
+
+			phys_address = (uintptr_t)pmm_alloc();
 
 			if (phys_address == 0) {
-				ARC_DEBUG(ERR, "Failed to allocate new physical page\n");
+				// Fail
+				ARC_DEBUG(ERR, "Failed to allocate new page, quiting load\n");
 				entry_addr = 0;
 				break;
 			}
 
-			// loaded can be added here as lower 12 bits are ignored either way
-			if (pager_map(page_tables, load_base + loaded, phys_address, PAGE_SIZE, ARC_PAGER_4K << 1 | ARC_PAGER_US << 1) != 0) {
-				ARC_DEBUG(ERR, "Failed to map in the page\n");
+			if (pager_map(page_tables, load_addr, phys_address, PAGE_SIZE, 1 << ARC_PAGER_US) != 0) {
+				// Fail
+				ARC_DEBUG(ERR, "Failed to map in new page\n");
+				pmm_free((void *)phys_address);
 				entry_addr = 0;
 				break;
 			}
-
-			memset((void *)phys_address, 0, PAGE_SIZE);
 
 			if (section_header.sh_type != ELF_SHT_NOBITS) {
-				vfs_seek(file, section_header.sh_offset, SEEK_SET);
-				vfs_read((void *)phys_address, 1, PAGE_SIZE, file);
+				vfs_seek(file, section_header.sh_offset + loaded, SEEK_SET);
+				vfs_read((void *)phys_address, 1, copy_size, file);
+			} else {
+				memset((void *)phys_address, 0, copy_size);
 			}
 
-			last_load_base = load_base;
-			last_phys_addr = phys_address;
 			loaded += copy_size;
 		}
 	}
