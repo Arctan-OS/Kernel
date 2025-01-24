@@ -114,7 +114,7 @@ static void *elf_load64(void *page_tables, struct ARC_File *file) {
 				break;
 			}
 
-			if (pager_map(page_tables, load_addr, phys_address, PAGE_SIZE, 1 << ARC_PAGER_US) != 0) {
+			if (pager_map(page_tables, load_addr, ARC_HHDM_TO_PHYS(phys_address), PAGE_SIZE, 1 << ARC_PAGER_US) != 0) {
 				// Fail
 				ARC_DEBUG(ERR, "Failed to map in new page\n");
 				pmm_free((void *)phys_address);
