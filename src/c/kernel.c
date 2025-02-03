@@ -101,24 +101,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
-	/*
-	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->generic.next;
-	while (desc != NULL) {
-		desc->generic.flags |= 1 << 1;
-		while ((desc->generic.flags >> 1) & 1) __asm__("pause");
-
-		smp_jmp(desc, proc_test, 1, desc->generic.acpi_uid);
-
-		desc = desc->generic.next;
-	}
-
-	struct ARC_File *file = NULL;
-	vfs_open("/write_test.txt", 0, ARC_STD_PERM, &file);
-	char value[24];
-	vfs_read(&value, 1, 10, file);
-	printf("%s\n", value);
-	*/
-
 	for (int i = 0; i < 60; i++) {
 		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
 			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {
@@ -127,14 +109,27 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
-	struct ARC_Process *userspace = process_create("/initramfs/userspace.elf", 0);
+	term_draw(&Arc_MainTerm);
 
+	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->next;
+	while (desc != NULL) {
+		desc->flags |= 1 << ARC_SMP_FLAGS_CTXSAVE;
+		while (MASKED_READ(desc->flags, ARC_SMP_FLAGS_CTXSAVE, 1) == 1) __asm__("pause");
+
+		smp_jmp(desc, smp_switch_to_userspace, 0);
+
+		desc = desc->next;
+	}
+
+	init_scheduler(ARC_SCHED_TYPE_RR);
+
+	struct ARC_Process *userspace = process_create("/initramfs/userspace.elf");
 	if (userspace == NULL) {
 		ARC_DEBUG(ERR, "Failed to load userspace\n");
 	}
+	sched_queue(userspace, ARC_SCHED_PRI_HI);
 
-	vfs_list("/", 8);
-	term_draw(&Arc_MainTerm);
+	smp_switch_to_userspace();
 
 	for (;;) ARC_HANG;
 
