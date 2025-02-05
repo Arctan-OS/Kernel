@@ -32,7 +32,6 @@ ifeq (,$(ARC_ROOT))
 	PRODUCT := ./kernel.elf
 endif
 
-
 CPP_DEBUG_FLAG := -DARC_DEBUG_ENABLE
 CPP_E9HACK_FLAG := -DARC_E9HACK_ENABLE
 
