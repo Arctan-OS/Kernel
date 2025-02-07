@@ -29,7 +29,7 @@
 #include <arch/smp.h>
 #include <fs/vfs.h>
 #include <interface/framebuffer.h>
-#include <mp/sched/abstract.h>
+#include <mp/scheduler.h>
 #include <mm/allocator.h>
 #include <lib/perms.h>
 #include <mm/pmm.h>
@@ -121,7 +121,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		desc = desc->next;
 	}
 
-	init_scheduler(ARC_SCHED_TYPE_RR);
+	init_scheduler();
 
 	struct ARC_Process *userspace = process_create("/initramfs/userspace.elf");
 	if (userspace == NULL) {

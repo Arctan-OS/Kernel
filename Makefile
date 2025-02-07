@@ -54,7 +54,7 @@ ifneq (,$(wildcard ./hardware.enable))
 endif
 
 CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) $(CPP_DEBUG_FLAG) $(CPP_E9HACK_FLAG) $(ARC_TARGET_ARCH) \
-	    $(shell find ~+ -type d -wholename "*src/c/include" -exec echo "-I$1" {} \;)
+	    -DARC_TARGET_SCHED_MLFQ $(shell find ~+ -type d -wholename "*src/c/include" -exec echo "-I$1" {} \;)
 
 export CPPFLAGS
 

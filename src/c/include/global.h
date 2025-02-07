@@ -33,10 +33,9 @@
 #include <fs/vfs.h>
 #include <lib/resource.h>
 #include <inttypes.h>
+#include <config.h>
 
 #include <interface/printf.h>
-
-#define ARC_MAX_PROCESSORS 256
 
 #define ARC_HANG for (;;) __asm__("hlt");
 
