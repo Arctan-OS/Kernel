@@ -40,6 +40,16 @@
 #include <abi-bits/stat.h>
 #include <abi-bits/fcntl.h>
 
+
+#include <arch/pager.h>
+#include <global.h>
+#include <mm/allocator.h>
+#include <mm/algo/allocator.h>
+#include <mm/vmm.h>
+#include <mm/pmm.h>
+#include <boot/parse.h>
+
+
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
 struct ARC_Resource *Arc_InitramfsRes = NULL;
@@ -96,8 +106,66 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	init_static_mutex(&Arc_MainTerm.lock);
 
+	if (parse_boot_info() != 0) {
+		ARC_DEBUG(ERR, "Failed to parse boot information\n");
+		ARC_HANG;
+	}
+
+	if (Arc_MainTerm.framebuffer != NULL) {
+		Arc_MainTerm.term_width = (Arc_MainTerm.fb_width / Arc_MainTerm.font_width);
+		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
+	}
+
 	init_checksums();
+
+	if (init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len) != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize physical memory manager\n");
+		ARC_HANG;
+	}
+
+	// TODO: Should allocate a section of memory here to be controlled by a buddy allocator.
+	//       This way the system can still do O(1) single page allocations, but also do O(log N) or
+	//       O(N log N) power with base 2 contiguous allocations.
+
+	if (init_pager() != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize pager\n");
+		ARC_HANG;
+	}
+
+	// Initialize the internal SLAB allocator
+	if (init_iallocator(128) != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize internal allocator\n");
+		ARC_HANG;
+	}
+
+	// Initialize the top level kernel allocator
+	if (init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000) != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize virtual memory manager\n");
+		ARC_HANG;
+	}
+
+	if (init_allocator(256) != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize kernel allocator\n");
+		ARC_HANG;
+	}
+
+	init_vfs();
+
+	struct ARC_VFSNodeInfo info = {
+	        .type = ARC_VFS_N_DIR,
+		.mode = ARC_STD_PERM,
+        };
+
+	vfs_create("/initramfs/", &info);
+        vfs_create("/dev/", &info);
+
+	Arc_InitramfsRes = init_resource(ARC_DRIDEF_INITRAMFS_SUPER, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
+	vfs_mount("/initramfs/", Arc_InitramfsRes);
+
 	init_arch();
+
+	vfs_link("/initramfs/boot/ANTIQUE.F14", "/fonts/font.fnt", -1);
+	vfs_open("/fonts/font.fnt", 0, ARC_STD_PERM, &Arc_FontFile);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
@@ -107,18 +175,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 				ARC_FB_DRAW(Arc_MainTerm.framebuffer, x, (y * Arc_MainTerm.fb_width), Arc_MainTerm.fb_bpp, (x * y * i / 300) & 0x3FFF);
 			}
 		}
-	}
-
-	term_draw(&Arc_MainTerm);
-
-	struct ARC_ProcessorDescriptor *desc = Arc_BootProcessor->next;
-	while (desc != NULL) {
-		desc->flags |= 1 << ARC_SMP_FLAGS_CTXSAVE;
-		while (MASKED_READ(desc->flags, ARC_SMP_FLAGS_CTXSAVE, 1) == 1) __asm__("pause");
-
-		smp_jmp(desc, smp_switch_to_userspace, 0);
-
-		desc = desc->next;
 	}
 
 	init_scheduler();
