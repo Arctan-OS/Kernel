@@ -53,8 +53,8 @@ ifneq (,$(wildcard ./hardware.enable))
 	CPP_E9HACK_FLAG :=
 endif
 
-CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) $(CPP_DEBUG_FLAG) $(CPP_E9HACK_FLAG) $(ARC_TARGET_ARCH) \
-	    -DARC_TARGET_SCHED_MLFQ $(shell find ~+ -type d -wholename "*src/c/include" -exec echo "-I$1" {} \;)
+CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) $(CPP_DEBUG_FLAG) $(CPP_E9HACK_FLAG) $(ARC_DEF_ARCH) $(ARC_DEF_SCHED) \
+	    $(shell find ~+ -type d -wholename "*src/c/include" -exec echo "-I$1" {} \;)
 
 export CPPFLAGS
 
@@ -85,6 +85,10 @@ definitions:
 
 .PHONY: build
 build: pre-build definitions
+ifeq ($(ARC_OPT_ARCH),x86_64)
+# Clone architecture repository if needed
+	$(MAKE) -C K/arch-x86-64
+endif
 	$(MAKE) $(OFILES) drivers mm mp arch lib fs interface boot
 
 .PHONY: pre-build
@@ -101,11 +105,8 @@ mp:
 
 .PHONY: arch
 arch:
-	$(MAKE) -C K/arch
 
-.PHONY: arch-x86-64
-arch-x86-64:
-	$(MAKE) -C K/arch-x86-64
+	$(MAKE) -C K/arch
 
 .PHONY: lib
 lib:
