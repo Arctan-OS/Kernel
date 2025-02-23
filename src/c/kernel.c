@@ -179,11 +179,11 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	init_scheduler();
 
-	struct ARC_Process *userspace = process_create("/initramfs/userspace.elf");
+	struct ARC_Process *userspace = process_create_from_file(1, "/initramfs/userspace.elf");
 	if (userspace == NULL) {
 		ARC_DEBUG(ERR, "Failed to load userspace\n");
 	}
-	struct ARC_Process *userspace1 = process_create("/initramfs/userspace1.elf");
+	struct ARC_Process *userspace1 = process_create_from_file(1, "/initramfs/userspace1.elf");
 	if (userspace1 == NULL) {
 		ARC_DEBUG(ERR, "Failed to load userspace\n");
 	}

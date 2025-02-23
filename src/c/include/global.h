@@ -37,7 +37,7 @@
 
 #include <interface/printf.h>
 
-#define ARC_HANG for (;;) __asm__("hlt");
+#define ARC_HANG __asm__("1: hlt; jmp 1b");
 
 #define ARC_DEBUG_STRINGIFY(val) #val
 #define ARC_DEBUG_TOSTRING(val) ARC_DEBUG_STRINGIFY(val)
