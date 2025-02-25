@@ -24,6 +24,8 @@
  *
  * @DESCRIPTION
 */
+#include "arch/thread.h"
+#include "lib/atomics.h"
 #include <global.h>
 #include <arch/start.h>
 #include <arch/smp.h>
@@ -176,9 +178,10 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
-
+	
 	init_scheduler();
-
+	
+	
 	struct ARC_Process *userspace = process_create_from_file(1, "/initramfs/userspace.elf");
 	if (userspace == NULL) {
 		ARC_DEBUG(ERR, "Failed to load userspace\n");
@@ -189,9 +192,9 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	}
 	sched_queue(userspace1, ARC_SCHED_PRI_HI);
 	sched_queue(userspace, ARC_SCHED_PRI_HI);
-
+	
 	smp_switch_to_userspace();
-
+	
 	for (;;) ARC_HANG;
 
 	return 0;
