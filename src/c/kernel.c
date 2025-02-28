@@ -180,7 +180,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	}
 	
 	init_scheduler();
-	
+	sched_queue(Arc_ProcessorHold, ARC_SCHED_PRI_LO);
 	
 	struct ARC_Process *userspace = process_create_from_file(1, "/initramfs/userspace.elf");
 	if (userspace == NULL) {
@@ -192,9 +192,11 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	}
 	sched_queue(userspace1, ARC_SCHED_PRI_HI);
 	sched_queue(userspace, ARC_SCHED_PRI_HI);
-	
+
 	smp_switch_to_userspace();
 	
+	__asm__("sti"); // TODO: Replace with generalized ARC_ENABLE_INTERRUPTS;
+
 	for (;;) ARC_HANG;
 
 	return 0;
