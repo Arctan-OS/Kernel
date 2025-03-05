@@ -186,11 +186,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	if (userspace == NULL) {
 		ARC_DEBUG(ERR, "Failed to load userspace\n");
 	}
-	struct ARC_Process *userspace1 = process_create_from_file(1, "/initramfs/userspace1.elf");
-	if (userspace1 == NULL) {
-		ARC_DEBUG(ERR, "Failed to load userspace\n");
-	}
-	sched_queue(userspace1, ARC_SCHED_PRI_HI);
 	sched_queue(userspace, ARC_SCHED_PRI_HI);
 
 	smp_switch_to_userspace();

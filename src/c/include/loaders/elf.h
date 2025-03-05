@@ -148,6 +148,13 @@ struct Elf64_Phdr {
 	Elf64_Xword p_align; /* Alignment of segment */
 }__attribute__((packed));
 
-void *load_elf(void *page_tables, struct ARC_File *data);
+struct ARC_ELFMeta {
+	void *entry;
+	void *phdr;
+	size_t phent;
+	size_t phnum;
+};
+
+struct ARC_ELFMeta *load_elf(void *page_tables, struct ARC_File *data);
 
 #endif
