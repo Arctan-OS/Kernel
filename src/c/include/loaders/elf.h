@@ -81,22 +81,6 @@
 #define PF_MASKOS 	0x00FF0000
 #define PF_MASKPROC 	0xFF000000
 
-
-static const char *section_types[] = {
-	[ELF_SHT_NULL] = "NULL",
-	[ELF_SHT_PROGBITS] = "PROGBITS",
-	[ELF_SHT_SYMTAB] = "SYMTAB",
-	[ELF_SHT_STRTAB] = "STRTAB",
-	[ELF_SHT_RELA] = "RELA",
-	[ELF_SHT_HASH] = "HASH",
-	[ELF_SHT_DYNAMIC] = "DYNAMIC",
-	[ELF_SHT_NOTE] = "NOTE",
-	[ELF_SHT_NOBITS] = "NOBITS",
-	[ELF_SHT_REL] = "REL",
-	[ELF_SHT_SHLIB] = "SHLIB",
-	[ELF_SHT_DYNSYM] = "DYNSYM",
-};
-
 typedef uint64_t Elf64_Addr;
 typedef uint64_t Elf64_Off;
 typedef uint16_t Elf64_Half;
