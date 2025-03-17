@@ -64,6 +64,24 @@
 #define ELF_EI_PAD         9
 #define ELF_EI_NIDENT      16
 
+#define PT_NULL 	0 
+#define PT_LOAD 	1 
+#define PT_DYNAMIC 	2
+#define PT_INTERP 	3
+#define PT_NOTE 	4 
+#define PT_SHLIB 	5
+#define PT_PHDR 	6 
+#define PT_LOOS 	0x60000000 
+#define PT_HIOS 	0x6FFFFFFF
+#define PT_LOPROC 	0x70000000 
+#define PT_HIPROC 	0x7FFFFFFF
+#define PF_X 		0x1 
+#define PF_W 		0x2 
+#define PF_R 		0x4 
+#define PF_MASKOS 	0x00FF0000
+#define PF_MASKPROC 	0xFF000000
+
+
 static const char *section_types[] = {
 	[ELF_SHT_NULL] = "NULL",
 	[ELF_SHT_PROGBITS] = "PROGBITS",

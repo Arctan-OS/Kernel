@@ -24,13 +24,15 @@
  *
  * @DESCRIPTION
 */
-#include "fs/vfs.h"
+#include <fs/vfs.h>
 #include <loaders/elf.h>
 #include <global.h>
 #include <arch/pager.h>
 #include <lib/util.h>
 #include <mm/allocator.h>
 #include <mm/pmm.h>
+#include <stdatomic.h>
+#include <stdint.h>
 
 uintptr_t get_phys_page(void *page_tables, uintptr_t virtual, int type) {
 	uintptr_t phys_address = (uintptr_t)pmm_alloc();
@@ -77,90 +79,78 @@ static struct ARC_ELFMeta *elf_load64(void *page_tables, struct ARC_File *file) 
 	}
 
 	meta->entry = (void *)header->e_entry;
-	meta->phdr = (void *)0x1000;
-	meta->phent = header->e_phentsize;
-	meta->phnum = header->e_phnum;
+	
+	// TODO: Take care of this later for dynamic programs
+	// meta->phdr = (void *)header->e_phoff;
+	// meta->phent = header->e_phentsize;
+	// meta->phnum = header->e_phnum;
 
-	size_t ph_offset = 0;
-	uintptr_t ph_vbase = (uintptr_t)meta->phdr;
-	vfs_seek(file, header->e_phoff, SEEK_SET);
-	while (ph_offset < header->e_phnum * header->e_phentsize) {
-		size_t copy_size = min(PAGE_SIZE, header->e_phnum * header->e_phentsize - ph_offset);
+	uint32_t header_count = header->e_phnum;
+	struct Elf64_Phdr *program_headers = (struct Elf64_Phdr *)alloc(sizeof(*program_headers) * header_count);
 
-		uintptr_t page = get_phys_page(page_tables, ph_vbase, 0);
-		vfs_read((void *)page, 1, copy_size, file);
-
-		ph_offset += copy_size;
-		ph_vbase += copy_size;
-	}
-
-	uint32_t section_count = header->e_shnum;
-	struct Elf64_Shdr *section_headers = (struct Elf64_Shdr *)alloc(sizeof(*section_headers) * section_count);
-
-	if (section_headers == NULL) {
+	if (program_headers == NULL) {
 		free(header);
 		ARC_DEBUG(ERR, "Failed to allocate section header\n");
 		return NULL;
 	}
 
-	vfs_seek(file, header->e_shoff, SEEK_SET);
-	vfs_read(section_headers, 1, sizeof(*section_headers) * section_count, file);
+	vfs_seek(file, header->e_phoff, SEEK_SET);
+	vfs_read(program_headers, 1, sizeof(*program_headers) * header_count, file);
 
-	uint64_t entry_addr = header->e_entry;
+	ARC_DEBUG(INFO, "Entry address: 0x%"PRIx64"\n", header->e_entry);
+	ARC_DEBUG(INFO, "Mapping program headers (%d headers):\n", header_count);
 
-	ARC_DEBUG(INFO, "Entry address: 0x%"PRIx64"\n", entry_addr);
+	uintptr_t phys = 0;
+	uintptr_t last_base = 0;
+	for (uint32_t i = 0; i < header_count; i++) {
+		ARC_DEBUG(INFO, "\tHeader %d 0x%"PRIx64":0x%"PRIx64" 0x%"PRIx64", 0x%"PRIx64":0x%"PRIx64" B\n", i, program_headers[i].p_paddr, program_headers[i].p_vaddr, program_headers[i].p_offset, program_headers[i].p_memsz, program_headers[i].p_filesz);
 
-	ARC_DEBUG(INFO, "Mapping sections (%d sections):\n", section_count);
-
-	uint64_t phys_address = 0;
-	uint64_t prev_load_base = 0;
-	for (uint32_t i = 0; i < section_count; i++) {
-		struct Elf64_Shdr section_header = section_headers[i];
-
-		uintptr_t load_base = section_header.sh_addr;
-		size_t load_size = section_header.sh_size;
-
-		ARC_DEBUG(INFO, "\t%3d: 0x%016"PRIx64", 0x%016"PRIx64" B | Type: %d\n", i, load_base, load_size, section_header.sh_type);
-
-		if (load_base == 0 || load_size == 0) {
-			ARC_DEBUG(INFO, "\t\tSkipping as load_base or size is 0\n");
-			continue;
-		}
-
-		if (load_base + load_size >= ARC_HHDM_VADDR) {
-			free(header);
-			ARC_DEBUG(ERR, "\tCan't load, would overlap with kernel\n");
-			return NULL;
-		}
-
-		size_t loaded = 0;
-		while (loaded < load_size) {
-			size_t offset = load_base + loaded;
-			size_t jank = offset % PAGE_SIZE;
-			size_t copy_size = min(PAGE_SIZE - jank, load_size - loaded);
-
-			if (jank == 0 || load_base - prev_load_base >= PAGE_SIZE) {
-				phys_address = get_phys_page(page_tables, offset, section_header.sh_type);
-			}
-
-			if (section_header.sh_type == ELF_SHT_NOBITS) {
-				memset((void *)phys_address + jank, 0, copy_size);
-			} else {
-				vfs_seek(file, section_header.sh_offset + loaded, SEEK_SET);
-				if (vfs_read((void *)phys_address + jank, 1, copy_size, file) != copy_size) {
-					ARC_DEBUG(ERR, "Failed to read section\n");
-					entry_addr = 0;
-					break;
+		switch (program_headers[i].p_type) {
+			case PT_LOAD: {
+				size_t size = program_headers[i].p_memsz;
+				size_t psize = program_headers[i].p_filesz;
+				size_t msize = program_headers[i].p_memsz;
+				size_t off = 0;
+		
+				while (off < size) {
+					size_t vaddr = program_headers[i].p_vaddr + off;
+					size_t jank = vaddr & 0xFFF;
+					size_t copy_size = min(PAGE_SIZE - jank, msize - off);
+		
+					if (jank == 0 || program_headers->p_vaddr - last_base >= PAGE_SIZE) {
+						phys = get_phys_page(page_tables, program_headers[i].p_vaddr + off, 0);
+					}
+		
+					if (off < psize) {
+						// read from file
+						vfs_seek(file, off + program_headers[i].p_offset, SEEK_SET);
+						vfs_read((void *)phys + jank, 1, copy_size, file);
+					} else {
+						// memset page to 0
+						memset((void *)phys + jank, 0, copy_size);
+					}
+					
+					off += copy_size;
 				}
+
+				break;
 			}
 
-			prev_load_base = load_base;
-			loaded += copy_size;
+			case PT_DYNAMIC: {
+				ARC_DEBUG(WARN, "\t\tDynamic section TODO\n");
+				break;
+			}
+
+			default: {
+				ARC_DEBUG(WARN, "\t\tUndetermined section, skipping\n");
+				break;
+			}
+
 		}
 	}
-
+	
 	free(header);
-	free(section_headers);
+	free(program_headers);
 
 	return meta;
 }

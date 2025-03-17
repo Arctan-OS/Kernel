@@ -141,7 +141,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	}
 
 	// Initialize the top level kernel allocator
-	if (init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000000) != 0) {
+	if (init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize virtual memory manager\n");
 		ARC_HANG;
 	}
