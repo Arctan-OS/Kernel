@@ -37,7 +37,7 @@
 uintptr_t get_phys_page(void *page_tables, uintptr_t virtual, int type) {
 	(void)type;
 	
-	uintptr_t phys_address = (uintptr_t)pmm_alloc();
+	uintptr_t phys_address = (uintptr_t)pmm_alloc_page();
 
 	if (phys_address == 0) {
 		// Fail

@@ -34,7 +34,6 @@
 #include <mp/scheduler.h>
 #include <mm/allocator.h>
 #include <lib/perms.h>
-#include <mm/pmm.h>
 #include <lib/util.h>
 #include <lib/checksums.h>
 #include <drivers/dri_defs.h>
@@ -47,9 +46,9 @@
 #include <global.h>
 #include <mm/allocator.h>
 #include <mm/algo/allocator.h>
-#include <mm/vmm.h>
 #include <mm/pmm.h>
 #include <boot/parse.h>
+#include <stdint.h>
 
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
@@ -140,9 +139,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		ARC_HANG;
 	}
 
-	// Initialize the top level kernel allocator
-	if (init_vmm((void *)(ARC_HHDM_VADDR + Arc_BootMeta->highest_address), 0x100000000) != 0) {
-		ARC_DEBUG(ERR, "Failed to initialize virtual memory manager\n");
+	if (init_pmm_contig() != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize physically contiguous allocators\n");
 		ARC_HANG;
 	}
 
@@ -178,7 +176,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
-	
+
 	init_scheduler();
 	sched_queue(Arc_ProcessorHold, ARC_SCHED_PRI_LO);
 	

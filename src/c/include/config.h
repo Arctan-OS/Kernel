@@ -12,6 +12,6 @@
 // Used in the calculation for the total number of pages the
 // physical buddy allocator should use 
 // (buddy pages = total pages * ARC_PMM_BUDDY_RATIO)
-#define ARC_PMM_BUDDY_RATIO 3/4
+#define ARC_PMM_BUDDY_RATIO 1/2
 
 #endif
