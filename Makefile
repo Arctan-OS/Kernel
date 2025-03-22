@@ -89,7 +89,7 @@ ifeq ($(ARC_OPT_ARCH),x86_64)
 # Clone architecture repository if needed
 	$(MAKE) -C K/arch-x86-64
 endif
-	$(MAKE) $(OFILES) drivers mm mp arch lib fs interface boot
+	$(MAKE) $(OFILES) drivers mm mp arch lib fs interface boot userspace
 
 .PHONY: pre-build
 pre-build:
@@ -127,6 +127,10 @@ interface:
 .PHONY: boot
 boot:
 	$(MAKE) -C K/boot
+
+.PHONY: userspace
+userspace:
+	$(MAKE) -C K/userspace
 
 src/c/%.o: src/c/%.c
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@

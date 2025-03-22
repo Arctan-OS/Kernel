@@ -37,8 +37,6 @@
 
 #include <interface/printf.h>
 
-#define ARC_HANG __asm__("1: hlt; jmp 1b");
-
 #define ARC_DEBUG_STRINGIFY(val) #val
 #define ARC_DEBUG_TOSTRING(val) ARC_DEBUG_STRINGIFY(val)
 #define ARC_DEBUG_NAME_STR "[KERNEL "__FILE__":"ARC_DEBUG_TOSTRING(__LINE__)"]"
@@ -95,7 +93,10 @@
 #define MASKED_WRITE(__to, __value, __shift, __mask) __to = (((__to) & ~((__mask) << (__shift))) | (((__value) & (__mask)) << (__shift)));
 
 #define PAGE_SIZE (size_t)0x1000
-#define ARC_STD_BUFF_SIZE (size_t)0x1000
+
+#ifdef ARC_TARGET_ARCH_X86_64
+#include <arch/x86-64/util.h>
+#endif
 
 extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta Arc_MainTerm;

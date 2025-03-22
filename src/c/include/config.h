@@ -16,4 +16,6 @@
 
 #define ARC_PROCESS_FILE_LIMIT 1024
 
+#define ARC_STD_BUFF_SIZE (size_t)0x1000
+
 #endif
