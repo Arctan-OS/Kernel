@@ -27,4 +27,4 @@
 	url = https://github.com/Arctan-OS/Kdrivers
 [submodule "K/userspace"]
 	path = K/userspace
-	url = https://github.com/Arctan-OS/Kuserspace
+	url = https://github.com/Arctan-OS/Kdrivers
