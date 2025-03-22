@@ -14,4 +14,6 @@
 // (buddy pages = total pages * ARC_PMM_BUDDY_RATIO)
 #define ARC_PMM_BUDDY_RATIO 1/2
 
+#define ARC_PROCESS_FILE_LIMIT 1024
+
 #endif
