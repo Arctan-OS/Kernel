@@ -41,7 +41,6 @@
 #include <abi-bits/stat.h>
 #include <abi-bits/fcntl.h>
 
-
 #include <arch/pager.h>
 #include <global.h>
 #include <mm/allocator.h>
@@ -50,12 +49,12 @@
 #include <boot/parse.h>
 #include <stdint.h>
 
-
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
 struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
+struct ARC_Process *Arc_ProcessorHold = NULL;
 
 /*
 int proc_test(int processor) {
@@ -163,6 +162,33 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
 
 	init_arch();
+
+	Arc_ProcessorHold = process_create(0, NULL);
+
+	if (Arc_ProcessorHold == NULL) {
+		ARC_DEBUG(ERR, "Failed to create hold process\n");
+		ARC_DISABLE_INTERRUPT;
+		ARC_HANG;
+	}
+
+	Arc_ProcessorHold->allocator = init_vmm((void *)0x1000, 0x10000);
+
+	if (Arc_ProcessorHold->allocator == NULL) {
+		ARC_DEBUG(ERR, "Failed to create hold process allocator\n");
+		ARC_DISABLE_INTERRUPT;
+		ARC_HANG;
+	}
+
+	struct ARC_Thread *hold = thread_create(Arc_ProcessorHold->allocator, Arc_ProcessorHold->page_tables, (void *)smp_hold, 0x1000);
+
+	if (hold == NULL) {
+		ARC_DEBUG(ERR, "Failed to create hold thread\n");
+		process_delete(Arc_ProcessorHold);
+		ARC_DISABLE_INTERRUPT;
+		ARC_HANG;
+	}
+
+	process_associate_thread(Arc_ProcessorHold, hold);
 
 	vfs_link("/initramfs/boot/ANTIQUE.F14", "/fonts/font.fnt", -1);
 	vfs_open("/fonts/font.fnt", 0, ARC_STD_PERM, &Arc_FontFile);

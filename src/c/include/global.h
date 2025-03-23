@@ -102,6 +102,7 @@ extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta Arc_MainTerm;
 extern struct ARC_Resource *Arc_InitramfsRes;
 extern struct ARC_File *Arc_FontFile;
+extern struct ARC_Process *Arc_ProcessorHold;
 
 extern uint8_t __KERNEL_START__;
 extern uint8_t __KERNEL_END__;
