@@ -24,8 +24,8 @@
  *
  * @DESCRIPTION
 */
-#include "arch/thread.h"
-#include "lib/atomics.h"
+#include <userspace/thread.h>
+#include <lib/atomics.h>
 #include <global.h>
 #include <arch/start.h>
 #include <arch/smp.h>
@@ -37,7 +37,7 @@
 #include <lib/util.h>
 #include <lib/checksums.h>
 #include <drivers/dri_defs.h>
-#include <arch/process.h>
+#include <userspace/process.h>
 #include <abi-bits/stat.h>
 #include <abi-bits/fcntl.h>
 
