@@ -62,9 +62,9 @@ int proc_test(int processor) {
 	int i = vfs_open("/initramfs/boot/credit.txt", 0, ARC_STD_PERM, (void *)&file);
 	char data[26] = { 0 };
 	vfs_read(&data, 1, 24, file);
-	printf("Processor %d has arrived %"PRIx64" %d %s\n", processor, get_current_tid(), i, data);
+	printf("Processor %d has arrived %d %s\n", processor, i, data);
 	vfs_close(file);
-
+	
 	size_t size = 26;
 	struct ARC_VFSNodeInfo info = {
                 .driver_arg = &size,
@@ -78,14 +78,28 @@ int proc_test(int processor) {
 	sprintf_(data, "C%d ", processor);
 	vfs_write(data, 1, 3, file);
 	vfs_close(file);
-
+	
 	vfs_open("/initramfs/boot/reference.txt", 0, ARC_STD_PERM, &file);
 	vfs_read(data, 1, 24, file);
 	printf("Link resolves: %s\n", data);
 	vfs_close(file);
-
+	
 	printf("Processor did not deadlock %d\n", processor);
-
+	
+	for (int i = 0; i < 100; i++) {
+		void *memory = pmm_alloc(0x2000);
+		*(uint16_t *)memory = 'A' + processor;
+		printf("[%d]: PMM/vbuddy(2/2): Got address %p %d %s\n", i, memory, processor, memory);
+		size_t ret = pmm_free(memory);
+		printf("[%d]: PMM/vbuddy(2/2): Freed %lu %d\n", i, ret, processor);
+		
+		memory = alloc(16);
+		*(uint16_t *)memory = 'A' + processor;
+		printf("[%d]: GEN/slab(2/2): Got address %p %d %s\n", i, memory, processor, memory);
+		ret = free(memory);
+		printf("[%d]: GEN/slab(2/2): Freed %lu %d\n", i, ret, processor);
+	}
+	
 	ARC_HANG;
 }
 */
@@ -203,6 +217,31 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		}
 	}
 
+	
+	/*
+	// The Battery Resilience Test
+	// Tell every processor, except the current one, to go to the test function.
+	// This function will test will subject the desired parts of the kernel to 
+	// a true parallel environment in order to test if synchronization primitives
+	// are properly used.
+	
+	ARC_ENABLE_INTERRUPT;
+	
+	struct ARC_ProcessorDescriptor *proc = smp_get_proc_desc();
+	proc = proc->next;
+	
+	while (proc != NULL) {
+		proc->flags |= 1 << 1;
+		while ((proc->flags >> 1) & 1) __asm__("pause");
+		
+		smp_jmp(proc, proc_test, 1, proc->acpi_uid);
+		
+		proc = proc->next;
+	}
+	
+	for (;;) ARC_HANG;
+	*/
+
 	init_scheduler();
 	sched_queue(Arc_ProcessorHold, ARC_SCHED_PRI_LO);
 	
@@ -214,7 +253,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	smp_switch_to_userspace();
 	
-	__asm__("sti"); // TODO: Replace with generalized ARC_ENABLE_INTERRUPTS;
+	ARC_ENABLE_INTERRUPT;
 
 	for (;;) ARC_HANG;
 
