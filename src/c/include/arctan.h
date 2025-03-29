@@ -59,10 +59,10 @@ struct ARC_BootMeta {
 	uint64_t boot_proc;
 	/// Pointer to the physical address of the bootloader information.
 	uint64_t boot_info;
-	/// Physical pointer to the state of the bootstrapper's PMM (of type struct ARC_FreelistMeta).
-	uint64_t pmm_state;
-	/// Physical pointer to the state of the bootstrappers PMM (of type struct ARC_FreelistMeta) located under 1MB.
-	uint64_t pmm_low_state;
+	/// Physical pointer to the high memory bank (banks of freelists).
+	uint64_t pmm_high_bank;
+	/// Physical pointer to the low memory bank located under 1MB.
+	uint64_t pmm_low_bank;
 	/// The highest physical address.
 	uint64_t highest_address;
 	/// Pointer to the base of the kernel module.

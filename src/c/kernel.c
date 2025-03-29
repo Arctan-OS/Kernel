@@ -44,7 +44,6 @@
 #include <arch/pager.h>
 #include <global.h>
 #include <mm/allocator.h>
-#include <mm/algo/allocator.h>
 #include <mm/pmm.h>
 #include <boot/parse.h>
 #include <stdint.h>
@@ -130,30 +129,13 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
 	}
 
-	init_checksums();
-
 	if (init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize physical memory manager\n");
 		ARC_HANG;
 	}
 
-	// TODO: Should allocate a section of memory here to be controlled by a buddy allocator.
-	//       This way the system can still do O(1) single page allocations, but also do O(log N) or
-	//       O(N log N) power with base 2 contiguous allocations.
-
 	if (init_pager() != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize pager\n");
-		ARC_HANG;
-	}
-
-	// Initialize the internal SLAB allocator
-	if (init_iallocator(128) != 0) {
-		ARC_DEBUG(ERR, "Failed to initialize internal allocator\n");
-		ARC_HANG;
-	}
-
-	if (init_pmm_contig() != 0) {
-		ARC_DEBUG(ERR, "Failed to initialize physically contiguous allocators\n");
 		ARC_HANG;
 	}
 
@@ -161,6 +143,8 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		ARC_DEBUG(ERR, "Failed to initialize kernel allocator\n");
 		ARC_HANG;
 	}
+
+	init_checksums();
 
 	init_vfs();
 
@@ -176,12 +160,12 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
 
 	init_arch();
+	ARC_DISABLE_INTERRUPT;
 
 	Arc_ProcessorHold = process_create(0, NULL);
 
 	if (Arc_ProcessorHold == NULL) {
 		ARC_DEBUG(ERR, "Failed to create hold process\n");
-		ARC_DISABLE_INTERRUPT;
 		ARC_HANG;
 	}
 
@@ -189,7 +173,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 
 	if (Arc_ProcessorHold->allocator == NULL) {
 		ARC_DEBUG(ERR, "Failed to create hold process allocator\n");
-		ARC_DISABLE_INTERRUPT;
 		ARC_HANG;
 	}
 
@@ -198,7 +181,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	if (hold == NULL) {
 		ARC_DEBUG(ERR, "Failed to create hold thread\n");
 		process_delete(Arc_ProcessorHold);
-		ARC_DISABLE_INTERRUPT;
 		ARC_HANG;
 	}
 
@@ -216,7 +198,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
-
 	
 	/*
 	// The Battery Resilience Test
