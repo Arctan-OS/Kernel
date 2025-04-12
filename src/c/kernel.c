@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "arctan.h"
 #include <userspace/thread.h>
 #include <lib/atomics.h>
 #include <global.h>
@@ -47,6 +48,8 @@
 #include <mm/pmm.h>
 #include <boot/parse.h>
 #include <stdint.h>
+#include <arch/pci/pci.h>
+#include <arch/acpi/acpi.h>
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta Arc_MainTerm = { 0 };
@@ -54,54 +57,6 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 static char Arc_MainTerm_mem[180 * 120] = { 0 };
 struct ARC_Process *Arc_ProcessorHold = NULL;
-
-/*
-int proc_test(int processor) {
-	struct ARC_File *file = NULL;
-	int i = vfs_open("/initramfs/boot/credit.txt", 0, ARC_STD_PERM, (void *)&file);
-	char data[26] = { 0 };
-	vfs_read(&data, 1, 24, file);
-	printf("Processor %d has arrived %d %s\n", processor, i, data);
-	vfs_close(file);
-	
-	size_t size = 26;
-	struct ARC_VFSNodeInfo info = {
-                .driver_arg = &size,
-		.mode = ARC_STD_PERM,
-		.type = ARC_VFS_N_BUFF,
-		.driver_index = -1,
-        };
-	vfs_create("/write_test.txt", &info);
-	vfs_open("/write_test.txt", 0, ARC_STD_PERM, &file);
-	vfs_seek(file, 3 * (processor - 1), SEEK_SET);
-	sprintf_(data, "C%d ", processor);
-	vfs_write(data, 1, 3, file);
-	vfs_close(file);
-	
-	vfs_open("/initramfs/boot/reference.txt", 0, ARC_STD_PERM, &file);
-	vfs_read(data, 1, 24, file);
-	printf("Link resolves: %s\n", data);
-	vfs_close(file);
-	
-	printf("Processor did not deadlock %d\n", processor);
-	
-	for (int i = 0; i < 100; i++) {
-		void *memory = pmm_alloc(0x2000);
-		*(uint16_t *)memory = 'A' + processor;
-		printf("[%d]: PMM/vbuddy(2/2): Got address %p %d %s\n", i, memory, processor, memory);
-		size_t ret = pmm_free(memory);
-		printf("[%d]: PMM/vbuddy(2/2): Freed %lu %d\n", i, ret, processor);
-		
-		memory = alloc(16);
-		*(uint16_t *)memory = 'A' + processor;
-		printf("[%d]: GEN/slab(2/2): Got address %p %d %s\n", i, memory, processor, memory);
-		ret = free(memory);
-		printf("[%d]: GEN/slab(2/2): Freed %lu %d\n", i, ret, processor);
-	}
-	
-	ARC_HANG;
-}
-*/
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
@@ -129,7 +84,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
 	}
 
-	if (init_pmm((struct ARC_MMap *)Arc_BootMeta->arc_mmap, Arc_BootMeta->arc_mmap_len) != 0) {
+	if (init_pmm((struct ARC_BootMMap *)ARC_PHYS_TO_HHDM(Arc_BootMeta->arc_mmap), Arc_BootMeta->arc_mmap_len) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize physical memory manager\n");
 		ARC_HANG;
 	}
@@ -159,7 +114,16 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitramfsRes = init_resource(ARC_DRIDEF_INITRAMFS_SUPER, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
 
+	if (init_acpi() != 0) {
+		return -1;
+	}
+
 	init_arch();
+
+	if (init_pci() != 0) {
+		return -2;
+	}
+
 	ARC_DISABLE_INTERRUPT;
 
 	Arc_ProcessorHold = process_create(0, NULL);
@@ -198,30 +162,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 			}
 		}
 	}
-	
-	/*
-	// The Battery Resilience Test
-	// Tell every processor, except the current one, to go to the test function.
-	// This function will test will subject the desired parts of the kernel to 
-	// a true parallel environment in order to test if synchronization primitives
-	// are properly used.
-	
-	ARC_ENABLE_INTERRUPT;
-	
-	struct ARC_ProcessorDescriptor *proc = smp_get_proc_desc();
-	proc = proc->next;
-	
-	while (proc != NULL) {
-		proc->flags |= 1 << 1;
-		while ((proc->flags >> 1) & 1) __asm__("pause");
-		
-		smp_jmp(proc, proc_test, 1, proc->acpi_uid);
-		
-		proc = proc->next;
-	}
-	
-	for (;;) ARC_HANG;
-	*/
 
 	init_scheduler();
 	sched_queue(Arc_ProcessorHold, ARC_SCHED_PRI_LO);

@@ -48,7 +48,7 @@ struct ARC_KernMeta {
 
 }__attribute__((packed));
 
-struct ARC_MMap {
+struct ARC_BootMMap {
 	int type;
 	uint64_t base;
 	uint64_t len;
