@@ -99,7 +99,7 @@
 #endif
 
 extern struct ARC_BootMeta *Arc_BootMeta;
-extern struct ARC_TermMeta Arc_MainTerm;
+extern struct ARC_TermMeta *Arc_CurrentTerm;
 extern struct ARC_Resource *Arc_InitramfsRes;
 extern struct ARC_File *Arc_FontFile;
 extern struct ARC_Process *Arc_ProcessorHold;

@@ -10,9 +10,6 @@
 [submodule "K/lib"]
 	path = K/lib
 	url = https://github.com/Arctan-OS/Klib
-[submodule "K/interface"]
-	path = K/interface
-	url = https://github.com/Arctan-OS/Kinterface
 [submodule "K/arch"]
 	path = K/arch
 	url = https://github.com/Arctan-OS/Karch

@@ -25,13 +25,13 @@
  * @DESCRIPTION
 */
 #include "arctan.h"
+#include "interface/terminal.h"
 #include <userspace/thread.h>
 #include <lib/atomics.h>
 #include <global.h>
 #include <arch/start.h>
 #include <arch/smp.h>
 #include <fs/vfs.h>
-#include <interface/framebuffer.h>
 #include <mp/scheduler.h>
 #include <mm/allocator.h>
 #include <lib/perms.h>
@@ -51,37 +51,39 @@
 #include <arch/pci/pci.h>
 #include <arch/acpi/acpi.h>
 
+struct ARC_TermMeta Arc_InitTerm = { 0 };
+static char Arc_InitTerm_mem[180 * 120] = { 0 };
+
 struct ARC_BootMeta *Arc_BootMeta = NULL;
-struct ARC_TermMeta Arc_MainTerm = { 0 };
+struct ARC_TermMeta *Arc_CurrentTerm = &Arc_InitTerm;
 struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
-static char Arc_MainTerm_mem[180 * 120] = { 0 };
 struct ARC_Process *Arc_ProcessorHold = NULL;
 
 int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
 	Arc_BootMeta = boot_meta;
 
-	Arc_MainTerm.rx_buf = NULL;
-	Arc_MainTerm.tx_buf = NULL;
-	Arc_MainTerm.term_width = 180;
-	Arc_MainTerm.term_height = 25;
-	Arc_MainTerm.term_mem = Arc_MainTerm_mem;
-	Arc_MainTerm.font_width = 8;
-	Arc_MainTerm.font_height = 14;
-	Arc_MainTerm.cx = 0;
-	Arc_MainTerm.cy = 0;
+	Arc_InitTerm.rx_buf = NULL;
+	Arc_InitTerm.tx_buf = NULL;
+	Arc_InitTerm.term_width = 180;
+	Arc_InitTerm.term_height = 25;
+	Arc_InitTerm.term_mem = Arc_InitTerm_mem;
+	Arc_InitTerm.font_width = 8;
+	Arc_InitTerm.font_height = 14;
+	Arc_InitTerm.cx = 0;
+	Arc_InitTerm.cy = 0;
 
-	init_static_mutex(&Arc_MainTerm.lock);
+	init_static_mutex(&Arc_InitTerm.lock);
 
 	if (parse_boot_info() != 0) {
 		ARC_DEBUG(ERR, "Failed to parse boot information\n");
 		ARC_HANG;
 	}
 
-	if (Arc_MainTerm.framebuffer != NULL) {
-		Arc_MainTerm.term_width = (Arc_MainTerm.fb_width / Arc_MainTerm.font_width);
-		Arc_MainTerm.term_height = (Arc_MainTerm.fb_height / Arc_MainTerm.font_height);
+	if (Arc_InitTerm.framebuffer != NULL) {
+		Arc_InitTerm.term_width = (Arc_InitTerm.fb_width / Arc_InitTerm.font_width);
+		Arc_InitTerm.term_height = (Arc_InitTerm.fb_height / Arc_InitTerm.font_height);
 	}
 
 	if (init_pmm((struct ARC_BootMMap *)ARC_PHYS_TO_HHDM(Arc_BootMeta->arc_mmap), Arc_BootMeta->arc_mmap_len) != 0) {
@@ -154,14 +156,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	vfs_open("/fonts/font.fnt", 0, ARC_STD_PERM, &Arc_FontFile);
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
-
-	for (int i = 0; i < 60; i++) {
-		for (int y = 0; y < Arc_MainTerm.fb_height; y++) {
-			for (int x = 0; x < Arc_MainTerm.fb_width; x++) {
-				ARC_FB_DRAW(Arc_MainTerm.framebuffer, x, (y * Arc_MainTerm.fb_width), Arc_MainTerm.fb_bpp, (x * y * i / 300) & 0x3FFF);
-			}
-		}
-	}
 
 	init_scheduler();
 	sched_queue(Arc_ProcessorHold, ARC_SCHED_PRI_LO);
