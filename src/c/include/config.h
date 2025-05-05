@@ -27,4 +27,7 @@
 // The standard size of a memory buffer
 #define ARC_STD_BUFF_SIZE (size_t)0x1000
 
+
+#define ARC_E9_PORT 0x3F8
+
 #endif

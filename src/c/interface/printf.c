@@ -30,7 +30,7 @@
 #include <lib/atomics.h>
 
 void putchar_(char c) {
-	E9_HACK(c);
+	ARC_E9_HACK(c);
 
 	term_putchar(Arc_CurrentTerm, c);
 }
