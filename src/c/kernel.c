@@ -55,7 +55,7 @@ struct ARC_TermMeta Arc_InitTerm = { 0 };
 static char Arc_InitTerm_mem[180 * 120] = { 0 };
 
 struct ARC_BootMeta *Arc_BootMeta = NULL;
-struct ARC_TermMeta *Arc_CurrentTerm = &Arc_InitTerm;
+struct ARC_TermMeta *Arc_CurrentTerm = NULL;
 struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 struct ARC_Process *Arc_ProcessorHold = NULL;
@@ -73,90 +73,92 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	Arc_InitTerm.font_height = 14;
 	Arc_InitTerm.cx = 0;
 	Arc_InitTerm.cy = 0;
-
+	
 	init_static_mutex(&Arc_InitTerm.lock);
-
+	
+	Arc_CurrentTerm = &Arc_InitTerm;
+	
 	if (parse_boot_info() != 0) {
 		ARC_DEBUG(ERR, "Failed to parse boot information\n");
 		ARC_HANG;
 	}
-
+	
 	if (Arc_InitTerm.framebuffer != NULL) {
 		Arc_InitTerm.term_width = (Arc_InitTerm.fb_width / Arc_InitTerm.font_width);
 		Arc_InitTerm.term_height = (Arc_InitTerm.fb_height / Arc_InitTerm.font_height);
 	}
-
+	
 	if (init_pmm((struct ARC_BootMMap *)ARC_PHYS_TO_HHDM(Arc_BootMeta->arc_mmap), Arc_BootMeta->arc_mmap_len) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize physical memory manager\n");
 		ARC_HANG;
 	}
-
+	
+	
 	if (init_pager() != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize pager\n");
 		ARC_HANG;
 	}
-
+	
 	if (init_allocator(256) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize kernel allocator\n");
 		ARC_HANG;
 	}
-
+	
 	init_checksums();
-
+	
 	init_vfs();
-
+	
 	struct ARC_VFSNodeInfo info = {
-	        .type = ARC_VFS_N_DIR,
+		.type = ARC_VFS_N_DIR,
 		.mode = ARC_STD_PERM,
         };
-
+	
 	vfs_create("/initramfs/", &info);
         vfs_create("/dev/", &info);
-
+	
 	Arc_InitramfsRes = init_resource(ARC_DRIDEF_INITRAMFS_SUPER, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
-
+	
 	if (init_acpi() != 0) {
 		return -1;
 	}
-
+	
 	init_arch();
-
+	
 	if (init_pci() != 0) {
 		return -2;
 	}
-
+	
 	ARC_DISABLE_INTERRUPT;
-
+	
+	vfs_open("/initramfs/font.fnt", 0, ARC_STD_PERM, &Arc_FontFile);
+	
+	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
+	
 	Arc_ProcessorHold = process_create(0, NULL);
-
+	
 	if (Arc_ProcessorHold == NULL) {
 		ARC_DEBUG(ERR, "Failed to create hold process\n");
 		ARC_HANG;
 	}
-
+	
 	Arc_ProcessorHold->allocator = init_vmm((void *)0x1000, 0x10000);
-
+	
 	if (Arc_ProcessorHold->allocator == NULL) {
 		ARC_DEBUG(ERR, "Failed to create hold process allocator\n");
 		ARC_HANG;
 	}
-
+	
 	struct ARC_Thread *hold = thread_create(Arc_ProcessorHold->allocator, Arc_ProcessorHold->page_tables, (void *)smp_hold, 0x1000);
-
+	
 	if (hold == NULL) {
 		ARC_DEBUG(ERR, "Failed to create hold thread\n");
 		process_delete(Arc_ProcessorHold);
 		ARC_HANG;
 	}
-
+	
 	process_associate_thread(Arc_ProcessorHold, hold);
-
-	vfs_link("/initramfs/boot/ANTIQUE.F14", "/fonts/font.fnt", -1);
-	vfs_open("/fonts/font.fnt", 0, ARC_STD_PERM, &Arc_FontFile);
-
-	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
-
+	
 	init_scheduler();
 	sched_queue(Arc_ProcessorHold, ARC_SCHED_PRI_LO);
 	
@@ -165,12 +167,12 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		ARC_DEBUG(ERR, "Failed to load userspace\n");
 	}
 	sched_queue(userspace, ARC_SCHED_PRI_HI);
-
-	smp_switch_to_userspace();
 	
-	ARC_ENABLE_INTERRUPT;
+	vfs_list("/", 16);
+	
+	smp_switch_to_userspace();
 
-	for (;;) ARC_HANG;
+	ARC_HANG;
 
 	return 0;
 }
