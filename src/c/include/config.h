@@ -27,7 +27,8 @@
 // The standard size of a memory buffer
 #define ARC_STD_BUFF_SIZE (size_t)0x1000
 
-
-#define ARC_E9_PORT 0x3F8
+// In the command line compile options it is possible to
+// define a COM port to have debug on, use -DARC_COM_PORT=0xXXX
+// (on x86-64 0x3F8 is COM1)
 
 #endif

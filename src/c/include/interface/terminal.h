@@ -99,5 +99,6 @@ void term_putchar(struct ARC_TermMeta *term, char c);
 void term_draw(struct ARC_TermMeta *term);
 int term_push(struct ARC_TermMeta *term, int rx, char c);
 char term_pop(struct ARC_TermMeta *term, int rx);
+int term_bodge_init_uart();
 
 #endif

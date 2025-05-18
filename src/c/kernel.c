@@ -25,7 +25,6 @@
  * @DESCRIPTION
 */
 #include "arctan.h"
-#include "config.h"
 #include "interface/terminal.h"
 #include <userspace/thread.h>
 #include <lib/atomics.h>
@@ -61,31 +60,8 @@ struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 struct ARC_Process *Arc_ProcessorHold = NULL;
 
-static int bodge_init_uart() {
-	uint8_t lcr = inb(ARC_E9_PORT + 3);
-
-	// No parity
-	MASKED_WRITE(lcr, 0, 3, 0b111);
-	// 1 stop bit
-	MASKED_WRITE(lcr, 0, 2, 0b1);
-	// 8 data bits
-	MASKED_WRITE(lcr, 3, 0, 0b11);
-
-	// Set divisor to 1 for fastest communications
-	uint16_t divisor = 1;
-	uint8_t dlab = inb(ARC_E9_PORT + 3);
-	MASKED_WRITE(dlab, 1, 7, 1);
-	outb(ARC_E9_PORT + 3, dlab);
-
-	outb(ARC_E9_PORT, divisor & 0xFF);
-	outb(ARC_E9_PORT + 1, (divisor >> 8) & 0xFF);
-
-	MASKED_WRITE(dlab, 0, 7, 1);
-	outb(ARC_E9_PORT + 3, dlab);
-}
-
 int kernel_main(struct ARC_BootMeta *boot_meta) {
-	bodge_init_uart();
+	term_bodge_init_uart();
 	
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
 	Arc_BootMeta = boot_meta;
@@ -195,7 +171,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	sched_queue(userspace, ARC_SCHED_PRI_HI);
 	
 	vfs_list("/", 16);
-	
+
 	smp_switch_to_userspace();
 
 	ARC_HANG;

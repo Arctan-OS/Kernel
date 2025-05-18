@@ -32,28 +32,11 @@ ifeq (,$(ARC_ROOT))
 	PRODUCT := ./kernel.elf
 endif
 
-CPP_DEBUG_FLAG := -DARC_DEBUG_ENABLE
-CPP_E9HACK_FLAG := -DARC_E9HACK_ENABLE
+CFILES := $(shell find ./src/c/ -type f -name "*.c")
+ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
+OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-ifeq (,$(wildcard ./e9hack.enable))
-# Disable E9HACK
-	CPP_SERIAL_FLAG :=
-endif
-
-ifeq (,$(wildcard ./debug.enable))
-# Disable debugging
-	CPP_DEBUG_FLAG :=
-else
-# Must set serial flag if debugging
-	CPP_E9HACK_FLAG := -DARC_E9HACK_ENABLE
-endif
-
-ifneq (,$(wildcard ./hardware.enable))
-# hardware.enable is present, disable E9
-	CPP_E9HACK_FLAG :=
-endif
-
-CPPFLAGS := $(CPPFLAG_DEBUG) $(CPPFLAG_E9HACK) $(CPP_DEBUG_FLAG) $(CPP_E9HACK_FLAG) $(ARC_DEF_ARCH) $(ARC_DEF_SCHED) \
+CPPFLAGS := $(ARC_DEF_ARCH) $(ARC_DEF_SCHED) $(ARC_DEF_COM) $(ARC_DEF_DEBUG) \
 	    $(shell find ~+ -type d -wholename "*src/c/include" -exec echo "-I$1" {} \;)
 
 export CPPFLAGS
@@ -70,10 +53,6 @@ LDFLAGS := -Tlinker.ld -melf_x86_64 --no-dynamic-linker -static -pie -o $(PRODUC
 NASMFLAGS := -f elf64
 
 export NASMFLAGS
-
-CFILES := $(shell find ./src/c/ -type f -name "*.c")
-ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
-OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
 .PHONY: all
 all: build
@@ -137,5 +116,3 @@ src/asm/%.o: src/asm/%.asm
 .PHONY: clean
 clean:
 	find . -type f -name "*.o" -delete
-
--include clean

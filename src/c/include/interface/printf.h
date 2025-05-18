@@ -31,13 +31,6 @@
 #include <stddef.h>
 #include <stdarg.h>
 
-#ifdef ARC_E9HACK_ENABLE
-   #include <arch/io/port.h>
-   #define ARC_E9_HACK(c) outb(ARC_E9_PORT, c);
-#else
-    #define ARC_E9_HACK(c) ;
-#endif
-
 #define printf printf_
 #define sprintf sprintf_
 
