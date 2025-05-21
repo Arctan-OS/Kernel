@@ -66,8 +66,6 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
 	Arc_BootMeta = boot_meta;
 
-	Arc_InitTerm.rx_buf = NULL;
-	Arc_InitTerm.tx_buf = NULL;
 	Arc_InitTerm.term_width = 180;
 	Arc_InitTerm.term_height = 25;
 	Arc_InitTerm.term_mem = Arc_InitTerm_mem;
