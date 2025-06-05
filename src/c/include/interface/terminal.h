@@ -4,10 +4,10 @@
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
  * @LICENSE
- * Arctan - Operating System Kernel
+ * Arctan-OS/Kernel - Operating System Kernel
  * Copyright (C) 2023-2025 awewsomegamer
  *
- * This file is part of Arctan.
+ * This file is part of Arctan-OS/Kernel.
  *
  * Arctan is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -114,15 +114,5 @@ void term_putchar(struct ARC_TermMeta *term, char c);
  * @param struct ARC_TermMeta *term - The terminal to display
 */
 void term_draw(struct ARC_TermMeta *term);
-
-/**
- * Initialize the COM port if specified
- *
- * This function will initialize the COM port specified
- * at compile time. It does no checks to ensure it exists.
- * This is primarily for debugging, and non-debug builds
- * hopefully do not have the COM option specified.
-*/
-int term_bodge_init_uart();
 
 #endif

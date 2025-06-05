@@ -4,10 +4,10 @@
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
  * @LICENSE
- * Arctan - Operating System Kernel
+ * Arctan-OS/Kernel - Operating System Kernel
  * Copyright (C) 2023-2025 awewsomegamer
  *
- * This file is part of Arctan.
+ * This file is part of Arctan-OS/Kernel.
  *
  * Arctan is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -98,6 +98,7 @@
 #include <arch/x86-64/util.h>
 #endif
 
+extern struct ARC_KernelMeta *Arc_KernelMeta;
 extern struct ARC_BootMeta *Arc_BootMeta;
 extern struct ARC_TermMeta *Arc_CurrentTerm;
 extern struct ARC_Resource *Arc_InitramfsRes;

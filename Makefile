@@ -4,10 +4,10 @@
 # * @author awewsomegamer <awewsomegamer@gmail.com>
 # *
 # * @LICENSE
-# * Arctan - Operating System Kernel
+# * Arctan-OS/Kernel - Operating System Kernel
 # * Copyright (C) 2023-2025 awewsomegamer
 # *
-# * This file is part of Arctan.
+# * This file is part of Arctan-OS/Kernel.
 # *
 # * Arctan is free software; you can redistribute it and/or
 # * modify it under the terms of the GNU General Public License
@@ -36,7 +36,7 @@ CFILES := $(shell find ./src/c/ -type f -name "*.c")
 ASFILES := $(shell find ./src/asm/ -type f -name "*.asm")
 OFILES := $(CFILES:.c=.o) $(ASFILES:.asm=.o)
 
-CPPFLAGS := $(ARC_DEF_ARCH) $(ARC_DEF_SCHED) $(ARC_DEF_COM) $(ARC_DEF_DEBUG) \
+CPPFLAGS := $(ARC_INCLUDE_DIRS) $(ARC_DEF_ARCH) $(ARC_DEF_SCHED) $(ARC_DEF_COM) $(ARC_DEF_DEBUG) \
 	    $(shell find ~+ -type d -wholename "*src/c/include" -exec echo "-I$1" {} \;)
 
 export CPPFLAGS
@@ -57,6 +57,7 @@ export NASMFLAGS
 .PHONY: all
 all: build
 	$(LD) $(LDFLAGS) $(shell find . -type f -name "*.o")
+	$(STRIP) $(PRODUCT)
 
 .PHONY: definitions
 definitions:

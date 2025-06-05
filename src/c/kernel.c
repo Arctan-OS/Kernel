@@ -4,10 +4,10 @@
  * @author awewsomegamer <awewsomegamer@gmail.com>
  *
  * @LICENSE
- * Arctan - Operating System Kernel
+ * Arctan-OS/Kernel - Operating System Kernel
  * Copyright (C) 2023-2025 awewsomegamer
  *
- * This file is part of Arctan.
+ * This file is part of Arctan-OS/Kernel.
  *
  * Arctan is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -54,16 +54,15 @@
 struct ARC_TermMeta Arc_InitTerm = { 0 };
 static char Arc_InitTerm_mem[180 * 120] = { 0 };
 
+struct ARC_KernelMeta *Arc_KernelMeta = NULL;
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 struct ARC_TermMeta *Arc_CurrentTerm = NULL;
 struct ARC_Resource *Arc_InitramfsRes = NULL;
 struct ARC_File *Arc_FontFile = NULL;
 struct ARC_Process *Arc_ProcessorHold = NULL;
 
-int kernel_main(struct ARC_BootMeta *boot_meta) {
-	term_bodge_init_uart();
-	
-	// NOTE: Cannot use ARC_HHDM_VADDR before Arc_BootMeta is set
+int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_meta) {
+	Arc_KernelMeta = kernel_meta;
 	Arc_BootMeta = boot_meta;
 
 	Arc_InitTerm.term_width = 180;
@@ -77,7 +76,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	init_static_mutex(&Arc_InitTerm.lock);
 	
 	Arc_CurrentTerm = &Arc_InitTerm;
-	
+
 	if (parse_boot_info() != 0) {
 		ARC_DEBUG(ERR, "Failed to parse boot information\n");
 		ARC_HANG;
@@ -88,7 +87,7 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 		Arc_InitTerm.term_height = (Arc_InitTerm.fb_height / Arc_InitTerm.font_height);
 	}
 	
-	if (init_pmm((struct ARC_BootMMap *)ARC_PHYS_TO_HHDM(Arc_BootMeta->arc_mmap), Arc_BootMeta->arc_mmap_len) != 0) {
+	if (init_pmm((struct ARC_MMap *)ARC_PHYS_TO_HHDM(Arc_KernelMeta->arc_mmap.base), Arc_KernelMeta->arc_mmap.len) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize physical memory manager\n");
 		ARC_HANG;
 	}
@@ -111,12 +110,12 @@ int kernel_main(struct ARC_BootMeta *boot_meta) {
 	struct ARC_VFSNodeInfo info = {
 		.type = ARC_VFS_N_DIR,
 		.mode = ARC_STD_PERM,
-        };
+    	};
 	
 	vfs_create("/initramfs/", &info);
         vfs_create("/dev/", &info);
 	
-	Arc_InitramfsRes = init_resource(ARC_DRIDEF_INITRAMFS_SUPER, (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->initramfs));
+	Arc_InitramfsRes = init_resource(ARC_DRIDEF_INITRAMFS_SUPER, (void *)ARC_PHYS_TO_HHDM(Arc_KernelMeta->initramfs.base));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
 	
 	if (init_acpi() != 0) {
