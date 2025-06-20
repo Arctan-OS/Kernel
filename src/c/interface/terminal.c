@@ -33,38 +33,47 @@
 #include <arctan.h>
 #include <lib/util.h>
 #include <arch/io/port.h>
+#include <util.h>
 
-void term_putchar(struct ARC_TermMeta *term, char c) {
-	if (term->cy >= term->term_height) {
-		memcpy(term->term_mem, term->term_mem + term->term_width, (term->term_height - 1) * term->term_width);
-		memset(term->term_mem + (term->term_height - 1) * term->term_width, 0, term->term_width);
-		term->cy = term->term_height - 1;
+static void *term_fb = NULL;
+static int term_fb_width = 0;
+static int term_fb_height = 0;
+static int term_fb_bpp = 0;
+static int term_x = 0;
+static int term_y = 0;
+static int term_width = 0;
+static int term_height = 0;
+uint8_t term_mem[0x1000] = { 0 };
+
+void term_putchar(char c) {
+	if (term_y >= term_height) {
+		memcpy(term_mem, term_mem + term_width, (term_height - 1) * term_width);
+		memset(term_mem + (term_height - 1) * term_width, 0, term_width);
+		term_y = term_height - 1;
 	}
 
 	switch (c) {
 	        case '\n': {
-		        term->cy++;
-        		term->cx = 0;
+		        term_y++;
+        		term_x = 0;
 
         		break;
         	}
 
                 case '\t': {
-                        term->cx += 8;
+                        term_x += 8;
 
                         break;
                 }
         
 	        default: {
-        		if (term->term_mem != NULL) {
-        			term->term_mem[term->cy * term->term_width + term->cx] = c;
-        		}
+        		term_mem[term_y * term_width + term_x] = c;
+        		
+        		term_x++;
 
-        		term->cx++;
-
-        		if (term->cx >= term->term_width) {
-        			term->cy++;
-        			term->cx = 0;
+        		if (term_x >= term_width) {
+        			term_y++;
+        			term_x = 0;
         		}
 
         		break;
@@ -81,31 +90,31 @@ void term_putchar(struct ARC_TermMeta *term, char c) {
 #endif
 }
 
-void term_draw(struct ARC_TermMeta *term) {
-	if (term->framebuffer == NULL) {
+void term_draw() {
+	if (term_fb == NULL) {
 		return;
 	}
 
-	memset(term->framebuffer, 0, term->fb_width * term->fb_height * (term->fb_bpp / 8));
+	memset(term_fb, 0, term_fb_width * term_fb_height * (term_fb_bpp / 8));
 
 	int cwidth = 8;
 	int cheight = 8;
 	uint8_t *base = (uint8_t *)ARC_PHYS_TO_HHDM(Arc_BootMeta->term.char_rom);
 
-	if (Arc_FontFile != NULL) {
-		cwidth = term->font_width;
-		cheight = term->font_height;
+	// if (Arc_FontFile != NULL) {
+	// 	cwidth = term->font_width;
+	// 	cheight = term->font_height;
 
-		base = alloc(cwidth * cheight / 8);
-	}
+	// 	base = alloc(cwidth * cheight / 8);
+	// }
 
 	if (base == NULL) {
 		return;
 	}
         
-	for (int cy = 0; cy < term->term_height; cy++) {
-		for (int cx = 0; cx < term->term_width; cx++) {
-			char c = term->term_mem[cy * term->term_width + cx];
+	for (int cy = 0; cy < term_height; cy++) {
+		for (int cx = 0; cx < term_width; cx++) {
+			char c = term_mem[cy * term_width + cx];
 			int fx = cx * cwidth;
 			int fy = cy * cheight;
 
@@ -115,13 +124,13 @@ void term_draw(struct ARC_TermMeta *term) {
 
 			uint8_t *char_base = NULL;
                         
-			if (Arc_FontFile != NULL) {
-				char_base = base;
-				vfs_seek(Arc_FontFile, c * (cwidth * cheight / 8), SEEK_SET);
-				vfs_read(char_base, 1, cwidth * cheight / 8, Arc_FontFile);
-			} else {
+			// if (Arc_FontFile != NULL) {
+			// 	char_base = base;
+			// 	vfs_seek(Arc_FontFile, c * (cwidth * cheight / 8), SEEK_SET);
+			// 	vfs_read(char_base, 1, cwidth * cheight / 8, Arc_FontFile);
+			// } else {
 				char_base = (uint8_t *)(base + (c * cheight));
-			}
+			// }
 
 			for (int i = 0; i < cheight; i++) {
 				int _j = 0;
@@ -130,14 +139,25 @@ void term_draw(struct ARC_TermMeta *term) {
 						continue;
 					}
 
- 	       				ARC_FB_DRAW(term->framebuffer, (fx + _j), ((i + fy) * term->fb_width), term->fb_bpp, 0xFFFFFF);
+ 	       				ARC_FB_DRAW(term_fb, (fx + _j), ((i + fy) * term_fb_width), term_fb_bpp, 0xFFFFFF);
 				}
 			}
 
 		}
 	}
 
-	if (Arc_FontFile != NULL) {
-		free(base);
-	}
+	// if (Arc_FontFile != NULL) {
+	// 	free(base);
+	// }
+}
+
+int init_terminal() {
+	term_fb = (void *)ARC_PHYS_TO_HHDM(Arc_BootMeta->term.base);
+	term_fb_width = Arc_BootMeta->term.width;
+	term_fb_height = Arc_BootMeta->term.height;
+	term_fb_bpp = Arc_BootMeta->term.bpp;
+	term_width = term_fb_width / 8;
+	term_height = term_fb_height / 8;
+
+	return 0;	
 }

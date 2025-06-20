@@ -31,7 +31,7 @@
 #include <lib/atomics.h>
 
 void putchar_(char c) {
-	term_putchar(Arc_CurrentTerm, c);
+	term_putchar(c);
 }
 /**
  * @author (c) Eyal Rozenberg <eyalroz1@gmx.com>
@@ -1432,14 +1432,15 @@ int vfctprintf(void (*out)(char c, void* extra_arg), void* extra_arg, const char
  * TODO: Investigate a better solution to this.
  *
 */
+ARC_GenericSpinlock printf_lock = 0;
 int printf_(const char* format, ...)
 {
-  mutex_lock(&Arc_CurrentTerm->lock);
+  spinlock_lock(&printf_lock);
   va_list args;
   va_start(args, format);
   const int ret = vprintf_(format, args);
   va_end(args);
-  mutex_unlock(&Arc_CurrentTerm->lock);
+  spinlock_lock(&printf_lock);
   return ret;
 }
 

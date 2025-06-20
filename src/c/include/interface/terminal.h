@@ -58,39 +58,6 @@ typedef struct {
 			break;							\
 	}
 
-/**
- * The terminal meta structure
-*/
-struct ARC_TermMeta {
-	/// Virtual address of framebuffer
-	void *framebuffer;
-	/// Framebuffer width in pixels
-	int fb_width;
-	/// Framebuffer height in pixels
-	int fb_height;
-	/// Framebuffer bpp
-	int fb_bpp;
-	/// Framebuffer pitch
-	int fb_pitch;
-	/// Current character x position
-	int cx;
-	/// Current character y position
-	int cy;
-	/// The BMP font
-	uint8_t *font_bmp;
-	/// Width of the font in pixels
-	int font_width;
-	/// Height of the font in pixels
-	int font_height;
-	/// Character memory of terminal
-	char *term_mem;
-	/// Width of the terminal in characters
-	int term_width;
-	/// Height of the terminal in characters
-	int term_height;
-	/// RW Lock
-	ARC_GenericMutex lock;
-};
 
 /**
  * Put a character into the terminal stream
@@ -102,7 +69,7 @@ struct ARC_TermMeta {
  * @param struct ARC_TermMeta *term - Terminal to insert the character into.
  * @param char c - The character to insert.
 */
-void term_putchar(struct ARC_TermMeta *term, char c);
+void term_putchar(char c);
 
 /**
  * A function to draw the terminal to its framebuffer
@@ -113,6 +80,8 @@ void term_putchar(struct ARC_TermMeta *term, char c);
  * 
  * @param struct ARC_TermMeta *term - The terminal to display
 */
-void term_draw(struct ARC_TermMeta *term);
+void term_draw();
+
+int init_terminal();
 
 #endif

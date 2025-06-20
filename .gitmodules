@@ -16,9 +16,6 @@
 [submodule "K/arch-x86-64"]
 	path = K/arch-x86-64
 	url = https://github.com/Arctan-OS/Karch-x86-64
-[submodule "K/boot"]
-	path = K/boot
-	url = https://github.com/Arctan-OS/Kboot
 [submodule "K/drivers"]
 	path = K/drivers
 	url = https://github.com/Arctan-OS/Kdrivers
