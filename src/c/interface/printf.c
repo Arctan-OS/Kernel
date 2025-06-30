@@ -1440,7 +1440,7 @@ int printf_(const char* format, ...)
   va_start(args, format);
   const int ret = vprintf_(format, args);
   va_end(args);
-  spinlock_lock(&printf_lock);
+  spinlock_unlock(&printf_lock);
   return ret;
 }
 

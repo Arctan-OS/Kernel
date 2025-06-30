@@ -49,11 +49,8 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 		ARC_HANG;
 	}
 
-	ARC_DEBUG(INFO, "Initialized terminal\n");
-	term_draw();
-
 	ARC_HANG;
-
+	
 	if (init_pmm((struct ARC_MMap *)ARC_PHYS_TO_HHDM(Arc_KernelMeta->arc_mmap.base), Arc_KernelMeta->arc_mmap.len) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize physical memory manager\n");
 		ARC_HANG;

@@ -27,9 +27,9 @@
 #ifndef ARC_UTIL_H
 #define ARC_UTIL_H
 
-
-
 #include <interface/printf.h>
+#include <inttypes.h>
+#include <stdint.h>
 
 #define ARC_DEBUG_STRINGIFY(val) #val
 #define ARC_DEBUG_TOSTRING(val) ARC_DEBUG_STRINGIFY(val)

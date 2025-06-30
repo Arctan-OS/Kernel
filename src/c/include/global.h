@@ -28,7 +28,7 @@
 #define ARC_GLOBAL_H
 
 #include <arctan.h>
-#include <stdint.h>
+#include <util.h>
 #include <config.h>
 
 extern struct ARC_KernelMeta *Arc_KernelMeta;

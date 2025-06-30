@@ -101,13 +101,6 @@ void term_draw() {
 	int cheight = 8;
 	uint8_t *base = (uint8_t *)ARC_PHYS_TO_HHDM(Arc_BootMeta->term.char_rom);
 
-	// if (Arc_FontFile != NULL) {
-	// 	cwidth = term->font_width;
-	// 	cheight = term->font_height;
-
-	// 	base = alloc(cwidth * cheight / 8);
-	// }
-
 	if (base == NULL) {
 		return;
 	}
@@ -122,15 +115,7 @@ void term_draw() {
 				continue;
 			}
 
-			uint8_t *char_base = NULL;
-                        
-			// if (Arc_FontFile != NULL) {
-			// 	char_base = base;
-			// 	vfs_seek(Arc_FontFile, c * (cwidth * cheight / 8), SEEK_SET);
-			// 	vfs_read(char_base, 1, cwidth * cheight / 8, Arc_FontFile);
-			// } else {
-				char_base = (uint8_t *)(base + (c * cheight));
-			// }
+			uint8_t *char_base = (uint8_t *)(base + (c * cheight));
 
 			for (int i = 0; i < cheight; i++) {
 				int _j = 0;
@@ -145,10 +130,6 @@ void term_draw() {
 
 		}
 	}
-
-	// if (Arc_FontFile != NULL) {
-	// 	free(base);
-	// }
 }
 
 int init_terminal() {
@@ -159,5 +140,7 @@ int init_terminal() {
 	term_width = term_fb_width / 8;
 	term_height = term_fb_height / 8;
 
-	return 0;	
+	ARC_DEBUG(INFO, "Initialized terminal\n");
+
+	return 0;
 }

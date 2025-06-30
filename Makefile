@@ -69,7 +69,7 @@ ifeq ($(ARC_OPT_ARCH),x86_64)
 # Clone architecture repository if needed
 	$(MAKE) -C K/arch-x86-64
 endif
-	$(MAKE) $(OFILES) drivers mm mp arch lib fs boot userspace
+	$(MAKE) $(OFILES) drivers mm mp arch lib fs userspace
 
 .PHONY: pre-build
 pre-build:
@@ -99,10 +99,6 @@ fs:
 .PHONY: drivers
 drivers:
 	$(MAKE) -C K/drivers
-
-.PHONY: boot
-boot:
-	$(MAKE) -C K/boot
 
 .PHONY: userspace
 userspace:
