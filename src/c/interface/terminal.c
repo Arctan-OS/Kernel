@@ -43,9 +43,18 @@ static int term_x = 0;
 static int term_y = 0;
 static int term_width = 0;
 static int term_height = 0;
-uint8_t term_mem[0x1000] = { 0 };
+uint8_t term_mem[0x4000] = { 0 };
 
 void term_putchar(char c) {
+#ifdef ARC_COM_PORT
+        uint8_t lsr = inb(ARC_COM_PORT + 5);
+        while (MASKED_READ(lsr, 5, 1) == 0) {
+                lsr = inb(ARC_COM_PORT + 5);
+        }
+
+        outb(ARC_COM_PORT, c);
+#endif
+
 	if (term_y >= term_height) {
 		memcpy(term_mem, term_mem + term_width, (term_height - 1) * term_width);
 		memset(term_mem + (term_height - 1) * term_width, 0, term_width);
@@ -79,15 +88,6 @@ void term_putchar(char c) {
         		break;
         	}
 	}
-
-#ifdef ARC_COM_PORT
-        uint8_t lsr = inb(ARC_COM_PORT + 5);
-        while (MASKED_READ(lsr, 5, 1) == 0) {
-                lsr = inb(ARC_COM_PORT + 5);
-        }
-
-        outb(ARC_COM_PORT, c);
-#endif
 }
 
 void term_draw() {
@@ -104,9 +104,13 @@ void term_draw() {
 	if (base == NULL) {
 		return;
 	}
-        
+
 	for (int cy = 0; cy < term_height; cy++) {
 		for (int cx = 0; cx < term_width; cx++) {
+                        if (cy * term_width + cx > 0x4000)  {
+                                break;
+                        }
+
 			char c = term_mem[cy * term_width + cx];
 			int fx = cx * cwidth;
 			int fy = cy * cheight;
@@ -114,7 +118,6 @@ void term_draw() {
 			if (c == 0) {
 				continue;
 			}
-
 			uint8_t *char_base = (uint8_t *)(base + (c * cheight));
 
 			for (int i = 0; i < cheight; i++) {
@@ -124,10 +127,9 @@ void term_draw() {
 						continue;
 					}
 
- 	       				ARC_FB_DRAW(term_fb, (fx + _j), ((i + fy) * term_fb_width), term_fb_bpp, 0xFFFFFF);
+	       			ARC_FB_DRAW(term_fb, (fx + _j), ((i + fy) * term_fb_width), term_fb_bpp, 0xFFFFFF);
 				}
 			}
-
 		}
 	}
 }
@@ -140,7 +142,7 @@ int init_terminal() {
 	term_width = term_fb_width / 8;
 	term_height = term_fb_height / 8;
 
-	ARC_DEBUG(INFO, "Initialized terminal\n");
+	ARC_DEBUG(INFO, "Initialized terminal (%dx%d)\n", term_width, term_height);
 
 	return 0;
 }
