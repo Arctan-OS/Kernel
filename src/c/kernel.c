@@ -51,14 +51,12 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	Arc_KernelMeta = kernel_meta;
 	Arc_BootMeta = boot_meta;
 
+	init_arch_early();
+
 	if (init_pager() != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize pager\n");
 		ARC_HANG;
 	}
-
-	init_arch_early();
-
-	__asm__("int 3");
 
 	if (init_terminal() != 0) {
 		ARC_HANG;
