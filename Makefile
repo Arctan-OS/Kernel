@@ -57,7 +57,7 @@ export NASMFLAGS
 .PHONY: all
 all: build
 	$(LD) $(LDFLAGS) $(shell find . -type f -name "*.o")
-	$(STRIP) $(PRODUCT)
+#	$(STRIP) $(PRODUCT)
 
 .PHONY: definitions
 definitions:
