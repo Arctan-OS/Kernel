@@ -24,7 +24,6 @@
  *
  * @DESCRIPTION
 */
-#include "arch/x86-64/config.h"
 #include <arch/info.h>
 #include <global.h>
 #include <util.h>
