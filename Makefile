@@ -44,7 +44,7 @@ export CPPFLAGS
 CFLAGS := -c -m64 -c -masm=intel -fno-stack-protector -fno-stack-check \
 		  -fno-lto -mno-mmx -mno-80387 -mno-red-zone -Wall \
 		  -Wextra -mno-sse -mno-sse2 -ffreestanding -nostdlib \
-		  -fPIE -ffunction-sections -march=x86-64-v2
+		  -fPIE -ffunction-sections -march=x86-64-v2 -O1
 
 export CFLAGS
 

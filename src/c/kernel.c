@@ -78,9 +78,6 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	tsc_a = rdtsc(); a = pmm_alloc(2097152); tsc_b = rdtsc();
 	printf("a3: %p (delta: %lu)\n", a, (tsc_b - tsc_a));
 
-	tsc_a = rdtsc(); void *b = pmm_alloc(100); tsc_b = rdtsc();
-	printf("b: %p (delta: %lu)\n", b, (tsc_b - tsc_a));
-
 	tsc_a = rdtsc(); void *c = pmm_alloc(1073741824); tsc_b = rdtsc();
 	printf("c1: %p (delta: %lu)\n", c, (tsc_b - tsc_a));
 	tsc_a = rdtsc(); void *c1 = pmm_alloc(1073741824); tsc_b = rdtsc();
@@ -107,6 +104,12 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	printf("free(e): %lu bytes (delta: %lu)\n", t, (tsc_b - tsc_a));
 	tsc_a = rdtsc(); e = pmm_fast_page_alloc(); tsc_b = rdtsc();
 	printf("e3: %p (delta: %lu)\n", e, (tsc_b - tsc_a));
+
+
+
+	tsc_a = rdtsc(); void *b = pmm_alloc(100); tsc_b = rdtsc();
+	printf("b: %p (delta: %lu)\n", b, (tsc_b - tsc_a));
+
 
 	for (;;);
 
