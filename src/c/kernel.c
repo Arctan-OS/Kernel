@@ -24,6 +24,7 @@
  *
  * @DESCRIPTION
 */
+#include "arch/x86-64/config.h"
 #include <arch/info.h>
 #include <global.h>
 #include <util.h>
@@ -42,10 +43,6 @@
 struct ARC_KernelMeta *Arc_KernelMeta = NULL;
 struct ARC_BootMeta *Arc_BootMeta = NULL;
 
-__attribute__((naked)) uint64_t rdtsc() {
-	__asm__("rdtsc; shl rdx, 32; or rdx, rax; mov rax, rdx; ret" :::);
-}
-
 int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_meta) {
 	Arc_KernelMeta = kernel_meta;
 	Arc_BootMeta = boot_meta;
@@ -60,7 +57,7 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	if (init_terminal() != 0) {
 		ARC_HANG;
 	}
-	
+
 	if (init_pmm((struct ARC_MMap *)ARC_PHYS_TO_HHDM(Arc_KernelMeta->arc_mmap.base), Arc_KernelMeta->arc_mmap.len) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize physical memory manager\n");
 		ARC_HANG;
@@ -69,47 +66,53 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	uint64_t tsc_a = 0;
 	uint64_t tsc_b = 0;
 
-	tsc_a = rdtsc(); void *a = pmm_alloc(2097152); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); void *a = pmm_alloc(2097152); tsc_b = arch_get_cycles();
 	printf("a1: %p (delta: %lu)\n", a, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); void *a1 = pmm_alloc(2097152); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); void *a1 = pmm_alloc(2097152); tsc_b = arch_get_cycles();
 	printf("a2: %p (delta: %lu)\n", a1, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); size_t t = pmm_free(a); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); size_t t = pmm_free(a); tsc_b = arch_get_cycles();
 	printf("free(a): %lu bytes (delta: %lu)\n", t, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); a = pmm_alloc(2097152); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); a = pmm_alloc(2097152); tsc_b = arch_get_cycles();
 	printf("a3: %p (delta: %lu)\n", a, (tsc_b - tsc_a));
 
-	tsc_a = rdtsc(); void *c = pmm_alloc(1073741824); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); void *c = pmm_alloc(1073741824); tsc_b = arch_get_cycles();
 	printf("c1: %p (delta: %lu)\n", c, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); void *c1 = pmm_alloc(1073741824); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); void *c1 = pmm_alloc(1073741824); tsc_b = arch_get_cycles();
 	printf("c2: %p (delta: %lu)\n", c1, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); t = pmm_free(c); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); t = pmm_free(c); tsc_b = arch_get_cycles();
 	printf("free(c): %lu bytes (delta: %lu)\n", t, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); c = pmm_alloc(1073741824); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); c = pmm_alloc(1073741824); tsc_b = arch_get_cycles();
 	printf("c3: %p (delta: %lu)\n", c, (tsc_b - tsc_a));
 
-	tsc_a = rdtsc(); void *d = pmm_alloc(PAGE_SIZE); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); void *d = pmm_alloc(PAGE_SIZE); tsc_b = arch_get_cycles();
 	printf("d1: %p (delta: %lu)\n", d, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); void *d1 = pmm_alloc(PAGE_SIZE); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); void *d1 = pmm_alloc(PAGE_SIZE); tsc_b = arch_get_cycles();
 	printf("d2: %p (delta: %lu)\n", d1, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); t = pmm_free(d); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); t = pmm_free(d); tsc_b = arch_get_cycles();
 	printf("free(d): %lu bytes (delta: %lu)\n", t, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); d = pmm_alloc(PAGE_SIZE); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); d = pmm_alloc(PAGE_SIZE); tsc_b = arch_get_cycles();
 	printf("d3: %p (delta: %lu)\n", d, (tsc_b - tsc_a));
 
-	tsc_a = rdtsc(); void *e = pmm_fast_page_alloc(); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); void *e = pmm_fast_page_alloc(); tsc_b = arch_get_cycles();
 	printf("e1: %p (delta: %lu)\n", e, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); void *e1 = pmm_fast_page_alloc(); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); void *e1 = pmm_fast_page_alloc(); tsc_b = arch_get_cycles();
 	printf("e2: %p (delta: %lu)\n", e1, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); t = pmm_fast_page_free(e); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); t = pmm_fast_page_free(e); tsc_b = arch_get_cycles();
 	printf("free(e): %lu bytes (delta: %lu)\n", t, (tsc_b - tsc_a));
-	tsc_a = rdtsc(); e = pmm_fast_page_alloc(); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); e = pmm_fast_page_alloc(); tsc_b = arch_get_cycles();
 	printf("e3: %p (delta: %lu)\n", e, (tsc_b - tsc_a));
 
-
-
-	tsc_a = rdtsc(); void *b = pmm_alloc(100); tsc_b = rdtsc();
+	tsc_a = arch_get_cycles(); void *b = pmm_alloc(100); tsc_b = arch_get_cycles();
 	printf("b: %p (delta: %lu)\n", b, (tsc_b - tsc_a));
 
+	void *f = pmm_alloc(PAGE_SIZE * 2);
+	void *f1 = pmm_alloc(PAGE_SIZE * 2);
+	size_t l = pmm_free(f);
+	printf("free(%p) = %lu; %p\n", f, l, f1);
+	void *f2 = pmm_alloc(1 << 18);
+	printf("free(%p) = %lu; %p\n", f1, pmm_free(f1), f2);
+	printf("free(%p) = %lu\n", f2, pmm_free(f2));
+	printf("%p\n", pmm_alloc(PAGE_SIZE * 2));
 
 	for (;;);
 
