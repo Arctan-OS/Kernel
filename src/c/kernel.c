@@ -114,7 +114,7 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	printf("free(%p) = %lu\n", f2, pmm_free(f2));
 	printf("%p\n", pmm_alloc(PAGE_SIZE * 2));
 
-	for (;;);
+	ARC_HANG;
 
 	if (init_allocator(256) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize kernel allocator\n");
