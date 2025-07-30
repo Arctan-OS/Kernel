@@ -25,8 +25,11 @@
  * @DESCRIPTION
 */
 #include "arch/x86-64/config.h"
+#include "mm/algo/vwatermark.h"
+#include "mm/vmm.h"
 #include <arch/info.h>
 #include <global.h>
+#include <stdint.h>
 #include <util.h>
 #include <arch/pager.h>
 #include <arch/acpi/acpi.h>
@@ -62,7 +65,7 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 		ARC_DEBUG(ERR, "Failed to initialize physical memory manager\n");
 		ARC_HANG;
 	}
-
+/*
 	uint64_t tsc_a = 0;
 	uint64_t tsc_b = 0;
 
@@ -113,14 +116,48 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	printf("free(%p) = %lu; %p\n", f1, pmm_free(f1), f2);
 	printf("free(%p) = %lu\n", f2, pmm_free(f2));
 	printf("%p\n", pmm_alloc(PAGE_SIZE * 2));
-
-	ARC_HANG;
+*/
 
 	if (init_allocator(256) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize kernel allocator\n");
 		ARC_HANG;
 	}
-	
+
+	struct ARC_VMMMeta *meta = init_vmm((void *)0x10000000, UINT32_MAX);
+
+	void *a = vmm_alloc(meta, 0x1000);
+	printf("a = %p\n", a);
+	void *b = vmm_alloc(meta, 0x1000);
+	printf("b = %p\n", b);
+	printf("free(a) = %lu\n", vmm_free(meta, a));
+	void *c = vmm_alloc(meta, 0x1000);
+	printf("c = %p\n", c);
+	a = vmm_alloc(meta, 0x1000);
+	printf("a = %p\n", a);
+
+	printf("free(a) = %lu\n", vmm_free(meta, a));
+	printf("free(b) = %lu\n", vmm_free(meta, b));
+	printf("free(c) = %lu\n", vmm_free(meta, c));
+
+	printf("Merge test\n");
+	a = vmm_alloc(meta, 0x1000);
+	printf("a = %p\n", a);
+	b = vmm_alloc(meta, 0x1000);
+	printf("b = %p\n", b);
+	c = vmm_alloc(meta, 0x1000);
+	printf("c = %p\n", c);
+
+	printf("free(a) = %lu\n", vmm_free(meta, a));
+	printf("free(b) = %lu\n", vmm_free(meta, b));
+
+	b = vmm_alloc(meta, 0x1000);
+	printf("b = %p\n", b);
+	a = vmm_alloc(meta, 0x1000);
+	printf("a = %p\n", a);
+
+
+	ARC_HANG;
+
 	init_checksums();
 	
 	init_vfs();
@@ -139,7 +176,7 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	if (init_acpi() != 0) {
 		return -1;
 	}
-	
+
 	init_arch();
 	
 	if (init_pci() != 0) {
@@ -149,7 +186,9 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	ARC_DISABLE_INTERRUPT;
 	
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
-	
+
+	ARC_HANG;
+
 	/*
 	
 	Arc_ProcessorHold = process_create(0, NULL);
