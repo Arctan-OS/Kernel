@@ -6,7 +6,7 @@ insert_final_newline = true
 
 [COMMIT_EDITMSG]
 insert_final_newline = false
-indent_size = 0
+indent_size = 8
 
 [*.{c,h}]
 charset = utf-8
