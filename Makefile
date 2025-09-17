@@ -41,10 +41,12 @@ CPPFLAGS := $(ARC_INCLUDE_DIRS) $(ARC_DEF_ARCH) $(ARC_DEF_SCHED) $(ARC_DEF_COM) 
 
 export CPPFLAGS
 
-CFLAGS := -c -m64 -c -masm=intel -fno-stack-protector -fno-stack-check \
-		  -fno-lto -mno-mmx -mno-80387 -mno-red-zone -Wall \
-		  -Wextra -mno-sse -mno-sse2 -ffreestanding -nostdlib \
-		  -fPIE -ffunction-sections -march=x86-64-v2 -O1
+ifeq (x86_64,$(ARC_OPT_ARCH))
+	CFLAGS := -c -m64 -masm=intel -fno-stack-protector -fno-stack-check \
+			  -fno-lto -mno-mmx -mno-80387 -mno-red-zone -Wall \
+			  -Wextra -mno-sse -mno-sse2 -ffreestanding -nostdlib \
+			  -fPIE -ffunction-sections -march=x86-64-v2 -O1
+endif
 
 export CFLAGS
 
@@ -57,7 +59,9 @@ export NASMFLAGS
 .PHONY: all
 all: build
 	$(LD) $(LDFLAGS) $(shell find . -type f -name "*.o")
-#	$(STRIP) $(PRODUCT)
+ifneq ($(ARC_OPT_DEBUG),yes)
+	$(STRIP) $(PRODUCT)
+endif
 
 .PHONY: definitions
 definitions:
