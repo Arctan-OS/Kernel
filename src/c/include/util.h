@@ -27,7 +27,9 @@
 #ifndef ARC_UTIL_H
 #define ARC_UTIL_H
 
-#include <interface/printf.h>
+#include "interface/printf.h"
+#include "lib/util.h"
+
 #include <inttypes.h>
 #include <stdint.h>
 
@@ -88,7 +90,7 @@
 #define MASKED_WRITE(__to, __value, __shift, __mask) __to = (((__to) & ~((__mask) << (__shift))) | (((__value) & (__mask)) << (__shift)));
 
 #ifdef ARC_TARGET_ARCH_X86_64
-#include <arch/x86-64/util.h>
+#include "arch/x86-64/util.h"
 #endif
 
 #endif
