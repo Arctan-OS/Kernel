@@ -24,27 +24,42 @@
  *
  * @DESCRIPTION
 */
-#include "arch/x86-64/config.h"
-#include "mm/algo/vwatermark.h"
-#include "mm/vmm.h"
-#include <arch/info.h>
-#include <global.h>
-#include <stdint.h>
-#include <util.h>
-#include <arch/pager.h>
-#include <arch/acpi/acpi.h>
-#include <arch/pci/pci.h>
-#include <arch/start.h>
-#include <arch/smp.h>
-#include <drivers/dri_defs.h>
-#include <mm/pmm.h>
-#include <mm/allocator.h>
-#include <lib/checksums.h>
-#include <lib/perms.h>
-#include <fs/vfs.h>
+#include "arch/acpi/acpi.h"
+#include "arch/interrupt.h"
+#include "arch/pager.h"
+#include "arch/pci.h"
+#include "arch/start.h"
+#include "arch/smp.h"
+//#include "arch/x86-64/context.h"
+//#include "arch/x86-64/interrupt.h"
+//#include "arch/x86-64/util.h"
+#include "arch/x86-64/util.h"
+#include "drivers/dri_defs.h"
+#include "fs/vfs.h"
+#include "global.h"
+#include "lib/checksums.h"
+#include "drivers/resource.h"
+#include "mm/allocator.h"
+#include "mm/pmm.h"
+#include "mp/scheduler.h"
+#include "userspace/process.h"
+
+//#include "arch/io/port.h"
+//#include "arch/x86-64/smp.h"
+
+
 
 struct ARC_KernelMeta *Arc_KernelMeta = NULL;
 struct ARC_BootMeta *Arc_BootMeta = NULL;
+
+/*
+void irq0(ARC_InterruptFrame *frame) {
+	printf("Hello World, RAX is: %"PRIx64"\n", frame->gpr.rax);
+	printf("Coming from: %p\n", frame->rip);
+}
+
+ARC_DEFINE_IRQ_HANDLER(irq0);
+*/
 
 int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_meta) {
 	Arc_KernelMeta = kernel_meta;
@@ -116,13 +131,13 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	printf("free(%p) = %lu; %p\n", f1, pmm_free(f1), f2);
 	printf("free(%p) = %lu\n", f2, pmm_free(f2));
 	printf("%p\n", pmm_alloc(PAGE_SIZE * 2));
-*/
+//*/
 
 	if (init_allocator(256) != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize kernel allocator\n");
 		ARC_HANG;
 	}
-
+/*
 	struct ARC_VMMMeta *meta = init_vmm((void *)0x10000000, UINT32_MAX);
 
 	void *a = vmm_alloc(meta, 0x1000);
@@ -154,9 +169,7 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	printf("b = %p\n", b);
 	a = vmm_alloc(meta, 0x1000);
 	printf("a = %p\n", a);
-
-
-	ARC_HANG;
+//*/
 
 	init_checksums();
 	
@@ -169,25 +182,34 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	
 	vfs_create("/initramfs/", &info);
         vfs_create("/dev/", &info);
-	
+	vfs_create("/process/", &info);
+
 	struct ARC_Resource *Arc_InitramfsRes = init_resource(ARC_DRIDEF_INITRAMFS_SUPER, (void *)ARC_PHYS_TO_HHDM(Arc_KernelMeta->initramfs.base));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
-	
+
 	if (init_acpi() != 0) {
 		return -1;
 	}
 
+	init_smp();
+
 	init_arch();
-	
+
 	if (init_pci() != 0) {
 		return -2;
 	}
-	
-	ARC_DISABLE_INTERRUPT;
-	
+
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
 
+	/*
+	interrupt_set(NULL, 3, irq_handler_irq0, true);
+
+	printf("A Processor id: %d\n", Arc_CurProcessorDescriptor->descriptor->acpi_uid);
+	__asm__("mov rax, 0xABAB; int 3");
+	printf("B Processor id: %d\n", Arc_CurProcessorDescriptor->descriptor->acpi_uid);
+
 	ARC_HANG;
+	*/
 
 	/*
 	
@@ -217,17 +239,22 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	
 	init_scheduler();
 	sched_queue(Arc_ProcessorHold, ARC_SCHED_PRI_LO);
-	
-	struct ARC_Process *userspace = process_create_from_file(1, "/initramfs/userspace.elf");
+	*/
+
+	vfs_list("/", 16);
+
+	if (init_scheduler() != 0) {
+		ARC_DEBUG(ERR, "No scheduler\n");
+		ARC_HANG;
+	}
+
+	ARC_Process *userspace = process_create_from_file(true, "/initramfs/userspace.elf");
 	if (userspace == NULL) {
 		ARC_DEBUG(ERR, "Failed to load userspace\n");
 	}
-	sched_queue(userspace, ARC_SCHED_PRI_HI);
-	*/
-	
-	vfs_list("/", 16);
+//	sched_queue_proc(userspace);
 
-	smp_switch_to_userspace();
+	ARC_ENABLE_INTERRUPT;
 
 	ARC_HANG;
 
