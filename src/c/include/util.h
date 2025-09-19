@@ -60,7 +60,8 @@
 			printf("Assertion %s failed (%s:%d)\n", #cond, __FILE__, __LINE__); \
 			for (;;); \
 		     }
-#define ALIGN(v, a) ((v + (a - 1)) & ~(a - 1))
+#define ALIGN_UP(v, a) ((v + (a - 1)) & ~(a - 1))
+#define ALIGN_DOWN(v, a) ALING_UP((v - (a - 1)), a)
 
 // NOTE: This does not account for v = 0.
 #define SIZE_T_NEXT_POW2(v) \
