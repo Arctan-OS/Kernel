@@ -29,8 +29,6 @@
 #include "arch/pci.h"
 #include "arch/start.h"
 #include "arch/smp.h"
-#include "arch/x86-64/config.h"
-#include "arch/x86-64/util.h"
 #include "drivers/dri_defs.h"
 #include "fs/vfs.h"
 #include "global.h"
