@@ -1432,7 +1432,7 @@ int vfctprintf(void (*out)(char c, void* extra_arg), void* extra_arg, const char
  * TODO: Investigate a better solution to this.
  *
 */
-ARC_Spinlock printf_lock = 0;
+static ARC_Spinlock printf_lock;
 int printf_(const char* format, ...)
 {
   spinlock_lock(&printf_lock);
@@ -1469,4 +1469,8 @@ int fctprintf(void (*out)(char c, void* extra_arg), void* extra_arg, const char*
   const int ret = vfctprintf(out, extra_arg, format, args);
   va_end(args);
   return ret;
+}
+
+int init_printf() {
+  init_static_spinlock(&printf_lock);
 }

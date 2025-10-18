@@ -29,10 +29,12 @@
 #include "arch/pci.h"
 #include "arch/start.h"
 #include "arch/smp.h"
+#include "arch/x86-64/config.h"
 #include "arch/x86-64/util.h"
 #include "drivers/dri_defs.h"
 #include "fs/vfs.h"
 #include "global.h"
+#include "interface/printf.h"
 #include "lib/checksums.h"
 #include "drivers/resource.h"
 #include "mm/allocator.h"
@@ -47,7 +49,15 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	Arc_KernelMeta = kernel_meta;
 	Arc_BootMeta = boot_meta;
 
-	init_arch_early();
+	if (init_printf() != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize printf\n");
+		ARC_HANG;
+	}
+
+	if (init_arch_early() != 0) {
+		ARC_DEBUG(ERR, "Failed to intiailize early arch\n");
+		ARC_HANG;
+	}
 
 	if (init_pager() != 0) {
 		ARC_DEBUG(ERR, "Failed to initialize pager\n");
@@ -55,6 +65,7 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	}
 
 	if (init_terminal() != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize terminal\n");
 		ARC_HANG;
 	}
 
@@ -108,10 +119,11 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	ARC_Process *userspace = process_create_from_file(true, "/initramfs/userspace.elf");
 	if (userspace == NULL) {
 		ARC_DEBUG(ERR, "Failed to load userspace\n");
+		ARC_HANG;
 	}
-//	sched_queue_proc(userspace);
+	sched_queue_proc(userspace);
 
-	ARC_ENABLE_INTERRUPT;
+//	ARC_ENABLE_INTERRUPT;
 
 	ARC_HANG;
 
