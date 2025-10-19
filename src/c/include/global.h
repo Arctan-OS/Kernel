@@ -31,11 +31,16 @@
 #include <util.h>
 #include <config.h>
 
+#define USERSPACE __attribute__((section(".userspace")))
+
 extern struct ARC_KernelMeta *Arc_KernelMeta;
 extern struct ARC_BootMeta *Arc_BootMeta;
 
 extern uint8_t __KERNEL_START__;
 extern uint8_t __KERNEL_END__;
 extern uint8_t __KERNEL_STACK__;
+
+extern uint8_t __USERSPACE_START__;
+extern uint8_t __USERSPACE_END__;
 
 #endif

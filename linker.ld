@@ -37,6 +37,14 @@ SECTIONS {
 
     . = ALIGN(0x1000);
 
+    __USERSPACE_START__ = .;
+    .userspace : {
+        *(.userspace .userspace.*)
+    } :text
+
+    . = ALIGN(0x1000);
+    __USERSPACE_END__ = .;
+
     .rodata : {
         *(.rodata .rodata.*)
     } :rodata

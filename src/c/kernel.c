@@ -121,7 +121,7 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	}
 	sched_queue_proc(userspace);
 
-//	ARC_ENABLE_INTERRUPT;
+	ARC_ENABLE_INTERRUPT;
 
 	ARC_HANG;
 
