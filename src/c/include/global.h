@@ -31,7 +31,7 @@
 #include <util.h>
 #include <config.h>
 
-#define USERSPACE __attribute__((section(".userspace")))
+#define USERSPACE(type) __attribute__((section(".userspace."#type)))
 
 extern struct ARC_KernelMeta *Arc_KernelMeta;
 extern struct ARC_BootMeta *Arc_BootMeta;
