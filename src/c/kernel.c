@@ -88,21 +88,28 @@ int kernel_main(struct ARC_KernelMeta *kernel_meta, struct ARC_BootMeta *boot_me
 	
 	vfs_create("/initramfs/", &info);
         vfs_create("/dev/", &info);
-	vfs_create("/process/", &info);
 
 	struct ARC_Resource *Arc_InitramfsRes = init_resource(ARC_DRIDEF_INITRAMFS_SUPER, (void *)ARC_PHYS_TO_HHDM(Arc_KernelMeta->initramfs.base));
 	vfs_mount("/initramfs/", Arc_InitramfsRes);
 
 	if (init_acpi() != 0) {
-		return -1;
+		ARC_DEBUG(ERR, "Failed to initialize ACPI\n");
+		ARC_HANG;
 	}
 
-	init_smp();
+	if (init_smp() != 0) {
+		ARC_DEBUG(ERR, "Failed to initialize SMP\n");
+		ARC_HANG;
+	}
 
-	init_arch();
+	if (init_arch() != 0) {
+		ARC_DEBUG(ERR, "Failed t oinitialize architecture\n");
+		ARC_HANG;
+	}
 
 	if (init_pci() != 0) {
-		return -2;
+		ARC_DEBUG(ERR, "Failed to initialize PCI\n");
+		ARC_HANG;
 	}
 
 	printf("Welcome to 64-bit wonderland! Please enjoy your stay.\n");
